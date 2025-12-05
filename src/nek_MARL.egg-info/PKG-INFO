@@ -1,0 +1,31 @@
+Metadata-Version: 2.1
+Name: nek-MARL
+Version: 0.0.1
+Summary: NEK5000 Multi-Agent Reinforcement Learning Framework for Drag Reduction
+Home-page: https://github.com/Fantasy98/nek_drl
+Author: Yuning Wang
+Author-email: yuninw@umich.edu
+License: UNKNOWN
+Project-URL: Bug Reports, https://github.com/Fantasy98/nek_drl/issues
+Project-URL: Source, https://github.com/yourusername/nek_drl
+Project-URL: Documentation, https://nek-marl.readthedocs.io/
+Keywords: reinforcement-learning,multi-agent,fluid-dynamics,nek5000,cfd
+Platform: UNKNOWN
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Provides-Extra: dev
+Provides-Extra: docs
+
+NEK5000 Multi-Agent Reinforcement Learning Framework
+

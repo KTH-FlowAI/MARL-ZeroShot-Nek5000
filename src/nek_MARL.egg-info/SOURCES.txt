@@ -1,0 +1,10 @@
+setup.py
+src/nek_MARL/__init__.py
+src/nek_MARL/__main__.py
+src/nek_MARL.egg-info/PKG-INFO
+src/nek_MARL.egg-info/SOURCES.txt
+src/nek_MARL.egg-info/dependency_links.txt
+src/nek_MARL.egg-info/entry_points.txt
+src/nek_MARL.egg-info/not-zip-safe
+src/nek_MARL.egg-info/requires.txt
+src/nek_MARL.egg-info/top_level.txt

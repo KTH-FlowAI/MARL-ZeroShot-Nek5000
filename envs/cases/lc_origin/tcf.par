@@ -1,0 +1,64 @@
+#
+# nek parameter file
+#
+[GENERAL] 
+stopAt = numSteps #endTime
+#endTime = 30.0
+numSteps = 200000
+
+dt = -2.0e-03           # Fixed Time step
+timeStepper = bdf3      
+variableDt = no
+targetCFL = 0.3         # Beyond this CFL simulation will stop!
+
+writeControl = timeStep #runTime
+writeInterval = 10000
+
+dealiasing = yes
+
+filtering = none      # DNS/LES
+#filtering = hpfrt
+filterWeight = 0.01
+filterCutoffRatio = 0.9
+
+#------- PARAM for OPPO CTRL -----------
+userParam01 = 15.0 #  Sensing Plane location 
+userParam02 = 1.0  #  Amplitude factor of control
+
+
+
+[PROBLEMTYPE]
+stressFormulation = no
+variableProperties = no
+
+[PRESSURE]
+residualTol = 1e-8        # Divergence-free for solving pressure posisson 
+residualProj = no
+
+[VELOCITY]
+residualTol = 1e-8        
+residualProj = no
+density = 1.0             # Flow density
+viscosity = -3300   # To match the Re_theta 
+advection = yes
+
+
+#
+[_RUNPAR]               # Runtime parameter section for rprm module
+PARFWRITE            = no                     # Do we write runtime parameter file
+PARFNAME             = outparfile             # Runtime parameter file name for output (without .par)
+#
+[_MONITOR]              # Runtime parameter section for monitor module
+LOGLEVEL             = 4                      # Logging threshold for toolboxes
+WALLTIME             = 23:45                  # Simulation wall time
+#
+[_CHKPOINT]             # Runtime paramere section for checkpoint module
+READCHKPT            = no               # Restat from checkpoint
+CHKPFNUMBER          = 2                  # Restart file number
+CHKPINTERVAL         = 10000              # Checkpiont saving frequency (number of time steps)
+#
+[_STAT]             # Runtime paramere section for statistics module
+AVSTEP               = 10         # Calculate the spatial average on the fly 
+IOSTEP               = 40000      # Which step we dump the sts file?
+
+

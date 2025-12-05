@@ -1,0 +1,6 @@
+net_arch:
+    vf: [16,64,64]
+    pi: [16,16,8]
+
+# A wider std to prevent from exploring Bang-Bang
+log_std_init  : -2.3

@@ -1,0 +1,5 @@
+NEK5000
+version: 1.0
+filetemplate: ../runs/199836/train/actphill%01d.f%05d
+Firsttimestep: 1
+numtimesteps: 1

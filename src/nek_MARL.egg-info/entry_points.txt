@@ -1,0 +1,3 @@
+[console_scripts]
+nek-marl = nek_MARL.__main__:main
+
