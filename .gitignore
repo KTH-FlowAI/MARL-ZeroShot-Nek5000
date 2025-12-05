@@ -35,7 +35,7 @@
 # maintain the folder 
 !runs/readme.md
 !data/readme.md
-!data/rs6_mini_Channel/
+!data/rs6_mini_Channel/**/*
 envs/solver/**/
 !envs/solver/*tar*
 
