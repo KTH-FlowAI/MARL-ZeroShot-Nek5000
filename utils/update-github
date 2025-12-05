@@ -4,7 +4,7 @@ repo="kth"
 
 # repo="julich"
 
-branchName="kth/dev_yw_fxb"
+branchName="dev_yw_fxb"
 
 # repo='juwels'
 # branchName='yw_local_dev'
