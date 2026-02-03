@@ -32,7 +32,7 @@
 ### Running a minimal-channel drl 
 + Run the minimal channel via: 
 
-        cd execs && .unified-script --config MC16-TD3.yml --run-mode run
+        cd execs && .run-script --config MC16-TD3.yml --run-mode run
 
 + To inspect the training status: 
         
