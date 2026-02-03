@@ -26,6 +26,7 @@ Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 Provides-Extra: dev
 Provides-Extra: docs
+License-File: LICENSE
 
 NEK5000 Multi-Agent Reinforcement Learning Framework
 

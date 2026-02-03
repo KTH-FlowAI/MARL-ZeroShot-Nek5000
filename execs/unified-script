@@ -3,8 +3,17 @@
 ## An initialization to prepare the folder and dependencies.
 ## Export the environment variables
 #--------------------------------------------
+# prevent the sourced shell profiles from seeing the script args (they would
+# otherwise forward them to `activate`, which errors because activate expects
+# only one argument)
+ORIG_ARGS=("$@")
+set --
 source ~/.bashrc.openmpi_ucx
+source ~/.bashrc.miniforge
+set -- "${ORIG_ARGS[@]}"
 unset OMPI_MCA_pml OMPI_MCA_osc UCX_TLS UCX_NET_DEVICES
+LOG_DIR="log-files"
+mkdir -p ${LOG_DIR}
 export HWLOC_HIDE_ERRORS=1
 export UCX_TLS=sm,self,tcp,cma,sysv,posix
 export OMPI_MCA_btl=self,vader,tcp
@@ -15,35 +24,45 @@ export OMPI_MCA_btl=self,vader,tcp
 # Default values
 CONFIG_NAME="MC16-TD3.yml"
 RUN_MODE="run"
-RANK=10
 
 # Parse command line arguments
-# Usage: ./unified-script [CONFIG_NAME] [RUN_MODE]
-if [ $# -ge 1 ]; then
-    CONFIG_NAME="$1"
-fi
-
-if [ $# -ge 2 ]; then
-    RUN_MODE="$2"
-fi
-
-echo "DRL CONFIG: ${CONFIG_NAME}, MODE: ${RUN_MODE}"
+# Usage: ./unified-script --config [CONFIG_NAME] --run-mode [RUN_MODE] --rank [RANK]
+# Parse command-line arguments after `--`
+while [[ $# -gt 1 ]]; do
+    case "$1" in
+        --config)
+            CONFIG_NAME="$2"
+            shift 2
+            ;;
+        --run-mode)
+            RUN_MODE="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
+done
 #--------------------------------------------
 
 #--------------------------------------------
 # I/O Initialization
-mpirun -n 1 python -m nek_MARL initial ../conf/${CONFIG_NAME}
+mpirun -n 1 python -m nek_MARL initial ../conf/${CONFIG_NAME} > ${LOG_DIR}/log.initial.${CONFIG_NAME} 2>&1 
 
-RUN_PATH=$(head -n 1 RUN_PATH.txt)
+#--- Get the agent name and the total number of processes
+AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+NTOT=$(grep -ri 'nproc' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+RUN_PATH=$(head -n 1 RUN_PATH_${AGENT_RUN_NAME}.txt)
 
 if [ "$RUN_MODE" = "run" ]; then
-    AGENT=$(tail -n 1 RUN_PATH.txt)
+    AGENT=$(tail -n 1 RUN_PATH_${AGENT_RUN_NAME}.txt)
 else
     AGENT=""
 fi
 #--------------------------------------------
 
-echo "RUN MODE: ${RUN_MODE}"
+echo "CONFIG: ${CONFIG_NAME}, MODE: ${RUN_MODE}, NTOT: ${NTOT}"
 
 #--------------------------------------------
 # History management (only for run mode)
@@ -60,20 +79,20 @@ fi
 # Main execution
 if [ "$RUN_MODE" = "evaluate" ]; then
     # Evaluation mode execution
-    mpirun -n $((1 + ${RANK})) bash -c "
+    mpirun -n $((1 + ${NTOT})) bash -c "
     if [ \$OMPI_COMM_WORLD_RANK -eq 0 ]; then
         python -m nek_MARL ${RUN_MODE} ../conf/${CONFIG_NAME} runner.rank=1
     else
         cd ${RUN_PATH} && ./nek5000
     fi
-    " 
+    "  > ${LOG_DIR}/log.evaluate.${CONFIG_NAME} 2>&1 
 else
     # Run mode execution
-    mpirun -n $((1 + ${RANK})) bash -c "
+    mpirun -n $((1 + ${NTOT})) bash -c "
     if [ \$OMPI_COMM_WORLD_RANK -eq 0 ]; then
         python -m nek_MARL ${RUN_MODE} ../conf/${CONFIG_NAME} runner.policy=$AGENT 
     else
         cd ${RUN_PATH} && ./nek5000
     fi
-    " 
+    "  > ${LOG_DIR}/log.run.${CONFIG_NAME} 2>&1 
 fi

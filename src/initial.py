@@ -137,7 +137,7 @@ def initial(conf_file,overrides,**ignored_kwargs):
         last_agent = ""
 
     # Re-redict the running path 
-    with open('RUN_PATH.txt',"w") as f:
+    with open(f"RUN_PATH_{conf.runner.agent_run_name}.txt","w") as f:
         f.write(rank_folder + "\n")
         f.write(last_agent)
     f.close()

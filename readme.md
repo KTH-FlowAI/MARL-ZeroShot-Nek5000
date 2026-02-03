@@ -2,26 +2,26 @@
 
 ## Get Started
 ### Dependencies
++ Build your own MPI: 
+
+        ./utils/install_mpi.sh > log.mpi 2>&1 
+
 + Setup your dependices of miniforge: 
 
-        ./utils/install_miniforge.sh 
+        ./utils/install_miniforge.sh  > log.miniforge 2>&1 
 
-+ Use MPI: 
++ Install the python env
 
-        ./utils/install_mpi.sh
+        ./utils/install_auto_env.sh nek  > log.python 2>&1 
+
++ Automated modification on the package 
+
+        source ~/.bashrc.miniforge && python ./utils/patch_supersuit.py
 
 ### Initial SetUp 
 + First set up the Solvers via: 
 
         ./utils/initialize_solver.sh
-
-+ Please install the Environment via: 
-
-        source ~/.bashrc.openmpi_ucx
-
-        conda create -n nek python=3.8
-
-        ./utils/install_auto_env.sh nek
 
 + Complie the code via: 
 

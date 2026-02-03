@@ -1,3 +1,4 @@
+LICENSE
 setup.py
 src/nek_MARL/__init__.py
 src/nek_MARL/__main__.py

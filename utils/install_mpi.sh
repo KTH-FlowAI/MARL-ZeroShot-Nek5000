@@ -30,11 +30,12 @@ print_error() {
 }
 
 # Configuration
+BASE_PATH=$(pwd)
 MAIN_PATH="./ucx_mpi"
 UCX_INSTALL="./ucx_local"
 OPENMPI_VERSION="4.1.4"
 OPENMPI_INSTALL="./openmpi-${OPENMPI_VERSION}-ucx"
-TARGET_BASH=~/.bashrc.openmpi_ucx
+TARGET_BASH=~/.bashrc.openmpi_ucx_2
 
 # Function to check if we're in the right directory
 check_directory() {
@@ -81,7 +82,7 @@ install_ucx() {
     ./contrib/configure-release --prefix="$UCX_INSTALL_ABS" --enable-mt
     
     print_status "Building UCX (this may take a while)..."
-    make -j$(nproc)
+    make -j
     
     print_status "Installing UCX..."
     make install
@@ -123,7 +124,7 @@ install_openmpi() {
     
     # Build OpenMPI
     print_status "Building OpenMPI (this may take a while)..."
-    make -j$(nproc)
+    make -j
     
     # Install OpenMPI
     print_status "Installing OpenMPI..."
@@ -132,7 +133,7 @@ install_openmpi() {
     print_success "OpenMPI installation completed successfully"
     
     # Go back to main directory
-    cd ..
+    cd "$BASE_PATH"
 }
 
 # Function to create environment file
@@ -243,7 +244,7 @@ main() {
     local ORIGINAL_DIR=$(pwd)
     
     # Check directory
-    check_directory
+    # check_directory
     
     # Create directories
     create_directories

@@ -41,3 +41,8 @@ envs/solver/**/
 
 !src/**/
 !src/lib/writer_int_pos.py
+
+log-files/
+ucx_mpi/
+miniforge3/
+*log*

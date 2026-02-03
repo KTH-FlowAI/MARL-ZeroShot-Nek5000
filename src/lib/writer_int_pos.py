@@ -70,9 +70,9 @@ def write_channel(path, Ret, yplus,
 
     fname = f'{path}/int_pos'
 
-    if os.path.exists(fname):
-        print(f"File Exists!:{fname}", flush=True)
-        return True
+    #if os.path.exists(fname):
+    #    print(f"File Exists!:{fname}", flush=True)
+    #    return True
 
     wdsize = 8
     # little endian

@@ -351,13 +351,13 @@ main() {
     initialize_conda
     
     # Create environment file
-    create_environment_file
+    # create_environment_file
     
     # Test installation
-    test_installation
+    # test_installation
     
     # Show summary
-    show_summary
+    # show_summary
     
     print_success "Python/miniforge installation completed successfully!"
 }

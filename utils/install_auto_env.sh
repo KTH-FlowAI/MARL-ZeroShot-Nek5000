@@ -3,6 +3,12 @@
 ## Auto-detecting installation script for any conda environment
 ## Usage: ./install_auto_env.sh [environment_name]
 
+#---- Configuration ----#
+TARGET_BASH=~/.bashrc.miniforge
+MINIFORGE_ABS=$(realpath ./miniforge3)
+source ~/.bashrc   # Renew the conda installation
+source ~/.bashrc.openmpi_ucx
+
 # Get environment name from argument or auto-detect
 if [[ "$1" != "" ]]; then
     ENV_NAME="$1"
@@ -15,12 +21,15 @@ else
     echo "⚠️  No environment specified, using default: $ENV_NAME"
 fi
 
+#--- Create env -----
+conda create --name "$ENV_NAME" python=3.8 -y
+
+
 # Auto-detect environment path
 if [[ "$CONDA_PREFIX" != "" ]]; then
     # If we're already in a conda environment, use it
     ENV_PATH="$CONDA_PREFIX"
     echo "🔍 Auto-detected current conda environment: $ENV_PATH"
-elif command -v conda &> /dev/null; then
     # Try to find conda installation
     CONDA_BASE=$(conda info --base 2>/dev/null || echo "")
     if [[ "$CONDA_BASE" != "" ]]; then
@@ -45,6 +54,56 @@ if [[ ! -d "$ENV_PATH" ]]; then
     exit 1
 fi
 
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+create_bashrc_file() {
+    print_status "Creating bashrc file..."
+    
+    # Create bashrc file
+    cat > "$TARGET_BASH" << EOF
+# NEK-MARL Environment Configuration
+# Generated on $(date)
+# Do not edit manually - this file is auto-generated
+
+# Miniforge installation path
+export NEK_MARL_ROOT="$MINIFORGE_ABS"
+
+# Source conda
+source "$MINIFORGE_ABS/bin/activate"
+
+# Initialize conda (if not already done)
+conda info >/dev/null 2>&1 || conda init bash
+
+# Activate DRL environment by default
+conda activate $ENV_NAME
+
+# Print environment info
+echo "Miniforge environment loaded:"
+echo "  Miniforge: $MINIFORGE_ABS"
+echo "  Active environment: $ENV_NAME"
+echo "  Python version: \$(python --version 2>&1)"
+EOF
+    
+    print_success "Environment file created: $TARGET_BASH"
+}
+
+
+
+#---- Installation ----#
 echo "🚀 Installing NEK-MARL environment following DRL pattern..."
 echo "📦 Environment: ${ENV_NAME}"
 echo "📁 Path: ${ENV_PATH}"
@@ -133,6 +192,12 @@ echo "==================="
 python utils/patch_supersuit.py
 echo "==================="
 echo "[PATCH] SUPERSUIT PATCH APPLIED"
+echo "==================="
+
+### Write the environment file as bashrc file
+create_bashrc_file
+echo "==================="
+echo "[IO] BASHRC CREATED"
 echo "==================="
 
 echo "=============================="

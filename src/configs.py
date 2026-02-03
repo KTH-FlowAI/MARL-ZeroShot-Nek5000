@@ -42,14 +42,16 @@ class Runner:
     size_history:int    =   10
     tau:float           =   0.005
     learning_starts:int =   100
-    # for TD3
+    # for TD3, Note: This is default in SB3 
     policy_delay:int    =   2
-    target_policy_noise:float =   0.2
+    target_policy_noise:float =   0.2 
     target_noise_clip:float =   0.5
     
-    seed:int = -5000 # if == -5000, no seed specified
+    # Random Seed 
+    seed:int = -5000 # If -5000 -> None 
+    
     ## The replay buffer 
-    custom_buffer:bool = True
+    custom_buffer:bool = False
     keep_frac:float = 0.25
     buffer_mode:str = 'rotate'
 
@@ -96,7 +98,11 @@ class Simulation:
     znmf_avg:int            = 1 # 1==Open
     target_cfl:float        = 0.5
     y_sensing:float         = 15.0
-    retau :float             = 180.0
+    retau :float            = 180.0
+    #---- Body-Force Damping config, it will be used only if BDFD is on ----
+    ys_bdf:float            = 20.0 # Volume for Body-Force
+    amp_bdf :float          = 5.0 # Amplitude for Body-Force
+    ret_bdf :float          = 207.0 # Scale for Body-Force, it depends on the uncontrolled channel, but the drl sensing plane depends on the body-force channel
     #--------------------------------
     
     # slurm specific 
@@ -161,28 +167,6 @@ class Simulation:
 
     #[_TSRS]             # Runtime paramere section for time series module
     SMPSTEP:int         = 23
-
-
-# Parameter mapping This is only used for Nek-V17 on the wing  
-param_mapping = {
-    "density"       : "p001",
-    "viscosity"     : "p002",
-    "numSteps"      : "p011",
-    "dt"            : "p012",
-    "writeInterval" : "p015",
-    "target_cfl"    : "p026",
-    "writeLA2"      : "p070",
-    "p_residualTol" : "p021",
-    "v_residualTol" : "p022",
-    "writePTS"      : "p051",
-    "READCHKPT"     : "p076",
-    "CHKPFNUMBER"   : "p067",
-    "CHKPINTERVAL"  : "p075",
-    "AVSTEP"        : "p087",
-    "IOSTEP"        : "p088",
-    "ndrl"          : "p089",
-    "znmf_avg"      : "p090",
-}
 
 
 @dataclass

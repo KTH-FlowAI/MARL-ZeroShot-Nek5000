@@ -49,11 +49,12 @@ class NEK_INIT():
                 f"{self.nek.CASENAME}.re2",
                 f"{self.nek.CASENAME}.ma2",
                 f"{self.nek.CASENAME}.usr",
+                'int_pos',
             ],
             'option': [
                 'SIZE',
                 # Rotation
-                'int_pos',
+                #'int_pos',
             ]
         }
         for fname in checklist["must"]:
@@ -141,13 +142,19 @@ class NEK_INIT():
             # ---------------------------
             userp = 1
             fpar.write('#------DRL SETUP-------\n')
-            fpar.write('userParam%02d = %s \n' % (userp, self.nek.ndrl))
+            fpar.write('userParam%02d = %s \n' % (userp, self.nek.ndrl)) # Number of DRL step
             userp += 1
-            fpar.write('userParam%02d = %s \n' % (userp, self.nek.znmf_avg))
+            fpar.write('userParam%02d = %s \n' % (userp, self.nek.znmf_avg)) # Average Z-mode for DRL
             userp += 1
-            fpar.write('userParam%02d = %s \n' % (userp, self.nek.y_sensing))
+            fpar.write('userParam%02d = %s \n' % (userp, self.nek.y_sensing)) # Sensing plane location for DRL
             userp += 1
-            fpar.write('userParam%02d = %s \n' % (userp, self.nek.retau))
+            fpar.write('userParam%02d = %s \n' % (userp, self.nek.retau)) # Reynolds number for reference channel
+            userp += 1
+            fpar.write('userParam%02d = %s \n' % (userp, self.nek.ys_bdf)) # Sensing plane location for Body-Force
+            userp += 1
+            fpar.write('userParam%02d = %s \n' % (userp, self.nek.amp_bdf)) # Amplitude for Body-Force
+            userp += 1
+            fpar.write('userParam%02d = %s \n' % (userp, self.nek.ret_bdf)) # Scale for Body-Force
             # userp+ = 1
             fpar.write('#---------------------\n')
             fpar.write("\n")
