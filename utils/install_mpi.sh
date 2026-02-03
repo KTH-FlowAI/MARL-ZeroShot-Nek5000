@@ -35,7 +35,7 @@ MAIN_PATH="./ucx_mpi"
 UCX_INSTALL="./ucx_local"
 OPENMPI_VERSION="4.1.4"
 OPENMPI_INSTALL="./openmpi-${OPENMPI_VERSION}-ucx"
-TARGET_BASH=~/.bashrc.openmpi_ucx_2
+TARGET_BASH=~/.bashrc.openmpi_ucx
 
 # Function to check if we're in the right directory
 check_directory() {
