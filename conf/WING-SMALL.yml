@@ -59,8 +59,8 @@ simulation:
     dt                  : -1.5e-05   # p012
     
     ## Write Interval of La2 and Reg
-    writeInterval       : 5000      # p015
-    writeLA2            : 5000     # p070
+    writeInterval       : 5      # p015
+    writeLA2            : 5     # p070
     #[PRESSURE]
     p_residualTol       : 1.0e-6      # p021 ## Less constrain on the solution, same setup as OC
     v_residualTol       : 1.0e-8      # p022
