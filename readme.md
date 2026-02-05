@@ -34,6 +34,17 @@
 
         cd execs && .run-script --config MC16-TD3.yml --run-mode run
 
+### Meta-MARL usage
++ Initialize a meta-evaluation case (wing):
+
+        meta-marl initial conf/your_meta_conf.yml
+
++ Run meta-evaluation:
+
+        meta-marl evaluate conf/your_meta_conf.yml
+
+Note: set `simulation.solver_version: "v17"` in the meta config when using NEK5000 v17.
+
 + To inspect the training status: 
         
         python utils/read-history --id 1998 --mean 

@@ -1,0 +1,12 @@
+# !/bin/bash
+SOURCE_PATH=./src
+SRC_PATH=${SOURCE_PATH}/src_naca_wing_ls_02SS_2586
+CASE_NAME="naca_wing"
+echo "SRC_PATH=${SRC_PATH}"
+cd ${SRC_PATH} 
+source ~/.bashrc.openmpi_ucx
+echo "[MPI] LOADED"
+./compile-script clean
+./compile-script ${CASE_NAME}
+cd ../
+echo "COMPILE END AT: ${SRC_PATH}"

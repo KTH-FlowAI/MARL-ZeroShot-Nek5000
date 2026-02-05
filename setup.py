@@ -55,6 +55,7 @@ extras_require = {
 entry_points = {
     'console_scripts': [
         'nek-marl=nek_MARL.__main__:main',
+        'meta-marl=meta_MARL.__main__:main',
     ],
 }
 

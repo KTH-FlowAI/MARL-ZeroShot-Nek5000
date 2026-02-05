@@ -20,6 +20,26 @@ A checklist of dependencies:
 
 """
 
+V17_PARAM_MAPPING = {
+    "density": "p001",
+    "viscosity": "p002",
+    "numSteps": "p011",
+    "dt": "p012",
+    "writeInterval": "p015",
+    "target_cfl": "p026",
+    "writeLA2": "p070",
+    "p_residualTol": "p021",
+    "v_residualTol": "p022",
+    "writePTS": "p051",
+    "READCHKPT": "p076",
+    "CHKPFNUMBER": "p067",
+    "CHKPINTERVAL": "p075",
+    "AVSTEP": "p087",
+    "IOSTEP": "p088",
+    "ndrl": "p089",
+    "znmf_avg": "p090",
+}
+
 
 class NEK_INIT():
     def __init__(self, nek: nek, drl: drl, rank_folder) -> None:
@@ -35,28 +55,54 @@ class NEK_INIT():
         self.is_done = []
     # -----------------------------------------
 
+    def _is_v17(self) -> bool:
+        version = getattr(self.nek, "solver_version", "v19")
+        return "v17" in str(version).lower()
+
+    # -----------------------------------------
     def get_Case_Files(self):
         """
         Get required case files for running simulation
         IF it is complusory, it will be rewritten no matter if the file exists 
         IF it is optional, it will NOT be covered if it Exist.
         """
-        checklist = {
-            'must': [
-                # Solver
-                "nek5000",
-                # Mesh
-                f"{self.nek.CASENAME}.re2",
-                f"{self.nek.CASENAME}.ma2",
-                f"{self.nek.CASENAME}.usr",
-                'int_pos',
-            ],
-            'option': [
-                'SIZE',
-                # Rotation
-                #'int_pos',
-            ]
-        }
+        if self._is_v17():
+            checklist = {
+                'must': [
+                    # Solver
+                    "nek5000",
+                    # Mesh
+                    f"{self.nek.CASENAME}.re2",
+                    f"{self.nek.CASENAME}.map",
+                    f"{self.nek.CASENAME}.wall",
+                    f"{self.nek.CASENAME}.restart",
+                    # Time Series Probs
+                    "stat_pts.in",
+                    # Tripping
+                    "forparam.i",
+                ],
+                'option': [
+                    'SIZE',
+                    f"mask_{self.nek.CASENAME}0.f00002",
+                ]
+            }
+        else:
+            checklist = {
+                'must': [
+                    # Solver
+                    "nek5000",
+                    # Mesh
+                    f"{self.nek.CASENAME}.re2",
+                    f"{self.nek.CASENAME}.ma2",
+                    f"{self.nek.CASENAME}.usr",
+                    'int_pos',
+                ],
+                'option': [
+                    'SIZE',
+                    # Rotation
+                    #'int_pos',
+                ]
+            }
         for fname in checklist["must"]:
             from_file = os.path.join(self.nek.compile_path, fname)
             to_file = os.path.join(self.rank_folder, fname)
@@ -104,12 +150,38 @@ class NEK_INIT():
         return True
 
     # -----------------------------------------
+    def rewrite_REA_v17(self):
+        """
+        Re-Write parameter files for NEK version <= 17.
+        For the controllable params, please see config.
+        """
+        file_path = os.path.join(self.nek.compile_path, f"{self.nek.CASENAME}.rea")
+        output_path = os.path.join(self.rank_folder, f'{self.nek.CASENAME}.rea')
+
+        with open(file_path, 'r') as f:
+            lines = f.readlines()
+            updated_lines = []
+            for line in lines:
+                if 'p' in line:
+                    parts = line.split()
+                    if len(parts) > 1 and parts[1] in V17_PARAM_MAPPING.values():
+                        for attr, pkey in V17_PARAM_MAPPING.items():
+                            if parts[1] == pkey:
+                                parts[0] = f"{getattr(self.nek, attr):.6E}"
+                                line = '\t'.join(parts) + '\n'
+                                break
+                updated_lines.append(line)
+
+        with open(output_path, 'w') as f:
+            f.writelines(updated_lines)
+
+        return True
+
+    # -----------------------------------------
     def rewrite_REA_v19(self):
         """
-        Re-Write Parameter files for NEK verison < = 17
-        For the controlable param, please see config.
+        Write parameter files for NEK version >= 19
         """
-        """Write Parameter files for NEK verison > =  19"""
         fname = os.path.join(self.rank_folder, f'{self.nek.CASENAME}.par')
         print(f"[IO] Writting .par file:\n{fname}", flush=True)
         with open(fname, 'w') as fpar:
@@ -270,11 +342,17 @@ class NEK_INIT():
     # -----------------------------------------
 
     def main(self):
-        self.is_done.append(self.write_timeSeries())
-        self.is_done.append(self.get_Case_Files())
-        self.is_done.append(self.write_SESSION_NAME())
-        self.is_done.append(self.rewrite_REA_v19())
-        self.is_done.append(self.init_restart())
+        if self._is_v17():
+            self.is_done.append(self.get_Case_Files())
+            self.is_done.append(self.write_SESSION_NAME())
+            self.is_done.append(self.rewrite_REA_v17())
+            self.is_done.append(self.init_restart())
+        else:
+            self.is_done.append(self.write_timeSeries())
+            self.is_done.append(self.get_Case_Files())
+            self.is_done.append(self.write_SESSION_NAME())
+            self.is_done.append(self.rewrite_REA_v19())
+            self.is_done.append(self.init_restart())
 
         if False not in self.is_done:
             return True
@@ -289,6 +367,16 @@ def remove_sch(current_path):
         for f in file_list:
             os.remove(os.path.join(current_path, f))
     return
+
+
+def oppo_control(observation, env):
+    """Simple policy of applying the opposition CTRL"""
+    actions = {}
+    # Opposition control
+    # -1 ==> v-velocity
+    for agent in env.possible_agents:
+        actions[agent] = -1.0 * observation[agent][-1, 0, 0]
+    return actions
 
 
 def show_title():
