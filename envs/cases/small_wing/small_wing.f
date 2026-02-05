@@ -93,11 +93,23 @@ c----------------------------------------
          xi2 = (x-s1end)/s1fall + 1;
          
          lmbda =  s1max*(step(xi1)-step(xi2))
+
+!         ffx = lmbda*(usponge(ix,iy,iz,iel)-vx(ix,iy,iz,iel))
+!         ffy = lmbda*(vsponge(ix,iy,iz,iel)-vy(ix,iy,iz,iel))
          ffx = lmbda*(usponge(ix,iy,iz,iel)-ux)
          ffy = lmbda*(vsponge(ix,iy,iz,iel)-uy)
          if (if3d) ffz = lmbda*(0. - uz) 
 
       else                              ! Tripping
+
+c         elipse_up = -(((x-xup)*cos(alpha_rot) + (y-yup)*sin(alpha_rot))
+c     $        /radiusx)**2 - (((x-xup)*sin(alpha_rot) -  (y-yup)
+c     $        *cos(alpha_rot)) /radiusy)**2 
+
+c         ffx = 0.0
+c         ffy = exp(elipse_up)*fzt_u+ exp(-((x-xlo)/(2.0*radiusx))**2.0
+c     $        -((y-ylo)/(2.0*radiusy))**2.0)*fzt_d
+c         ffz = 0.0
 
          ffx = 0.0
 
@@ -112,6 +124,13 @@ c         uss(ix,iy,iz,iel) = ffy
 
 !         wsponge(ix,iy,iz,iel) = ffy    
       end if
+
+c      ffx = ffx + rtfx(ix,iy,iz,iel)
+c      ffy = ffx + rtfy(ix,iy,iz,iel)
+c      ffz = ffz + rtfz(ix,iy,iz,iel)
+
+
+c      vss(ix,iy,iz,iel)=rtfy(ix,iy,iz,iel)
 
       if((ffy .LE. -1.0e-10) .OR. (ffy .GE. 1.0e-10)) then
          ffy=ffy
@@ -145,6 +164,9 @@ c     e = gllel(eg)
 
 c-----------------------------------------------------------------------
 
+
+c-----------------------------------------------------------------------
+
       subroutine userbc(ix,iy,iz,iside,ieg) 
 c     set up user-defined boundary conditions
       
@@ -160,6 +182,8 @@ c     set up user-defined boundary conditions
 
 #ifdef DRL 
       include 'DRL'
+      real Vb 
+      parameter(Vb=-0.002) ! 0.2% of uniform suction 
 #endif 
 
       integer ix,iy,iz,iside,ieg
@@ -206,11 +230,8 @@ c====================================================
 ! #---------- DRL Policy --------------
 c====================================================
 #ifdef DRL
-      ! Locate the region narrower 
-!       if (x.ge.0.2.and.x.le.0.88.and.
-!      $    y.ge.0.and.y.le.0.2) then 
 ! Used for 2-sides oppo control 
-      if (x.ge.ctrlxs.and.x.le.ctrlxe.and.
+      if (x.ge.(ctrlxs-0.1).and.x.le.(ctrlxe+0.1).and.
      $    y.ge.ctrlys.and.y.le.ctrlye) then 
 c------------------------------------------------------------
 ! Note that this region is a bit wider than the defined control region,
@@ -226,16 +247,18 @@ c-------------------------------------------------
 c-------------------------------------------------
 cc STEP 2: Actuation based on the flag
 c-------------------------------------------------
-      if (isfind) then ! IF actuate       
+      if (isfind) then ! IF actuate 
+      
       ! find the normal projection angle 
       snx = body_cos(ix,iy,iz,iel)
       sny = body_sin(ix,iy,iz,iel)
-      
-      ! Project onto Cartesian Coordinates
-      ux = vf*snx ! Negative <=> Blow; Positive <=> Suction 
-      uy = vf*sny 
+      ! Project onto Cartesia
+      ! Positive <=> Blow; Negative <=> Suction n Coordinates
+      ux = vf*snx + Vb*snx ! Add uniform suction 
+      uy = vf*sny + Vb*sny ! Add uniform suction
       uz = 0.0
-      ! print *, "[NEK] BC Find (x,y,z)",x,y,z,ux,uy
+      ! print *, "[NEK] FIND CTRL, ux=",ux,"uy=",uy,x,y,z
+      ! call record_actuate(ix,iy,iz,iel,iside,x,y,z,vf)
       endif ! if isfind.eq.TRUE
 c------------------------------------------------------------
       endif ! (if x, y in region)
@@ -243,7 +266,7 @@ c------------------------------------------------------------
 !##########################################################     
 ! End here 
 
-c-------------------------------------------------------------------------------------
+
       return
       end subroutine userbc
 c--------------------------------------------------
@@ -265,7 +288,6 @@ cc MA:      include 'PARALLEL_DEF'
       include 'PARALLEL'
 
       integer ix,iy,iz,ieg
-      character*3 bc
 
       real*8 usponge(lx1,ly1,lz1,lelv),
      &     vsponge(lx1,ly1,lz1,lelv),wsponge(lx1,ly1,lz1,lelv)
@@ -279,6 +301,10 @@ cc MA:      include 'PARALLEL_DEF'
       uy   = vsponge(ix,iy,iz,iel) !bocoarray(index,2)
       uz   = wsponge(ix,iy,iz,iel)
 
+!      ux   = 1.0
+!      uy   = 0.0
+!      uz   = 0.0
+!      temp = 1.0
 
       return
       end
@@ -333,30 +359,29 @@ cc MA:
 
 !    Read initial/BC COMMENT IF NOT THE FIRST RUN
 !-------------------------------------------------- 
-cc      if (istep .eq. 0) then   
-!         call opcopy(u1tmp,v1tmp,w1tmp,xm1,ym1,zm1)         ! Backup xyz coordinates
-!     check for IC to set up the fringe
-cc         inquire(file='naca_wing.IC',exist=exist_rst)
-cc         if (exist_rst) then
-cc            if(nid.eq.0)then
-cc               write(*,*) '------------------------------------'
-cc               write(*,*) 'READ  IC  as the Fringe input'
-cc               write(*,*) '------------------------------------'
-cc            end if
-cc            initc(1) = 'naca_wing.IC'
-cc            call setics
-cc            call opcopy(usponge,vsponge,wsponge,vx,vy,vz)
-cc         end if
-cc
-cc      end if
+cc       if (istep .eq. 0) then   
+cc       !   call opcopy(u1tmp,v1tmp,w1tmp,xm1,ym1,zm1)         ! Backup xyz coordinates
+cc !     check for IC to set up the fringe
+cc          inquire(file='naca_wing.IC',exist=exist_rst)
+cc          if (exist_rst) then
+cc             if(nid.eq.0)then
+cc                write(*,*) '------------------------------------'
+cc                write(*,*) 'READ  IC  as the Fringe input'
+cc                write(*,*) '------------------------------------'
+cc             end if
+cc             initc(1) = 'naca_wing.IC'
+cc             call setics
+cc             call opcopy(usponge,vsponge,wsponge,vx,vy,vz)
+cc          end if
+cc       end if
 !-------------------------------------------------- 
       
       call checkpoint                   ! Restart check
 
-cc YW: We do not need this at 1st step 
-      if (ISTEP.eq.0) then      
-          call opcopy(usponge,vsponge,wsponge,vx,vy,vz)
-      endif 
+      if (istep .eq. 0) then
+         call opcopy(usponge,vsponge,wsponge,vx,vy,vz)
+      end if
+
       call make_RTF                     ! filter forcing
 
 ! Calculate and output Lambda2
@@ -369,7 +394,20 @@ cc YW: We do not need this at 1st step
          call dssum (T(1,1,1,1,1),nx1,ny1,nz1)
          call col2  (T(1,1,1,1,1),binvm1,lt)
 
+!    Diagnostic Spectra for filtering. Can be removed later.
+!    Outpost with la2
+!         if (rt_wght.ne.0) then
+!            call get_spectra(vort(1,1),rtfx)
+!            call get_spectra(vort(1,2),rtfy)
+!            call get_spectra(vort(1,3),rtfz)
+!            call outpost(vort(1,1),vort(1,2),vort(1,3),pr,t,'la2')
+!         else
             call outpost(vx,vy,vz,pr,t,'la2')
+c            call outpost(vx,vy,vz,pr,uss,'tr1')
+c            call outpost(vx,vy,vz,pr,vss,'tr2')
+c            call outpost(vx,vy,vz,pr,wss,'tr3')
+
+!         endif
 !--------------------------------------------------
 
       endif
@@ -392,11 +430,8 @@ cc YW: We do not need this at 1st step
                                         ! Should be called from within tripf anyway
 
       call tripf                        ! Tripping      
-      ! if (NID.eq.0) print*, "INIT STAT"
+
       call stat_avg_all                 ! new one
-      ! if (NID.eq.0) print*, "INIT STAT END"
-
-
 
 #ifdef DRL
 c#################################
@@ -404,7 +439,6 @@ c     Deep Reinforcement learning
       call DRL_main
 c##################################        
 #endif 
-
 
 
       return
@@ -417,13 +451,14 @@ c     Read user-defined boundary conditions into a common array bocoarray
 c     Read input data for fringe region
 
       include 'SIZE'
-cc YW:
-      ! include 'PTSTAT'
+
 c     variables used for user-defined boundary conditions
 
       real dum(3)
+
 !      call user_param
 cc MA:      call uprm_read               ! New user parameter read function
+
       return
       end
 
@@ -436,25 +471,18 @@ c     Set the GLL points as defined in the CASENAME.grid file
 
 cc MA:      include 'SIZE_DEF'      
       include 'SIZE'
-      include 'TOTAL'      
       include 'USERPAR'
+cc MA:      include 'SOLN_DEF'
+      include 'SOLN'
+cc MA:
+      include 'INPUT'  !! cc MA: PARAM(71) FIXGEOM
 
 #ifdef DRL 
       include "DRL"
 #endif 
 
-      integer ie,iface,ix,iy,iz ! Iteration
-      integer NEL,nfaces,KX1,KX2,KY1,KY2,KZ1,KZ2 ! Face related
-      real xf,yf,zf
-      character*3 bcb
-
-c=============================================
-      nfaces = 2*NDIM
-      NEL    = NELFLD(IFIELD)
 !    Fix wing surface GLL points.
-!--------------------------------------------------
-
-!YW: Try to comment this
+!-------------------------------------------------- 
 cc MA: load here:
       FIXGEOM = INT(PARAM(71))
       if (FIXGEOM.eq.1) then
@@ -464,7 +492,6 @@ cc MA: load here:
       call fix_geom
 !      call outpost(vx,vy,vz,pr,t,'gri')
       return
-      
       end
 
 c-----------------------------------------------------------------------
@@ -493,14 +520,12 @@ c
             call znekgen(i)
       enddo
 
-
-#ifdef DRL
+#ifdef DRL 
 c----------------------------
-c INITIALISATION for OPPOSITION/DRL CONTROL 
+c INITIALISATION for OPPOSITION CONTROL 
       call calculate_norm_angle
 c------------------------------
-#endif 
-
+#endif
 !     Call this to multiply num_modes depending on the aspect ratio
 !     (x-y)
 c      call ARnumnodes

@@ -36,6 +36,8 @@ c=============================================
 c------------------------------------------------------------------
 
 
+
+
 c--------------------------------------------------------------------
         subroutine sensing_pts_compute
 cc 1.Get the velocity component at the sensing plane points and 
@@ -293,14 +295,17 @@ c=============================================
         ! velocity field solution
         real ctrlVx(LX1,LY1,LZ1,LELT)
         real ctrlVy(LX1,LY1,LZ1,LELT)
-        real buffV(LX1,LY1,LZ1,LELT)
+        real buffV(LX1*LY1*LZ1*LELT)
         integer nfail 
         integer il,jl,kl ! Iteration
         integer ntot, nxyz ! Size of array
         integer ifld       ! Field count 
         integer totpts 
         integer wel,wface,wx,wy,wz ! indicies for the wall
-        real vf
+        real vf, uti, xi 
+        real scale_mask(LX1,LY1,LZ1,LELT) 
+        real scale_array(TOTCTRL) 
+        integer ix,iy,iz
         ! For test 
 #ifdef YWDEBUG
         integer ilx, ily, ilz,iel
@@ -312,7 +317,16 @@ c=============================================
 c       Function
 c=============================================
         ntot = LX1*LY1*LZ1*LELT
-        ! call rzero(vwall(1,1),totctrl)
+#ifdef UTAU 
+        do il=1,TOTCTRL
+        xi  = pos_agt(1,il) 
+        call X2Utau(xi,uti)
+        ! Should be consistent with sensing plane
+        !call X2Utau_const(xi,uti)
+        scale_array(il) = uti + 1e-15
+        enddo 
+#endif 
+
 #ifdef YWDEBUG
         if (ISTEP.eq.1) then
         if (NID.eq.0) print *,"[DRL] GET FINDPTS"
@@ -322,8 +336,9 @@ c=============================================
 !     Velocity interpolation 
         ifld = 1
         ! Use a flatten buffer to ensure the interpolation
-        call rzero(buffV(1,1,1,1),ntot)
-        call copy(buffV(1,1,1,1),ctrlVx(1,1,1,1),ntot)
+        call rzero(buffV(1),ntot)
+        call copy(buffV,ctrlVx(1,1,1,1),ntot)
+
         ! Get quantities, 
         !NOTE the 3rd argument should be the total number of types 
         call findpts_eval(inth_hpts1,val_obs(ifld,1),NFLDC,
@@ -331,22 +346,39 @@ c=============================================
      &                       proc,1,
      &                       elid,1,
      &                       rst,NDIM,NUMCTRL,
-     &                       buffV(1,1,1,1))
+     &                       buffV(1))
 
+#ifdef UTAU
+        do il=1,NUMCTRL
+        uti = scale_array(il)
+        vf = val_obs(ifld,il)
+        vf = vf / uti 
+        val_obs(ifld,il) = vf 
+        enddo 
+#endif 
         ifld = ifld + 1
-        call rzero(buffV(1,1,1,1),ntot)
-        call copy(buffV(1,1,1,1),ctrlVy(1,1,1,1),ntot)
+        call rzero(buffV(1),ntot)
+        call copy(buffV(1),ctrlVy(1,1,1,1),ntot)
+
         call findpts_eval(inth_hpts1,val_obs(ifld,1),NFLDC,
      &                       rcode,1,
      &                       proc,1,
      &                       elid,1,
      &                       rst,NDIM,NUMCTRL,
-     &                       buffV(1,1,1,1))
+     &                       buffV(1))
 
+#ifdef UTAU
+        do il=1,NUMCTRL
+        uti = scale_array(il)
+        vf = val_obs(ifld,il)
+        vf = vf / uti 
+        val_obs(ifld,il) = vf 
+        enddo 
+#endif 
 
 #ifdef YWDEBUG
         if (NID.eq.0) print *,"[DRL] GET FINDPTS"
-#endif 
+#endif YWDEBUG
 
 
 c$$$ TEST: Write down all the sensing points that we have found and the averaged velocity
@@ -708,3 +740,5 @@ c-----------------------------------
 c-----------------------------------
         return
         end subroutine z_weight_reshape
+c--------------------------------------------------------------------
+

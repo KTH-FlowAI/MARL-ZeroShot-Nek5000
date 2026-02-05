@@ -105,7 +105,7 @@ cc YW: FOR DRL, we only find the face mid points
                 ! call facind(KX1,KX2,KY1,KY2,KZ1,KZ2,NX1,NY1,NZ1,iface)
                 ! YW Modified here to avoid overlapping
                 ! Try use facind 
-                call facindf(KX1,KX2,KY1,KY2,KZ1,KZ2,NX1,NY1,NZ1,iface)
+                call facind(KX1,KX2,KY1,KY2,KZ1,KZ2,NX1,NY1,NZ1,iface)
                 do iz=KZ1,KZ2
                 do iy=KY1,KY2
                 do ix=KX1,KX2
@@ -144,7 +144,7 @@ cc YW: Change the BC to Dirichlet LATER
 
 c$$$ TEST: Write down all the walll points that we have found
 #ifdef YWDEBUG
-        if (NUMCTRL.gt.0 .and. NID.eq.0) then 
+        if (NUMCTRL.gt.0) then 
         write(str,"(i4.4)") NID
         open(10001,file="findWall.txt"//str)
         write(10001,*) "NID  ", "X  ", "Y  ", "Z  ",
@@ -318,7 +318,7 @@ c=============================================
 c------------------------------------------
 c  Step1: Load the extruded field to get the correct angle
 
-        field='mask_small_wing0.f00001' ! For small case
+        field='mask_small_wing0.f00002' ! For large case
 
         ! field='mask_naca_wing0.f00002' ! For real case, name it as 0002 to tell it from the MA's data
         call load_fld(field)  ! After call this, the vx,vy,vz are replaced by the loaded data
@@ -470,91 +470,68 @@ c$$$ TEST END
 c--------------------------------------------------------------------
 
 
+
 ! cc: NOTE: This libaray is ought to be updated once you have High-Fidelity Results
 ! c--------------------------------------------------------------------
-!         subroutine X2Utau(xw,utaux)
+         subroutine X2Utau(xw,utaux)
 ! cc YW: A subroutine used for interoplation the value of u_tau from the x corrdinates
 ! cc NOTE Suction Side ONLY
 ! cc this is based on the prior knowledge 
 ! c=============================================
 ! c       Define variable
 ! c=============================================
-!         implicit none 
-!         include "SIZE"
-!         include "DRL"
-!         integer ix ! Iteration
-!         real xw    ! input
-!         real utaux ! output utau based on input x
-!         real pl(10)! Polynominal   
+         implicit none 
+         include "SIZE"
+         include "DRL"
+         integer ix ! Iteration
+         real xw    ! input
+         real utaux ! output utau based on input x
+         real pl(10)! Polynominal   
 ! c=============================================
 ! c       Function
 ! c=============================================
-! cc YW: Based on naca4412 Re75K, 5th-polynomial, 
-! cc Valid Range: Suction side x/c=0.15~0.95
+! cc YW: Based on naca4412 Re200k, 11th-polynomial, From Vinuesa Database 
+! cc Valid Range: Suction side x/c=0.20~0.85
 ! cc---------------------------------------
-!         pl(1)=-1.102791
-!         pl(2)=30.450989
-!         pl(3)=-330.766768
-!         pl(4)=1974.281307
-!         pl(5)=-7142.292209
-!         pl(6)=16210.126433
-!         pl(7)=-23127.500257
-!         pl(8)=20101.808356
-!         pl(9)=-9716.918574
-!         pl(10)=2002.021251
+         !pl(1) = -0.23595416741213884
+         !pl(2) = 7.531940367787123
+         !pl(3) = -71.85201540938085
+         !pl(4) = 368.29571879467534
+         !pl(5) = -1144.425228828373
+         !pl(6) = 2260.2692431989067
+         !pl(7) = -2860.400642033803
+         !pl(8) = 2250.753528233314
+         !pl(9) = -1004.3463967380769
+         !pl(10) = 194.43028958805616
+cc---------------------------------------
+cc Statistics obtained from 0.2% U.S 
+cc valid from 0.2 - 0.9 x/c on the Suction Side 
+cc---------------------------------------
+         pl(1)=1.936442
+         pl(2)=-36.616019
+         pl(3)=305.250200
+         pl(4)=-1413.230899
+         pl(5)=4010.116445
+         pl(6)=-7250.013554
+         pl(7)=8367.411199
+         pl(8)=-5951.648881
+         pl(9)=2368.046962
+         pl(10)=-401.201730
+
+
 ! c Adding up the polynominal 
 ! c-------------------------------------------
-!         utaux = 0
-!         do ix=1,10 
-!         utaux = utaux + pl(ix)*xw**(ix-1)
-!         enddo 
-!         return 
-!         end subroutine X2Utau
+!         ! YW: Here we use the parallel flow assumption! 
+
+         utaux = 0.0
+          do ix=1,10 
+          utaux = utaux + pl(ix)*xw**(ix-1)
+          enddo 
+         !utaux = 0.052
+
+         return 
+         end subroutine X2Utau
 ! c--------------------------------------------------------------------
-
-
-cc: NOTE: This libaray is ought to be updated once you have High-Fidelity Results
-c--------------------------------------------------------------------
-        subroutine X2Utau(xw,utaux)
-cc YW: A subroutine used for interoplation the value of u_tau from the x corrdinates
-cc NOTE Suction Side ONLY
-cc this is based on the prior knowledge 
-c=============================================
-c       Define variable
-c=============================================
-        implicit none 
-        include "SIZE"
-        include "DRL"
-        integer ix ! Iteration
-        real xw    ! input
-        real utaux ! output utau based on input x
-        real pl(10)! Polynominal   
-c=============================================
-c       Function
-c=============================================
-cc YW: Based on naca4412 Re100k, 5th-polynomial, 
-cc Valid Range: Suction side x/c=0.20~0.85
-cc---------------------------------------
-         pl(1) = -0.23595416741213884
-        pl(2) = 7.531940367787123
-        pl(3) = -71.85201540938085
-        pl(4) = 368.29571879467534
-        pl(5) = -1144.425228828373
-        pl(6) = 2260.2692431989067
-        pl(7) = -2860.400642033803
-        pl(8) = 2250.753528233314
-        pl(9) = -1004.3463967380769
-        pl(10) = 194.43028958805616
-
-c Adding up the polynominal 
-c-------------------------------------------
-        utaux = 0.0
-        do ix=1,10 
-        utaux = utaux + pl(ix)*xw**(ix-1)
-        enddo 
-        return 
-        end subroutine X2Utau
-c--------------------------------------------------------------------
 
 
 c--------------------------------------------------------------------
@@ -649,7 +626,7 @@ c$$$ TEST END
 c-----------------------
         return 
         end subroutine register_ctrl_pts
-
+c--------------------------------------------------------------------
 c--------------------------------------------------------------------
 
       subroutine facindf (kx1,kx2,ky1,ky2,kz1,kz2,nx,ny,nz,iface)
@@ -684,4 +661,5 @@ c     This is used for masking the agent of DRL
 
       return
       end
-c--------------------------------------------------------------------
+c---------------------------------------------------------------
+

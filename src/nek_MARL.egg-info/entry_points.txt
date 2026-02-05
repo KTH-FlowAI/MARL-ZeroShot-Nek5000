@@ -1,3 +1,4 @@
 [console_scripts]
+meta-marl = meta_MARL.__main__:main
 nek-marl = nek_MARL.__main__:main
 

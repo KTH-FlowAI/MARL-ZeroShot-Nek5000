@@ -52,6 +52,7 @@ def initial(conf_file, overrides, **ignored_kwargs):
     Initialization of the program
     """
 
+    print(f"[IO] METAMARL INITIALIZATION", flush=True)
     print("="*30, flush=True)
     print(f"INITIALIZATION START", flush=True)
     print("="*30, flush=True)
@@ -65,10 +66,7 @@ def initial(conf_file, overrides, **ignored_kwargs):
     print(f'[IO] RUN Folder=:{run_folder}', flush=True)
 
     if not os.path.exists(run_folder):
-        if conf.runner.case_name != 0:
-            print("The folder containing the trained agent " +
-                  "does not exist", flush=True)
-            os.mkdir(run_folder)
+        os.mkdir(run_folder)
         print(f"[IO] MAKE RUN FOLDER:\n{run_folder}", flush=True)
 
     if not conf.runner.evaluation:
@@ -76,8 +74,10 @@ def initial(conf_file, overrides, **ignored_kwargs):
     else:
         rank_folder = run_folder + f'/env_{conf.runner.rank:03d}'
         # make the env folder and copy all the necessary files
-        if not os.path.exists(rank_folder):
-            os.mkdir(rank_folder)
+
+    if not os.path.exists(rank_folder):
+        os.mkdir(rank_folder)
+        print(f"[IO] MAKE ENV FOLDER:\n{rank_folder}", flush=True)
 
     print(f"[IO] Folder: {conf.runner.rank}:\n{rank_folder}", flush=True)
 
@@ -87,7 +87,7 @@ def initial(conf_file, overrides, **ignored_kwargs):
     initializer.main()
 
     # Re-direct the running path
-    with open('RUN_PATH.txt', "w") as f:
+    with open(f'RUN_PATH_{conf.runner.case_name}.txt', "w") as f:
         f.write(rank_folder + "\n")
 
     print("="*30, flush=True)

@@ -29,6 +29,10 @@
 
         ./utils/compile_case.sh --m mini_channel
 
++ For the wing nek: 
+
+        ./utils/compile_case.sh --m small_wing --version v17 --case_name_v17 small_wing
+
 ### Running a minimal-channel drl 
 + Run the minimal channel via: 
 

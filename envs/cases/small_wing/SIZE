@@ -14,16 +14,6 @@ c
       parameter (ldim=3)        ! domain dimension
       parameter (lx1=4)         ! polynomial order; in 2D set lz1=1
       parameter (lxd=6)        ! polynomial order for over-integration
-! cc      parameter (lx1=6)         ! polynomial order; in 2D set lz1=1
-! cc      parameter (lxd=9)        ! polynomial order for over-integration 
-
-cc      parameter (lx1=8)         ! polynomial order; in 2D set lz1=1
-cc      parameter (lxd=12)        ! polynomial order for over-integration
-
-cc      parameter (lx1=12)         ! polynomial order; in 2D set lz1=1
-cc      parameter (lxd=18)        ! polynomial order for over-integration
-
-
       parameter (lx2=lx1-2)     ! polynomial order for pressure
       parameter (lx1m=1)        ! polynomial order mesh solver; =1 no mesh motion
 
@@ -59,7 +49,7 @@ c-------------------------------------
       ! parameter (totctrl=480)                     ! Number of control points to be allocate
       
       ! For both sides
-      parameter (totctrl=300)                     ! Number of control points to be allocate
+      parameter (totctrl=500)                     ! Number of control points to be allocate
       ! For Small Wing
       parameter (xnel =3500)              ! Number of 2D elements to used for computing z-dir Mean
       ! For NACA Wing 

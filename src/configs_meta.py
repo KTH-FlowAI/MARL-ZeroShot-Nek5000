@@ -159,8 +159,8 @@ class Logging:
     run_name: int = int(time.time())
     group: Optional[str] = None
     notes: Optional[str] = None
-    save_dir: str = 'runs'
-    policy_dir: str = "policies"
+    save_dir: str = '../runs'
+    policy_dir: str = "../runs" # Policy folder is the same as the run folder, this is an adation to the current structure
 
 
 @dataclass

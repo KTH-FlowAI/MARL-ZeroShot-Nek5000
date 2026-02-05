@@ -37,9 +37,6 @@ c-----------------------------------------------
       ! Zero-net-mass-flux 
       if (int(PARAM(90)).gt.0) then 
             call znmf_avg()
-#ifdef YWDEBUG 
-            call znmf_check()
-#endif 
       endif 
 
       !   endif ! if (ISTEP.eq.0)
@@ -62,7 +59,6 @@ c=============================================
       include 'INPUT'
       include 'PARALLEL'
       include 'DRL'         
-      include 'SOLN'         
       include 'mpif.h'
       integer k,il,jl        ! Iteration
       integer len,recctrl ! Flag for counting 
@@ -87,10 +83,7 @@ c=============================================
       !--------------------------
       logical ifexist
       character*13 fNAME
-      ! Test 
-      real state_buff(LX1,LY1,LZ1,LELT),diff_buff(LX1,LY1,LZ1,LELT),
-     $     act_buff(LX1,LY1,LZ1,LELT),sum_buff(LX1,LY1,LZ1,LELT),
-     $     abs_buff(LX1,LY1,LZ1,LELT)
+      real act_buff(LX1,LY1,LZ1,LELT),act_i
 
 c=============================================
 c       Function
@@ -103,13 +96,11 @@ c=============================================
      &            MPI_STATUS_IGNORE,ierr)
 
       ! print *,"[ACTION] UPDATE NID=",NID
-      
       call nekgsync()
       else
       ! print *,"[ACTION] UPDATE NID=",NID
       call nekgsync()
       endif
-      ! call nekgsync()
 ! Update 
 !----------------------------------------
       ntot=LX1*LY1*LZ1*LELT
@@ -125,48 +116,17 @@ c=============================================
             ix=info_agt(3,il)
             iy=info_agt(4,il)
             iz=info_agt(5,il)
+            act_i=act_buffer(il)
             ! ACTIONS(ix,iy,iz,fceid,lclid)=act_buffer(il)
             ! YW Modified Nov 4th 2024, NO NEED of FACE!
-            act_buff(ix,iy,iz,lclid)=act_buffer(il)
+            act_buff(ix,iy,iz,lclid)=act_i
             if (int(PARAM(90)).le.0) then ! If ZNMF is not used 
             msk_act(ix,iy,iz,lclid)=1
             endif ! 
-      
       enddo 
-      
-      call copy(Actions(1,1,1,1),act_buff(1,1,1,1),ntot)
-      ! YW : A debug here, check if action match the observation in OC 
-#ifdef YWDEBUG
-      call rzero(state_buff(1,1,1,1),NTOT)
-      call rzero(diff_buff(1,1,1,1),NTOT)
-      call rzero(sum_buff(1,1,1,1),NTOT)
-      call rzero(abs_buff(1,1,1,1),NTOT)
-      do il=1,NUMCTRL 
-            glbid=info_agt(1,il)
-            lclid=gllel(glbid)
-            fceid=info_agt(2,il)
-            ix=info_agt(3,il)
-            iy=info_agt(4,il)
-            iz=info_agt(5,il)
-            state_buff(ix,iy,iz,lclid)=val_obs(2,il)
-      enddo 
-      diff_buff(:,:,:,:) = (state_buff(:,:,:,:)) 
-     $                     - (act_buff(:,:,:,:))
-     
-      abs_buff(:,:,:,:) = ABS(state_buff(:,:,:,:)) 
-     $                     - ABS(act_buff(:,:,:,:))
-     
-      sum_buff(:,:,:,:) = (state_buff(:,:,:,:)) 
-     $                     + (act_buff(:,:,:,:))
 
-      if (ISTEP.eq.5.or.ISTEP.eq.3) then
-            call outpost(abs_buff,diff_buff,sum_buff,vy,t,'dif')
-            if (NID.eq.0) print *,"At",ISTEP,"YW: WIRTE ANGLE FOR TEST"
-      endif 
-#endif 
+      call copy(ACTIONS(1,1,1,1),act_buff(1,1,1,1),NTOT)
 
-      ! totLine=LX1*LY1*LZ1*6*LELT
-      ! if(ISTEP.eq.1) call copy(old_ctrl_val,ctrl_val,totLine)
 c--------------------------
 c TEST 
 c--------------------------
@@ -185,7 +145,6 @@ c--------------------------
       iy=info_agt(4,il)
       iz=info_agt(5,il)
       write(10001,*) lclid,
-     $      (info_agt(jl,il), jl=1,5),
      $      (pos_agt(jl,il), jl=1,NDIM),
      $       ACTIONS(ix,iy,iz,lclid) 
       enddo
@@ -260,11 +219,11 @@ c=============================================
       integer i_evolv,ndrl
       real velV(LX1,LY1,LZ1,LELT)
       real actV(LX1,LY1,LZ1,LELT)
-      real wrk_buff(LX1,LY1,LZ1,LELT)
-      real wrk_buff2(LX1,LY1,LZ1,LELT)
       real avgVZ(LX1,LY1,xnel,ynel)
       real avgVX(LX1,LY1,ynel,znel)
+      real wrk_buff(LX1,LY1,LZ1,LELT)
       real vf,va,vo
+      real xi, uti 
       
       ! Handlers for gop average
       integer igs_x,igs_z
@@ -278,49 +237,70 @@ c=============================================
       ntot=LX1*LY1*LZ1*LELT
 
       ! STEP 1: Spatial Average based on X- Z-dir 
-      ! Copy the action to the working buffer
       call copy(velV(1,1,1,1),ACTIONS(1,1,1,1),ntot)
-      call copy(wrk_buff2(1,1,1,1),ACTIONS(1,1,1,1),ntot)
+      call rzero(actV,ntot) 
+      ! Rescale the actions by local u_tau
+#ifdef UTAU
+      do il = 1, NUMCTRL
+        xi = pos_agt(1,il) 
+        call X2Utau(xi,uti) 
+        iel = info_agt(1,il) 
+        iel = gllel(iel)
+        ix = info_agt(3,il) 
+        iy = info_agt(4,il) 
+        iz = info_agt(5,il) 
+        vf = velV(ix,iy,iz,iel) 
+        va = vf * uti 
+        actV(ix,iy,iz,iel) = va 
+      enddo
+      call copy(velV(1,1,1,1),actV(1,1,1,1),ntot)
+      if (NID.eq.0) print *, "[ACTION] Rescale"
+#endif 
 
-      ! DSSUM the velocity the assigne the action to overlapping nodes
-      call dssum(velV, lx1, ly1, lz1)
-
-      ! Copy the dssumed buffer
-      call sub2(wrk_buff2,velV,ntot)
-      call copy(actV(1,1,1,1),velV(1,1,1,1),ntot)
-     
-      ! Average of the actions
+      call copy(actV(1,1,1,1),velV(1,1,1,1), ntot)    
+        
+      ! in deterministic, it should be the same of using facind without
+      ! dssum 
+      !call dssum(velV,LX1,LY1,LZ1)
+!#ifdef YWDEBUG
+!        if (NID.eq.0) print *, "[ACTION] DSSUM" 
+!#endif 
       if (rwd_zavg) then 
             call z_averaging(velV,avgVZ)
-            ! call nekgsync()
             call z_avg_reshape(velV,avgVZ)
-            ! call nekgsync()
 #ifdef YWDEBUG
             if (NID.eq.0) print *, "[ACTION] Z-AVG!"
 #endif
-      endif ! if (rwd_zavg)
-      ! Subtract the mean of the action
-      ! i.e. wrk_buff = actV - velV 
-      call sub3(wrk_buff,actV,velV,ntot)
-      ! Copy the action to the actions buffer
-      call copy(ACTIONS(1,1,1,1),wrk_buff(1,1,1,1),ntot)
+            endif ! if (rwd_zavg)
 
-      ! Generate the mask 
-      if (ISTEP.eq.1) then 
-      do il = 1,NUMCTRL
-            iel=info_agt(1,il)
-            iel=gllel(iel)
-            ifs=info_agt(2,il)
-            call impose_ivalue(1,msk_act,iel,ifs)
-      enddo
-      else 
-          if (NID.eq.0) then 
-              print *, "Mask Assigned!"
-          endif 
-      endif 
+            ! Do streamwise average if it allowed/defined
+            if (rwd_xavg) then 
+            call z_averaging(velV,avgVX)
+            call z_avg_reshape(velV,avgVX)
 #ifdef YWDEBUG
-      if (NID.eq.0) print *, "[ACTION] MASK!"
+            if (NID.eq.0) print *, "[ACTION] X-AVG!"
 #endif
+            endif 
+
+      ! Step 2: Subtract the mean of the action 
+            do ilx = 1,NUMCTRL
+            iel=info_agt(1,ilx)
+            iel=gllel(iel)
+            ifs=info_agt(2,ilx)
+            call impose_ivalue(1,msk_act,iel,ifs) 
+            enddo
+            call rzero(wrk_buff(1,1,1,1),ntot)
+            call sub3(wrk_buff,actV,velV,ntot)       
+            call copy(ACTIONS(1,1,1,1),wrk_buff(1,1,1,1),ntot) 
+      ! Save the result for testing
+!#ifdef YWDEBUG  
+!      if (ISTEP.eq.1) then 
+!      call outpost(velV,actV,wrk_buff,
+!     $             velV,t,'act')
+!      if (NID.eq.0) print *, "[ACTION] SAVED BUFFER FOR TEST"
+!      endif 
+!#endif 
+
 c--------------------------
 c TEST 
 c--------------------------
@@ -349,13 +329,6 @@ c--------------------------
             endif
       endif 
 #endif 
-
-#ifdef YWDEBUG
-      if (ISTEP.eq.1) then 
-! Generate an output for checking znmf actions
-      call outpost(actV,velV,wrk_buff2,wrk_buff,t,'act')
-      endif
-#endif
 
       end subroutine znmf_avg
 c--------------------------------------------------
@@ -527,8 +500,6 @@ c
       end subroutine smooth_step
 c--------------------------------------------------
 
-
-
 c--------------------------------------------------
       subroutine impose_ivalue(vf,buffer,iel,iface)
 c Subroutine for imposing the action
@@ -557,65 +528,4 @@ c--------------------------------------------------
 
 
 
-c--------------------------------------------------
-      subroutine znmf_check()
-c Subroutine for checking the ZNMF flux
-c=============================================
-c       Define variable
-c=============================================
-      include 'SIZE'
-      include 'TOTAL'
-      include 'DRL'
-      common /mystuff/ tx(lx1,ly1,lz1,lelt)
-     $ , ty(lx1,ly1,lz1,lelt)
-     $ , tz(lx1,ly1,lz1,lelt)
-      integer e,f
-      integer ielist(TOTCTRL),flist(TOTCTRL)
-c=============================================
-c       Functions
-c=============================================
-      nface = 2*ndim
-      a = 0.
-      s = 0.
-      
-      ! call gradm1(tx,ty,tz,ACTIONS) ! grad T
-      call copy(tx,vx,lx1*ly1*lz1*nelv)
-      call copy(ty,vy,lx1*ly1*lz1*nelv)
-      call copy(tz,vz,lx1*ly1*lz1*nelv)
-      do il = 1, numctrl
-      iel = info_agt(1,il)
-      iel = gllel(iel)
-      ielist(il) = iel
-      flist(il) = info_agt(2,il)
-      enddo
-
-      do ie=1,NUMCTRL
-      e = ielist(ie)
-      f = flist(ie)
-      call facind(i0,i1,j0,j1,k0,k1,nx1,ny1,nz1,f)
-      l=0
-            do k=k0,k1 ! March over face f
-            do j=j0,j1
-            do i=i0,i1
-            l = l + 1
-            s = s + (unx(l,1,f,e)*tx(i,j,k,e)
-     $ + uny(l,1,f,e)*ty(i,j,k,e)
-     $ + unz(l,1,f,e)*tz(i,j,k,e))*area(l,1,f,e)
-            a = a + area(l,1,f,e)
-            enddo
-            enddo
-            enddo
-      enddo
-      
-      a=glsum(a,1) ! Sum across processors
-      s=glsum(s,1)
-      abar = s/a
-      
-      if (nid.eq.0) then 
-      print *, 'ZNMF Flux: ', abar
-      endif 
-      
-      return
-      end
-c--------------------------------------------------
 

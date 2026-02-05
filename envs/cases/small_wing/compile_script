@@ -3,7 +3,7 @@
 
 ## LOCAL ------------------
 # source path
-SOURCE_ROOT="../../../../Solvers/DEC_DRL_Nek5000" 
+SOURCE_ROOT="../../solver/DEC_DRL_Nek5000" 
 # Fortran compiler
 F77="mpif77"
 # C compiler
@@ -18,7 +18,7 @@ CC="mpicc"
 #CC="cc"
 #CC="cc -D_Float128=__float128"
 
-
+export CASE="small_wing"
 SOURCE_ROOT_CORE="$SOURCE_ROOT/core"
 SOURCE_ROOT_JL="$SOURCE_ROOT/jl"
 SOURCE_ROOT_CMT="$SOURCE_ROOT/core/cmt"

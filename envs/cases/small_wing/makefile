@@ -1,11 +1,11 @@
-### makefile automatically created by makenek 10/09/2025 17:05:59 ###
+### makefile automatically created by makenek 02/05/2026 15:52:40 ###
 BINNAME=nek5000
 LIBNAME=libnek5000.a
 CASENAME:=small_wing
-CASEDIR:=/home/yuninw/codes/drl/wing-drl/02-DRL/02-WING/020-GLL-Agent-NewMPI/src_small_wing
-S:=/home/yuninw/codes/drl/wing-drl/Solvers/DEC_DRL_Nek5000/core
-S2:=/home/yuninw/codes/drl/wing-drl/Solvers/DEC_DRL_Nek5000/core/cmt
-J:=/home/yuninw/codes/drl/wing-drl/Solvers/DEC_DRL_Nek5000/jl
+CASEDIR:=/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing
+S:=/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core
+S2:=/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt
+J:=/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl
 OPT_INCDIR:=./
 OBJDIR=obj
 IFMPI:=true

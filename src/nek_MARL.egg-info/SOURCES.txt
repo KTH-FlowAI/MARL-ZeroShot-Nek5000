@@ -1,5 +1,7 @@
 LICENSE
 setup.py
+src/meta_MARL/__init__.py
+src/meta_MARL/__main__.py
 src/nek_MARL/__init__.py
 src/nek_MARL/__main__.py
 src/nek_MARL.egg-info/PKG-INFO
