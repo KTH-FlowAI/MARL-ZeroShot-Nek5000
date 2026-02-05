@@ -1,0 +1,86 @@
+CASE_NAME="naca_wing"
+SOURCE_ROOT=$(pwd)
+RUN_NAME="301001"
+ID="001"
+
+
+# Parse arguments
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --case_name) CASE_NAME="$2"; shift ;; # Set case name
+        --run_name) RUN_NAME="$2"; shift ;; # Set run name
+        --id) ID="$2"; shift ;; # Set id
+        *) echo "Unknown parameter: $1"; exit 1 ;;
+    esac
+    shift
+done
+
+
+result_path="$SOURCE_ROOT/data/results"
+mkdir -p "$result_path"
+CASE_PATH="$SOURCE_ROOT/runs/${RUN_NAME}/"
+RUN_PATH="$SOURCE_ROOT/runs/${RUN_NAME}/env_${ID}"
+DATA_CASE_PATH="$result_path/${CASE_NAME}"
+mkdir -p "$DATA_CASE_PATH"
+DATA_RUN_PATH="$DATA_CASE_PATH/${RUN_NAME}"
+mkdir -p "$DATA_RUN_PATH"
+DATA_PATH="$DATA_RUN_PATH/env_${ID}"
+mkdir -p "$DATA_PATH"
+
+## check how many files are in the DATA_PATH named as res_*
+num_files=$(ls -1 "$DATA_PATH" | grep "res_*" | wc -l)
+if [ "$num_files" -ge 0 ]; then
+    let num_files=num_files+1
+fi
+
+DATA_PATH="$DATA_PATH/res_${num_files}"
+mkdir -p "$DATA_PATH"
+
+mkdir "$DATA_PATH/la2_data"
+mkdir "$DATA_PATH/sts_data"
+mkdir "$DATA_PATH/pts_data"
+mkdir "$DATA_PATH/rs8_data"
+mkdir "$DATA_PATH/reg_data"
+mkdir "$DATA_PATH/txt_data"
+mkdir "$DATA_PATH/drl_data"
+
+cp "$LOGFILE" "$DATA_PATH"
+echo "[LOG] History Moved"
+cp "$RUN_PATH/${CASE_NAME}.par" "$DATA_PATH"
+echo "[LOG] PARAM GET"
+
+
+echo "-------------------------"
+echo "       Copy Data         "
+echo "-------------------------"
+
+find "$RUN_PATH" -type f -name "la2${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec mv {} "$DATA_PATH/la2_data/" \;
+echo "[DATA] LA2 Moved"
+
+find "$RUN_PATH" -type f -name "pts${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec mv {} "$DATA_PATH/pts_data/" \;
+echo "[DATA] PTS Moved"
+
+find "$RUN_PATH" -type f -name "sts${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec mv {} "$DATA_PATH/sts_data/" \;
+find "$RUN_PATH" -type f -name "c2D${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec mv {} "$DATA_PATH/sts_data/" \;
+echo "[DATA] STS Moved"
+
+find "$RUN_PATH" -type f -name "${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"     -exec mv {} "$DATA_PATH/reg_data/" \;
+echo "[DATA] Regular Moved"
+
+find "$RUN_PATH" -type f -name "rs[0-9]${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec cp {} "$DATA_PATH/rs8_data/" \;
+echo "[DATA] RS8 Moved"
+
+
+echo "-------------------------"
+echo "       DRL OUTPUTS       "
+echo "-------------------------"
+mv    ${RUN_PATH}/*txt*         ${DATA_PATH}/txt_data/
+cp -r ${RUN_PATH}/history/**    ${DATA_PATH}/drl_data/ 
+cp -r ${RUN_PATH}/logs/**    ${DATA_PATH}/drl_data/ 
+mv    ${CASE_PATH}*vars_record*  ${DATA_PATH}/drl_data/
+mv    ${RUN_PATH}/*vars_record*  ${DATA_PATH}/drl_data/
+echo "[DATA] DRL Moved"
+
+echo "########################"
+echo "  Copy File Finished       "
+echo "########################"

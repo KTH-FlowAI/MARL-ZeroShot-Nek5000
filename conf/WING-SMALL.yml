@@ -39,7 +39,7 @@ simulation:
     CASENAME: 'small_wing' 
     exeName : 'nek5000'
     compile_path   : "../envs/cases/small_wing"
-    restart_folder : "../data/rs8_small_wing"
+    restart_folder : "../data/restarts/rs8_small_wing"
     solver_version : "v17"
     #------------------------------------------
     # Generally VERY IMPORTANT
@@ -74,4 +74,4 @@ simulation:
 
     #[_STAT]             # Runtime paramere section for statistics module
     AVSTEP              : 10        # p087
-    IOSTEP              : 2500     # p088
+    IOSTEP              : 5     # p088

@@ -54,7 +54,7 @@ simulation:
     #I/O
     exeName : 'nek5000'
     compile_path   : "../envs/cases/mini_channel"
-    restart_folder : "../data/rs6_mini_Channel"
+    restart_folder : "../data/restarts/rs6_mini_Channel"
     #------------------------------------------
     # Generally VERY IMPORTANT
     TOTCTRL : 220        # Be consistent with SIZE

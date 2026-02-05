@@ -57,6 +57,12 @@ Note: set `simulation.solver_version: "v17"` in the meta config when using NEK50
 
         visit -o utils/nek_visit.NEK5000 
 
+### Save and accumulate data  
+
+Use command like follows to accumlate the results based on your configuration
+
+        ./utils/mv-data --case_name small_wing --run_name 601001 --id 001 
+
 
 ## **TensorBoard Logging**
 

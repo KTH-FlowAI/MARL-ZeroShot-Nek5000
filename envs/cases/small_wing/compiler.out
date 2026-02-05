@@ -201,6 +201,7 @@ Warning: Named COMMON block ‘scrsf’ at (1) shall be of the same size as else
  2025 |       common /scrmg/ v1(lx1,ly1,lz1,lelt)
       |                    1
 Warning: Named COMMON block ‘scrmg’ at (1) shall be of the same size as elsewhere (1344000 vs 1792000 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/conduct.f -o obj/conduct.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/coef.f:1649:22:
 
  1649 |       call out_fld_el(x,e,'XQ')
@@ -246,7 +247,6 @@ Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as else
   603 |       COMMON /CTMP1/ ZSM1(LX1,LY1,LZ1,LELT)
       |                    1
 Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as elsewhere (896000 vs 1792000 bytes)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/conduct.f -o obj/conduct.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/coef.f:1462:20:
 
  1462 |       COMMON /CTMP0/ XA(LX1,LY3,LZ3), XB(LX1,LY1,LZ3)
@@ -505,7 +505,6 @@ Warning: Character length of actual argument shorter than of dummy argument ‘k
  2312 |         call copy  (bl(1,f,e),buf(5),5) !5--14
       |                              2
 Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(8)/INTEGER(4)).
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/edgec.f -o obj/edgec.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/connect2.f:1643:20:
 
  1643 |       common /scrns/ tc(lx1,ly1,lz1,lelt),td(lx1,ly1,lz1,lelt)
@@ -521,6 +520,7 @@ Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as else
  2046 |       COMMON /CTMP0/ XCG(LELT),YCG(LELT),ZCG(LELT)
       |                    1
 Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (21000 vs 49096 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/edgec.f -o obj/edgec.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/eigsolv.f -o obj/eigsolv.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/eigsolv.f:371:20:
 
@@ -535,6 +535,7 @@ Warning: Named COMMON block ‘screv’ at (1) shall be of the same size as else
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/gauss.f -o obj/gauss.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/genxyz.f -o obj/genxyz.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier1.f -o obj/navier1.o
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/makeq.f -o obj/makeq.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/genxyz.f:951:15:
 
   948 |       DO 10 I=1,4
@@ -605,7 +606,6 @@ Warning: Named COMMON block ‘cxyzl’ at (1) shall be of the same size as else
   329 |       COMMON /SRFCEL/ SUCCES
       |                     1
 Warning: Named COMMON block ‘srfcel’ at (1) shall be of the same size as elsewhere (8 vs 4 bytes)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/makeq.f -o obj/makeq.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier0.f -o obj/navier0.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier0.f:169:31:
 
@@ -732,7 +732,6 @@ Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
       |                                          1
 Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier3.f -o obj/navier3.o
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier4.f -o obj/navier4.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier1.f:1919:12:
 
  1918 |       DO 100 IBD=NBD,1,-1
@@ -740,7 +739,6 @@ mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-
  1919 |          BD(IBD+1) = BD(IBD)
       |            1
 Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f -o obj/prepost.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier1.f:4792:21:
 
  4790 |       do i=1,lxyz
@@ -1513,6 +1511,7 @@ Warning: Actual argument contains too few elements for dummy argument ‘du’ (
  4249 |       CALL VELINIT (VEL1,VEL2,VEL3,ILAG)
       |                    1
 Warning: Actual argument contains too few elements for dummy argument ‘vel1’ (64/56000) at (1)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier4.f -o obj/navier4.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier1.f:4942:21:
 
  4942 |       common /dgradl/ d(ldg),dt(ldg),dg(ldg),dgt(ldg),jgl(ldg),jgt(ldg)
@@ -1548,6 +1547,7 @@ Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as else
   991 |       COMMON /SCRCH/ H1M2 (LX2,LY2,LZ2,LELV)
       |                    1
 Warning: Named COMMON block ‘scrch’ at (1) shall be of the same size as elsewhere (112000 vs 896000 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f -o obj/prepost.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier1.f:4366:20:
 
  4366 |       common /ctmp0/ work (lx2,ly2,lz2,lelv)
@@ -1814,43 +1814,43 @@ Warning: Type mismatch between actual argument at (1) and actual argument at (2)
  1369 |             call byte_write(tdump(1,ii),nxyz,ierr)
       |                            2
 Warning: Type mismatch between actual argument at (1) and actual argument at (2) (CHARACTER(132)/REAL(4)).
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:2155:29:
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:2160:29:
 
   625 |      $         call crecv (mtype,hdump,len)
       |                                 2
 ......
- 2155 |             call crecv(mtype,buffer,len)
+ 2160 |             call crecv(mtype,buffer,len)
       |                             1
 Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(4)/REAL(8)).
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:2246:35:
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:2251:35:
 
- 2146 |      &     call byte_write_mpi(buffer,nout,-1,ifh_mbyte,ierr)
+ 2151 |      &     call byte_write_mpi(buffer,nout,-1,ifh_mbyte,ierr)
       |                               2    
 ......
- 2246 |                call byte_write_mpi(u8(2),nout,-1,ifh_mbyte,ierr)
+ 2251 |                call byte_write_mpi(u8(2),nout,-1,ifh_mbyte,ierr)
       |                                   1
 Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(8)/REAL(4)).
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:2481:26:
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:2486:26:
 
- 2146 |      &     call byte_write_mpi(buffer,nout,-1,ifh_mbyte,ierr)
+ 2151 |      &     call byte_write_mpi(buffer,nout,-1,ifh_mbyte,ierr)
       |                               2
 ......
- 2481 |       call byte_write_mpi(test_pattern,1,pid00,ifh_mbyte,ierr)
+ 2486 |       call byte_write_mpi(test_pattern,1,pid00,ifh_mbyte,ierr)
       |                          1
 Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (rank-1 and scalar)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:1662:37:
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:1667:37:
 
- 1662 |       iprefix        = i_find_prefix(prefix,99)
+ 1667 |       iprefix        = i_find_prefix(prefix,99)
       |                                     1
 Warning: Rank mismatch in argument ‘prefix’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:1674:31:
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:1679:31:
 
- 1674 |       call restart_nfld( nfld, prefix ) ! Check for Restart option.
+ 1679 |       call restart_nfld( nfld, prefix ) ! Check for Restart option.
       |                               1
 Warning: Rank mismatch in argument ‘prefix’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:1947:32:
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:1952:32:
 
- 1947 |       call outpost2(v1,v2,v3,vp,vt,itmp,name3)
+ 1952 |       call outpost2(v1,v2,v3,vp,vt,itmp,name3)
       |                                1
 Warning: Actual argument contains too few elements for dummy argument ‘vt’ (1/56000) at (1)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:881:20:
@@ -1863,12 +1863,12 @@ Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as else
   817 |       common /scruz/ ta1(lx1,ly1,lz1,lelv)
       |                    1
 Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (1344000 vs 448000 bytes)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:2283:20:
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/speclib.f -o obj/speclib.o
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/prepost.f:2288:20:
 
- 2283 |       common /SCRNS/ u4(2+lxo*lxo*lxo*6*lelt)
+ 2288 |       common /SCRNS/ u4(2+lxo*lxo*lxo*6*lelt)
       |                    1
 Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (1344008 vs 448008 bytes)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/speclib.f -o obj/speclib.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/map2.f -o obj/map2.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/map2.f:176:20:
 
@@ -1943,6 +1943,7 @@ Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as else
       |                    1
 Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (1344000 vs 1792000 bytes)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/ic.f -o obj/ic.o
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/ssolv.f -o obj/ssolv.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/ic.f:951:38:
 
   951 |      $            call copy(t(1,1,1,1,2),sdmp2(1,1),ntott)
@@ -2382,7 +2383,6 @@ Warning: More actual than formal arguments in procedure call at (1)
  1826 |       IFLDW=INDX1(WORK,' ',1)-1
       |                       1
 Warning: Character length of actual argument shorter than of dummy argument ‘s2’ (1/132) at (1)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/ssolv.f -o obj/ssolv.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/ic.f:1363:20:
 
  1363 |       common /ctmp0/  xa(lxyzr)      ,xb(lx1,ly1,lzr) ,xc(lxyzr)
@@ -2404,6 +2404,7 @@ Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as else
   737 |       COMMON /SCRMG/ DIVFLD (LX2,LY2,LZ2,LELV)
       |                    1
 Warning: Named COMMON block ‘scrmg’ at (1) shall be of the same size as elsewhere (112000 vs 1400000 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O3 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/math.f -o obj/math.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/planx.f:189:43:
 
   189 |          CALL hmzpf2 (' BX ',OT1,IN1,H1,H2,B1MASK,VMULT,
@@ -2419,7 +2420,6 @@ Warning: Actual argument contains too few elements for dummy argument ‘mask’
   194 |      $   CALL hmzpf2 (' BZ ',OT3,IN3,H1,H2,B3MASK,VMULT,
       |                                           1
 Warning: Actual argument contains too few elements for dummy argument ‘mask’ (1/64) at (1)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O3 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/math.f -o obj/math.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/math.f:1558:21:
 
  1557 |       DO 100 I=2,N
@@ -2534,7 +2534,6 @@ Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as else
  1529 |       common /tdarray/ diagt(maxcg),upper(maxcg)
       |                      1
 Warning: Named COMMON block ‘tdarray’ at (1) shall be of the same size as elsewhere (960 vs 14400 bytes)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/gfdm_op.f -o obj/gfdm_op.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/hmholtz.f:1143:20:
 
  1143 |       COMMON /CTMP0/ W(LX1,LX1),aa(lx1,lx1),bb(lx1,lx1)
@@ -2545,6 +2544,7 @@ Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as else
  1050 |       COMMON /CTMP0/ W(LX1,LX1),aa(lx1,lx1),bb(lx1,lx1)
       |                    1
 Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (384 vs 2688000 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/gfdm_op.f -o obj/gfdm_op.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/gfdm_op.f:103:53:
 
   103 |      $                    ,cb0(1),cbn(1),dglgt,wglgt,wgl,bw,lbw)
@@ -2937,6 +2937,77 @@ Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as else
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/convect.f -o obj/convect.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f -o obj/induct.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/perturb.f -o obj/perturb.o
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:889:21:
+
+  889 |       call cresvib  (besv1,besv2,besv3,h1,h2)
+      |                     1
+Warning: Actual argument contains too few elements for dummy argument ‘resv1’ (1/64) at (1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:902:21:
+
+  902 |       call incomprn (vx,vy,vz,pr) ! project U onto div-free space
+      |                     1
+Warning: Rank mismatch in argument ‘ux’ at (1) (scalar and rank-4)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:913:21:
+
+  913 |       call incomprn (bx,by,bz,pm) ! project B onto div-free space
+      |                     1
+Warning: Rank mismatch in argument ‘ux’ at (1) (scalar and rank-4)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:1242:21:
+
+  355 |       call add2(up,dp,ntot2)
+      |                2     
+......
+ 1242 |          call add2  (p,pbar,ntot2)                 ! Reconstruct solution.
+      |                     1
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:1253:21:
+
+  355 |       call add2(up,dp,ntot2)
+      |                2     
+......
+ 1253 |          call add2  (p,pbar,ntot2)                 ! Reconstruct solution.
+      |                     1
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:241:20:
+
+  241 |       call extrapp (pm,pmlag)
+      |                    1
+Warning: Actual argument contains too few elements for dummy argument ‘p’ (1/8) at (1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:469:36:
+
+  469 |       call curl(lf,b1,b2,b3,.false.,w1,w2)
+      |                                    1
+Warning: Rank mismatch in argument ‘work1’ at (1) (rank-1 and scalar)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:304:20:
+
+  304 |       common /scrns/ w1    (lx1,ly1,lz1,lelv)
+      |                    1
+Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (2744000 vs 2688000 bytes)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:189:20:
+
+  189 |       COMMON /SCRNS/ TA1(LX1,LY1,LZ1,LELV)
+      |                    1
+Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (3136000 vs 2744000 bytes)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:151:20:
+
+  151 |       common /scrns/ ta1 (lx1,ly1,lz1,lelv)
+      |                    1
+Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (1344000 vs 3136000 bytes)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:1333:20:
+
+ 1333 |       common /scrns/ wk(2*ltd)
+      |                    1
+Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (27264 vs 3136000 bytes)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:24:20:
+
+   24 |       common /scrns/  resv1 (lx1,ly1,lz1,lelv)
+      |                    1
+Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (2688000 vs 3136000 bytes)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:1610:20:
+
+ 1610 |       common /scrns/ ta1 (lx1,ly1,lz1,lelv)
+      |                    1
+Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (2688000 vs 3136000 bytes)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/convect.f:676:26:
 
   675 |          do i=nc,2,-1
@@ -3065,57 +3136,11 @@ Warning: Rank mismatch between actual argument at (1) and actual argument at (2)
  1202 |       common /ctmp1/ ur(ldd),us(ldd),ut(ldd),ju(ldd),ud(ldd),tu(ldd)
       |                    1
 Warning: Named COMMON block ‘ctmp1’ at (1) shall be of the same size as elsewhere (10368 vs 6912 bytes)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:889:21:
-
-  889 |       call cresvib  (besv1,besv2,besv3,h1,h2)
-      |                     1
-Warning: Actual argument contains too few elements for dummy argument ‘resv1’ (1/64) at (1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:902:21:
-
-  902 |       call incomprn (vx,vy,vz,pr) ! project U onto div-free space
-      |                     1
-Warning: Rank mismatch in argument ‘ux’ at (1) (scalar and rank-4)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:913:21:
-
-  913 |       call incomprn (bx,by,bz,pm) ! project B onto div-free space
-      |                     1
-Warning: Rank mismatch in argument ‘ux’ at (1) (scalar and rank-4)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:1242:21:
-
-  355 |       call add2(up,dp,ntot2)
-      |                2     
-......
- 1242 |          call add2  (p,pbar,ntot2)                 ! Reconstruct solution.
-      |                     1
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:1253:21:
-
-  355 |       call add2(up,dp,ntot2)
-      |                2     
-......
- 1253 |          call add2  (p,pbar,ntot2)                 ! Reconstruct solution.
-      |                     1
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:241:20:
-
-  241 |       call extrapp (pm,pmlag)
-      |                    1
-Warning: Actual argument contains too few elements for dummy argument ‘p’ (1/8) at (1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:469:36:
-
-  469 |       call curl(lf,b1,b2,b3,.false.,w1,w2)
-      |                                    1
-Warning: Rank mismatch in argument ‘work1’ at (1) (rank-1 and scalar)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/convect.f:1582:20:
 
  1582 |       common /scrdg/ uf(lf),uxf(lf),uyf(lf),uzf(lf),upwind_wgt(lf)
       |                    1
 Warning: Named COMMON block ‘scrdg’ at (1) shall be of the same size as elsewhere (3361632 vs 3360000 bytes)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:304:20:
-
-  304 |       common /scrns/ w1    (lx1,ly1,lz1,lelv)
-      |                    1
-Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (2744000 vs 2688000 bytes)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/convect.f:997:20:
 
   997 |       common /ctmp1/ work(lxyz1,lelt)
@@ -3141,36 +3166,11 @@ Warning: Named COMMON block ‘cchar’ at (1) shall be of the same size as else
  1106 |       common /cchar/ ct_vx(0:lorder) ! time for each slice in c_vx()
       |                    1
 Warning: Named COMMON block ‘cchar’ at (1) shall be of the same size as elsewhere (32 vs 40 bytes)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:189:20:
-
-  189 |       COMMON /SCRNS/ TA1(LX1,LY1,LZ1,LELV)
-      |                    1
-Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (3136000 vs 2744000 bytes)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/convect.f:1108:20:
 
  1108 |       common /scruz/ phi  (lx1*ly1*lz1*lelt)
       |                    1
 Warning: Named COMMON block ‘scruz’ at (1) shall be of the same size as elsewhere (896000 vs 1792000 bytes)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:151:20:
-
-  151 |       common /scrns/ ta1 (lx1,ly1,lz1,lelv)
-      |                    1
-Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (1344000 vs 3136000 bytes)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:1333:20:
-
- 1333 |       common /scrns/ wk(2*ltd)
-      |                    1
-Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (27264 vs 3136000 bytes)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:24:20:
-
-   24 |       common /scrns/  resv1 (lx1,ly1,lz1,lelv)
-      |                    1
-Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (2688000 vs 3136000 bytes)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/induct.f:1610:20:
-
- 1610 |       common /scrns/ ta1 (lx1,ly1,lz1,lelv)
-      |                    1
-Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (2688000 vs 3136000 bytes)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/perturb.f:843:28:
 
   842 |       DO 100 ILAG=NBDINP-1,2,-1
@@ -3248,16 +3248,6 @@ Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as else
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f -o obj/navier5.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier6.f -o obj/navier6.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier7.f -o obj/navier7.o
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier6.f:93:72:
-
-   93 |                call set_fem_data_l2(nel_proc,ndom,n_o,x,y,z,tri)
-      |                                                                        1
-Warning: Type mismatch in argument ‘p’ at (1); passed INTEGER(4) to REAL(8)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier6.f:50:20:
-
-   50 |       common /ctmp0/ nv_to_t(2*ltotd)
-      |                    1
-Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (448000 vs 256 bytes)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier7.f:49:17:
 
    48 |       do i=1,n
@@ -3333,9 +3323,314 @@ Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
   411 |          call swap (bcsr(n1),nzero,n2,inverse)
       |                                                                        1
 Warning: Type mismatch in argument ‘temp’ at (1); passed INTEGER(4) to REAL(8)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier6.f:93:72:
+
+   93 |                call set_fem_data_l2(nel_proc,ndom,n_o,x,y,z,tri)
+      |                                                                        1
+Warning: Type mismatch in argument ‘p’ at (1); passed INTEGER(4) to REAL(8)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier6.f:50:20:
+
+   50 |       common /ctmp0/ nv_to_t(2*ltotd)
+      |                    1
+Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (448000 vs 256 bytes)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier8.f -o obj/navier8.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f -o obj/fast3d.o
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:556:23:
+
+  555 |       do i=1,lx1*lz1
+      |                                                                        2
+  556 |          sum = sum + a(i,1,f,e)*area(i,1,f,e)
+      |                       1
+Warning: Array reference at (1) out of bounds (16 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:556:37:
+
+  555 |       do i=1,lx1*lz1
+      |                                                                        2
+  556 |          sum = sum + a(i,1,f,e)*area(i,1,f,e)
+      |                                     1
+Warning: Array reference at (1) out of bounds (16 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:684:17:
+
+  681 |       do i=1,n29
+      |                                                                        2
+......
+  684 |          n2 = ia(i+1)-1
+      |                 1
+Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fasts.f -o obj/fasts.o
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4088:31:
+
+ 4087 |           do i=1,lt
+      |                                                                        2
+ 4088 |             ur(i) = ur(i)*w3m1(i,1,1)
+      |                               1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4089:31:
+
+ 4087 |           do i=1,lt
+      |                                                                        2
+ 4088 |             ur(i) = ur(i)*w3m1(i,1,1)
+ 4089 |             us(i) = us(i)*w3m1(i,1,1)
+      |                               1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4090:31:
+
+ 4087 |           do i=1,lt
+      |                                                                        2
+......
+ 4090 |             ut(i) = ut(i)*w3m1(i,1,1)
+      |                               1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4100:42:
+
+ 4099 |              do i=1,lt
+      |                                                                        2
+ 4100 |                w(i,e)  = wght*w(i,e)/w3m1(i,1,1)
+      |                                          1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4104:34:
+
+ 4103 |              do i=1,lt
+      |                                                                        2
+ 4104 |                ur(i) = ur(i)*w3m1(i,1,1)
+      |                                  1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4105:34:
+
+ 4103 |              do i=1,lt
+      |                                                                        2
+ 4104 |                ur(i) = ur(i)*w3m1(i,1,1)
+ 4105 |                us(i) = us(i)*w3m1(i,1,1)
+      |                                  1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4106:34:
+
+ 4103 |              do i=1,lt
+      |                                                                        2
+......
+ 4106 |                ut(i) = ut(i)*w3m1(i,1,1)
+      |                                  1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4116:48:
+
+ 4115 |           do i=1,lt
+      |                                                                        2
+ 4116 |             v(i,e)  = v(i,e) - wght*w(i,e)/w3m1(i,1,1)
+      |                                                1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4125:31:
+
+ 4124 |           do i=1,lt
+      |                                                                        2
+ 4125 |             ur(i) = ur(i)*w3m1(i,1,1)
+      |                               1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4126:31:
+
+ 4124 |           do i=1,lt
+      |                                                                        2
+ 4125 |             ur(i) = ur(i)*w3m1(i,1,1)
+ 4126 |             us(i) = us(i)*w3m1(i,1,1)
+      |                               1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4136:42:
+
+ 4135 |              do i=1,lt
+      |                                                                        2
+ 4136 |                w(i,e)  = wght*w(i,e)/w3m1(i,1,1)
+      |                                          1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4140:34:
+
+ 4139 |              do i=1,lt
+      |                                                                        2
+ 4140 |                ur(i) = ur(i)*w3m1(i,1,1)
+      |                                  1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4141:34:
+
+ 4139 |              do i=1,lt
+      |                                                                        2
+ 4140 |                ur(i) = ur(i)*w3m1(i,1,1)
+ 4141 |                us(i) = us(i)*w3m1(i,1,1)
+      |                                  1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4151:48:
+
+ 4150 |           do i=1,lt
+      |                                                                        2
+ 4151 |             v(i,e)  = v(i,e) - wght*w(i,e)/w3m1(i,1,1)
+      |                                                1
+Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4192:19:
+
+ 4192 |       xmax = glmax(xm1,n)
+      |                   1
+......
+ 4295 |          dmax = glmax(dmax,1)
+      |                      2
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4194:19:
+
+ 4194 |       ymax = glmax(ym1,n)
+      |                   1
+......
+ 4295 |          dmax = glmax(dmax,1)
+      |                      2
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4197:22:
+
+ 4197 |          zmax = glmax(zm1,n)
+      |                      1
+......
+ 4295 |          dmax = glmax(dmax,1)
+      |                      2
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2848:31:
+
+ 2848 |       call y_avg_buff(ur,w ,ut,c2,'ub',icount)
+      |                               1
+Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2849:31:
+
+ 2849 |       call y_avg_buff(wr,wp,wt,c2,'u2',icount)
+      |                               1
+Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2856:31:
+
+ 2856 |       call y_avg_buff(wr,wt,wp,c2,'uv',icount)
+      |                               1
+Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2858:31:
+
+ 2858 |       call y_ins_buff(ur,w ,ut,c2,'ui',icount)
+      |                               1
+Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2892:31:
+
+ 2892 |       call z_avg_buff(u ,v ,w ,c2,'ub',icount)
+      |                               1
+Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2893:31:
+
+ 2893 |       call z_avg_buff(wr,wt,wp,c2,'u2',icount)
+      |                               1
+Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2900:31:
+
+ 2900 |       call z_avg_buff(wr,wt,wp,c2,'uv',icount)
+      |                               1
+Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2902:31:
+
+ 2902 |       call z_ins_buff(u ,v ,w ,c2,'ui',icount)
+      |                               1
+Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1558:24:
+
+ 1537 |         call byte_write(fhdfle,20,ierr)
+      |                        2
+......
+ 1558 |         call byte_write(test_pattern,1,ierr)
+      |                        1
+Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(4)/CHARACTER(*)).
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1308:24:
+
+ 1308 |          avgmax = glmax(avg,n)
+      |                        1
+......
+ 4295 |          dmax = glmax(dmax,1)
+      |                      2  
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1285:24:
+
+ 1285 |          avgmax = glmax(avg,n)
+      |                        1
+......
+ 4295 |          dmax = glmax(dmax,1)
+      |                      2  
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1262:24:
+
+ 1262 |          avgmax = glmax(avg,n)
+      |                        1
+......
+ 4295 |          dmax = glmax(dmax,1)
+      |                      2  
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:363:43:
+
+  363 |                   check1=check1+facint(one,one,area,ifc,ie)
+      |                                           1
+Warning: Actual argument contains too few elements for dummy argument ‘b’ (56000/84000) at (1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1340:51:
+
+ 1340 |       call gaujordf  (Lj,nx,nx,indr,indc,ipiv,ierr,rmult)
+      |                                                   1
+Warning: Rank mismatch in argument ‘rmult’ at (1) (rank-1 and scalar)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:627:12:
+
+  626 |       do i=1,nz-1
+      |                                                                        2
+  627 |          dx(i+1) = (z(i+1)-z(i))*scale
+      |            1
+Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:3148:29:
+
+ 2019 |                   call cmult(dgtq,scale,12)
+      |                             2
+......
+ 3148 |                   call cmult(strsmxl,scale,1)
+      |                             1
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (rank-1 and scalar)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:3643:19:
+
+ 3643 |       xmax = glmax(x,n)
+      |                   1
+......
+ 4295 |          dmax = glmax(dmax,1)
+      |                      2
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:3675:34:
+
+ 3675 |       call z_average          (ua,u,w1,w2)
+      |                                  1
+Warning: Rank mismatch in argument ‘u’ at (1) (rank-4 and scalar)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:3676:31:
+
+ 3676 |       call z_average_transpose(u,ua) ! distribute ua to each z-plane
+      |                               1
+Warning: Rank mismatch in argument ‘u’ at (1) (rank-4 and scalar)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:1006:12:
+
+ 1005 |       do i=1,nz-1
+      |                                                                        2
+ 1006 |          dx(i+1) = (z(i+1)-z(i))*scale
+      |            1
+Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4526:24:
+
+ 3338 |          xx = glamax(xb,n)
+      |                     2   
+......
+ 4526 |          ddmax = glamax(ddmax,1)
+      |                        1
+Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (rank-1 and scalar)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:1390:33:
+
+ 1390 |       call set_up_fast_1D_sem_op(s,eb0,eb1,l,r,ll,lm,lr,bh,dgl,0)
+      |                                 1
+Warning: Actual argument contains too few elements for dummy argument ‘g’ (1/16) at (1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:553:46:
+
+  553 |       call set_up_1D_geom(dx,lbc,rbc,ll,lm,lr,z,nz)
+      |                                              1
+Warning: Actual argument contains too few elements for dummy argument ‘z’ (1/2) at (1)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:932:49:
+
+  932 |       call set_up_1D_geom_ax(dx,lbc,rbc,ll,lm,lr,z,y,nz)
+      |                                                 1
+Warning: Actual argument contains too few elements for dummy argument ‘z’ (1/2) at (1)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier8.f:668:31:
 
   667 |          do i=1,40
@@ -3560,6 +3855,11 @@ Warning: Rank mismatch in argument ‘ba’ at (1) (scalar and rank-1)
  1449 |       common /ctmp0/ w(2,2,lx1),v(2,ly1,lz1,lelt)
       |                    1
 Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (224128 vs 112256 bytes)
+/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:248:20:
+
+  248 |       common /scrns/         pm1(lx1,ly1,lz1,lelv)
+      |                    1
+Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (3136000 vs 2240000 bytes)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier8.f:2377:21:
 
  2377 |       common  /scrns/ ind,etuple
@@ -3595,306 +3895,6 @@ Warning: Named COMMON block ‘scrpre’ at (1) shall be of the same size as els
  1339 |       common /scrxxt/ cmlt(lcr,lelv),mask(lcr,lelv)
       |                     1
 Warning: Named COMMON block ‘scrxxt’ at (1) shall be of the same size as elsewhere (84000 vs 112000 bytes)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:627:12:
-
-  626 |       do i=1,nz-1
-      |                                                                        2
-  627 |          dx(i+1) = (z(i+1)-z(i))*scale
-      |            1
-Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:1006:12:
-
- 1005 |       do i=1,nz-1
-      |                                                                        2
- 1006 |          dx(i+1) = (z(i+1)-z(i))*scale
-      |            1
-Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:1390:33:
-
- 1390 |       call set_up_fast_1D_sem_op(s,eb0,eb1,l,r,ll,lm,lr,bh,dgl,0)
-      |                                 1
-Warning: Actual argument contains too few elements for dummy argument ‘g’ (1/16) at (1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:553:46:
-
-  553 |       call set_up_1D_geom(dx,lbc,rbc,ll,lm,lr,z,nz)
-      |                                              1
-Warning: Actual argument contains too few elements for dummy argument ‘z’ (1/2) at (1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/fast3d.f:932:49:
-
-  932 |       call set_up_1D_geom_ax(dx,lbc,rbc,ll,lm,lr,z,y,nz)
-      |                                                 1
-Warning: Actual argument contains too few elements for dummy argument ‘z’ (1/2) at (1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:556:23:
-
-  555 |       do i=1,lx1*lz1
-      |                                                                        2
-  556 |          sum = sum + a(i,1,f,e)*area(i,1,f,e)
-      |                       1
-Warning: Array reference at (1) out of bounds (16 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:556:37:
-
-  555 |       do i=1,lx1*lz1
-      |                                                                        2
-  556 |          sum = sum + a(i,1,f,e)*area(i,1,f,e)
-      |                                     1
-Warning: Array reference at (1) out of bounds (16 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:684:17:
-
-  681 |       do i=1,n29
-      |                                                                        2
-......
-  684 |          n2 = ia(i+1)-1
-      |                 1
-Warning: Array reference at (1) out of bounds (2 > 1) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4088:31:
-
- 4087 |           do i=1,lt
-      |                                                                        2
- 4088 |             ur(i) = ur(i)*w3m1(i,1,1)
-      |                               1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4089:31:
-
- 4087 |           do i=1,lt
-      |                                                                        2
- 4088 |             ur(i) = ur(i)*w3m1(i,1,1)
- 4089 |             us(i) = us(i)*w3m1(i,1,1)
-      |                               1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4090:31:
-
- 4087 |           do i=1,lt
-      |                                                                        2
-......
- 4090 |             ut(i) = ut(i)*w3m1(i,1,1)
-      |                               1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4100:42:
-
- 4099 |              do i=1,lt
-      |                                                                        2
- 4100 |                w(i,e)  = wght*w(i,e)/w3m1(i,1,1)
-      |                                          1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4104:34:
-
- 4103 |              do i=1,lt
-      |                                                                        2
- 4104 |                ur(i) = ur(i)*w3m1(i,1,1)
-      |                                  1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4105:34:
-
- 4103 |              do i=1,lt
-      |                                                                        2
- 4104 |                ur(i) = ur(i)*w3m1(i,1,1)
- 4105 |                us(i) = us(i)*w3m1(i,1,1)
-      |                                  1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4106:34:
-
- 4103 |              do i=1,lt
-      |                                                                        2
-......
- 4106 |                ut(i) = ut(i)*w3m1(i,1,1)
-      |                                  1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4116:48:
-
- 4115 |           do i=1,lt
-      |                                                                        2
- 4116 |             v(i,e)  = v(i,e) - wght*w(i,e)/w3m1(i,1,1)
-      |                                                1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4125:31:
-
- 4124 |           do i=1,lt
-      |                                                                        2
- 4125 |             ur(i) = ur(i)*w3m1(i,1,1)
-      |                               1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4126:31:
-
- 4124 |           do i=1,lt
-      |                                                                        2
- 4125 |             ur(i) = ur(i)*w3m1(i,1,1)
- 4126 |             us(i) = us(i)*w3m1(i,1,1)
-      |                               1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4136:42:
-
- 4135 |              do i=1,lt
-      |                                                                        2
- 4136 |                w(i,e)  = wght*w(i,e)/w3m1(i,1,1)
-      |                                          1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4140:34:
-
- 4139 |              do i=1,lt
-      |                                                                        2
- 4140 |                ur(i) = ur(i)*w3m1(i,1,1)
-      |                                  1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4141:34:
-
- 4139 |              do i=1,lt
-      |                                                                        2
- 4140 |                ur(i) = ur(i)*w3m1(i,1,1)
- 4141 |                us(i) = us(i)*w3m1(i,1,1)
-      |                                  1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4151:48:
-
- 4150 |           do i=1,lt
-      |                                                                        2
- 4151 |             v(i,e)  = v(i,e) - wght*w(i,e)/w3m1(i,1,1)
-      |                                                1
-Warning: Array reference at (1) out of bounds (64 > 4) in loop beginning at (2)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4192:19:
-
- 4192 |       xmax = glmax(xm1,n)
-      |                   1
-......
- 4295 |          dmax = glmax(dmax,1)
-      |                      2
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4194:19:
-
- 4194 |       ymax = glmax(ym1,n)
-      |                   1
-......
- 4295 |          dmax = glmax(dmax,1)
-      |                      2
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4197:22:
-
- 4197 |          zmax = glmax(zm1,n)
-      |                      1
-......
- 4295 |          dmax = glmax(dmax,1)
-      |                      2
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-4)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2848:31:
-
- 2848 |       call y_avg_buff(ur,w ,ut,c2,'ub',icount)
-      |                               1
-Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2849:31:
-
- 2849 |       call y_avg_buff(wr,wp,wt,c2,'u2',icount)
-      |                               1
-Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2856:31:
-
- 2856 |       call y_avg_buff(wr,wt,wp,c2,'uv',icount)
-      |                               1
-Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2858:31:
-
- 2858 |       call y_ins_buff(ur,w ,ut,c2,'ui',icount)
-      |                               1
-Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2892:31:
-
- 2892 |       call z_avg_buff(u ,v ,w ,c2,'ub',icount)
-      |                               1
-Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2893:31:
-
- 2893 |       call z_avg_buff(wr,wt,wp,c2,'u2',icount)
-      |                               1
-Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2900:31:
-
- 2900 |       call z_avg_buff(wr,wt,wp,c2,'uv',icount)
-      |                               1
-Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:2902:31:
-
- 2902 |       call z_ins_buff(u ,v ,w ,c2,'ui',icount)
-      |                               1
-Warning: Rank mismatch in argument ‘c2’ at (1) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1558:24:
-
- 1537 |         call byte_write(fhdfle,20,ierr)
-      |                        2
-......
- 1558 |         call byte_write(test_pattern,1,ierr)
-      |                        1
-Warning: Type mismatch between actual argument at (1) and actual argument at (2) (REAL(4)/CHARACTER(*)).
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1308:24:
-
- 1308 |          avgmax = glmax(avg,n)
-      |                        1
-......
- 4295 |          dmax = glmax(dmax,1)
-      |                      2  
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1285:24:
-
- 1285 |          avgmax = glmax(avg,n)
-      |                        1
-......
- 4295 |          dmax = glmax(dmax,1)
-      |                      2  
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1262:24:
-
- 1262 |          avgmax = glmax(avg,n)
-      |                        1
-......
- 4295 |          dmax = glmax(dmax,1)
-      |                      2  
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:363:43:
-
-  363 |                   check1=check1+facint(one,one,area,ifc,ie)
-      |                                           1
-Warning: Actual argument contains too few elements for dummy argument ‘b’ (56000/84000) at (1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1340:51:
-
- 1340 |       call gaujordf  (Lj,nx,nx,indr,indc,ipiv,ierr,rmult)
-      |                                                   1
-Warning: Rank mismatch in argument ‘rmult’ at (1) (rank-1 and scalar)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:3148:29:
-
- 2019 |                   call cmult(dgtq,scale,12)
-      |                             2
-......
- 3148 |                   call cmult(strsmxl,scale,1)
-      |                             1
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (rank-1 and scalar)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:3643:19:
-
- 3643 |       xmax = glmax(x,n)
-      |                   1
-......
- 4295 |          dmax = glmax(dmax,1)
-      |                      2
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:3675:34:
-
- 3675 |       call z_average          (ua,u,w1,w2)
-      |                                  1
-Warning: Rank mismatch in argument ‘u’ at (1) (rank-4 and scalar)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:3676:31:
-
- 3676 |       call z_average_transpose(u,ua) ! distribute ua to each z-plane
-      |                               1
-Warning: Rank mismatch in argument ‘u’ at (1) (rank-4 and scalar)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:4526:24:
-
- 3338 |          xx = glamax(xb,n)
-      |                     2   
-......
- 4526 |          ddmax = glamax(ddmax,1)
-      |                        1
-Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (rank-1 and scalar)
-/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:248:20:
-
-  248 |       common /scrns/         pm1(lx1,ly1,lz1,lelv)
-      |                    1
-Warning: Named COMMON block ‘scrns’ at (1) shall be of the same size as elsewhere (3136000 vs 2240000 bytes)
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/navier5.f:1915:20:
 
  1915 |       common /scrns/         sij (lx1*ly1*lz1*6*lelv)
@@ -4189,12 +4189,12 @@ cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/vprops.f -o obj/vprops.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/makeq_aux.f -o obj/makeq_aux.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/papi.f -o obj/papi.o
-mpif77 -c  -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/nek_in_situ.f -o obj/nek_in_situ.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/papi.f:5:72:
 
     5 |       call getflops_papi(flops,mflops)
       |                                                                        1
 Warning: Type mismatch in argument ‘flops’ at (1); passed INTEGER(8) to REAL(8)
+mpif77 -c  -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/nek_in_situ.f -o obj/nek_in_situ.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/readat_new.f -o obj/readat_new.o
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/finiparser.c -o obj/finiparser.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
@@ -4230,6 +4230,8 @@ Warning: Type mismatch between actual argument at (1) and actual argument at (2)
 Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/iniparser.c -o obj/iniparser.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
+mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/dictionary.c -o obj/dictionary.o
+cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/iniparser.c: In function ‘iniparser_load’:
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/iniparser.c:716:32: warning: ‘__builtin___sprintf_chk’ may write a terminating nul past the end of the destination [-Wformat-overflow=]
   716 |             sprintf(tmp, "%s:%s", section, key);
@@ -4244,9 +4246,7 @@ In file included from /usr/include/stdio.h:894,
       |                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    40 |                                   __va_arg_pack ());
       |                                   ~~~~~~~~~~~~~~~~~
-mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/dictionary.c -o obj/dictionary.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O3 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/mxm_std.f -o obj/mxm_std.o
-cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O0      -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/blas.f -o obj/blas.o
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/mxm_std.f:1151:29:
 
@@ -4358,7 +4358,6 @@ stats/statistics_2D_debug.f:183:28:
   183 |           call csend(msg_id,STAT_PROCPOS,len,p_recid,0)     ! send procpos
       |                            1
 Warning: Rank mismatch between actual argument at (1) and actual argument at (2) (scalar and rank-1)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src stats/time_series.f -o obj/time_series.o
 stats/statistics_2D.f:2183:36:
 
  2156 |                   msg_id1 = irecv(0,recmap,len)       ! rec mapping
@@ -4388,6 +4387,7 @@ stats/statistics_2D.f:464:20:
   464 |       common /ctmp0/ rtmp
       |                    1
 Warning: Named COMMON block ‘ctmp0’ at (1) shall be of the same size as elsewhere (224000 vs 112000 bytes)
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src stats/time_series.f -o obj/time_series.o
 stats/time_series.f:821:30:
 
   813 |                call byte_read(hdr,10,ierr)
@@ -4504,12 +4504,12 @@ Warning: Rank mismatch between actual argument at (1) and actual argument at (2)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src drl/drl_action.f -o obj/drl_action.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src drl/drl_init.f -o obj/drl_init.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src drl/drl_reward.f -o obj/drl_reward.o
+mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src drl/drl_state.f -o obj/drl_state.o
 drl/drl_reward.f:158:17:
 
   158 |      &         +body_cos * body_sin * dUdy
       |                 1
 Warning: Extension: Unary operator following arithmetic operator (use parentheses) at (1)
-mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ -I./inc_src drl/drl_state.f -o obj/drl_state.o
 drl/drl_state.f:381:0:
 
   381 | #endif YWDEBUG
@@ -4569,8 +4569,8 @@ Warning: Rank mismatch between actual argument at (1) and actual argument at (2)
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O0      -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/dsygv.f -o obj/dsygv.o
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O0      -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/3rd_party/ssygv.f -o obj/ssygv.o
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/gs.c -o obj/jl_gs.o
-cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/sort.c -o obj/jl_sort.o
+cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/sarray_transfer.c -o obj/jl_sarray_transfer.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
@@ -4595,16 +4595,14 @@ cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/obbox.c -o obj/jl_obbox.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/poly.c -o obj/jl_poly.o
-mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/lob_bnd.c -o obj/jl_lob_bnd.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
+mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/lob_bnd.c -o obj/jl_lob_bnd.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/findpts_el_3.c -o obj/jl_findpts_el_3.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/findpts_el_2.c -o obj/jl_findpts_el_2.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/sparse_cholesky.c -o obj/jl_sparse_cholesky.o
-cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
-mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/xxt.c -o obj/jl_xxt.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/comm_mpi.f:853:15:
 
@@ -4741,6 +4739,8 @@ Warning: Type mismatch in argument ‘buf’ at (1); passed INTEGER(4) to REAL(4
  1276 |       call mpi_scan(x,r,1,mpi_integer8,mpi_sum,nekcomm,ierr)
       |                    1
 Warning: Type mismatch between actual argument at (1) and actual argument at (2) (INTEGER(8)/INTEGER(4)).
+mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/xxt.c -o obj/jl_xxt.o
+cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpicc -c -I./inc_src -mcmodel=large -std=legacy -O2 -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl -DPREFIX=jl_ /home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/jl/fcrs.c -o obj/jl_fcrs.o
 cc1: warning: command-line option ‘-std=legacy’ is valid for Fortran but not for C
 mpif77 -c -I./inc_src -mcmodel=large -std=legacy -O2 -fdefault-real-8 -fdefault-double-8 -x f77-cpp-input -DMPIIO -DDRL -DYWDEBUG -DPTRSIZE8 -DMPI -DLONGINT8 -DUNDERSCORE -DTIMER -DMPITIMER -DGLOBAL_LONG_LONG -I/home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core -I/home/yuninw/codes/drl/drl_repo_TEST/envs/solver/DEC_DRL_Nek5000/core/cmt -I./ /home/yuninw/codes/drl/drl_repo_TEST/envs/cases/small_wing/small_wing.f    -o obj/small_wing.o 
@@ -4759,6 +4759,6 @@ mpif77 -o nek5000 -I./inc_src -mcmodel=large -std=legacy obj/small_wing.o obj/dr
 #                  Compilation successful!                  #
 #############################################################
    text	   data	    bss	    dec	    hex	filename
-2995232	  15832	471524072	474535136	1c48d4e0	nek5000
+2995280	  15832	471524072	474535184	1c48d510	nek5000
 
 
