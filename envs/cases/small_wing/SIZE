@@ -49,7 +49,7 @@ c-------------------------------------
       ! parameter (totctrl=480)                     ! Number of control points to be allocate
       
       ! For both sides
-      parameter (totctrl=500)                     ! Number of control points to be allocate
+      parameter (totctrl=1000)                     ! Number of control points to be allocate
       ! For Small Wing
       parameter (xnel =3500)              ! Number of 2D elements to used for computing z-dir Mean
       ! For NACA Wing 

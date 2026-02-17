@@ -11,7 +11,7 @@
         integer DRL_COMM
 ! Define the control region
         parameter(ctrlxs=0.25,ctrlxe=0.86)  
-        parameter(ctrlys=0.0,ctrlye=0.6)
+        parameter(ctrlys=-0.1,ctrlye=0.6) ! include pressure and suction side
 ! Define the y+, viscosity and u_tau
         parameter (ypctrl=15.0,nuctrl=1.0/100000.0)  ! Viscosity 
 ! YW: Nov 24 2023 Basic variable used during running

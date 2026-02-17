@@ -48,7 +48,10 @@ class MetaPolicyRunner():
       x_min, x_max = ctrl_region
       self.policy_dict[_name]["x_min"] = x_min
       self.policy_dict[_name]["x_max"] = x_max
+      # Define the control side
+      self.policy_dict[_name]["side"] = self.conf.runner.agent_ctrl_side[il]
 
+      # Distribute the agents to the current policy
       self.policy_dict[_name] = self._distribute_agents(self.policy_dict[_name])
 
       # Define the agent name
@@ -133,18 +136,25 @@ class MetaPolicyRunner():
     Distribute the agents, assigning to the current policy for MARL
     """
     x_max, x_min = case_dict['x_max'], case_dict['x_min']
-    print(f"[Meta] Current CTRL REGION: {x_min} -- {x_max}", flush=True)
+    side = case_dict['side']
+    print(f"[Meta] Current CTRL REGION: {x_min} -- {x_max}, Side: {side}", flush=True)
     glob_max, glob_min = np.max(self.CTRL_MAP['x']), np.min(self.CTRL_MAP['x'])
 
+    # Safety Check
     if (glob_max <= x_max):
       x_max = glob_max
       print(f"[Meta] Adapt to a valid value: MAX {glob_max}:{x_max}")
-
     if (glob_min >= x_min):
       x_min = glob_min
       print(f"[Meta] Adapt to a valid value: MIN {glob_min}:{x_min}")
 
-    agent_idx = np.where((self.CTRL_MAP['x'] >= x_min) & (self.CTRL_MAP['x'] <= x_max))[0]
+    # Get the agent indices based on the control region and side
+    if case_dict['side'] == 'SS': # Suction side, y > 0:
+      agent_idx = np.where((self.CTRL_MAP['x'] >= x_min) & (self.CTRL_MAP['x'] <= x_max) & (self.CTRL_MAP['y'] > 0))[0]
+    elif case_dict['side'] == 'PS': # Pressure side, y < 0:
+      agent_idx = np.where((self.CTRL_MAP['x'] >= x_min) & (self.CTRL_MAP['x'] <= x_max) & (self.CTRL_MAP['y'] < 0))[0]
+    else:
+      raise ValueError(f"[Meta] Invalid control side: {case_dict['side']}")
 
     case_dict['x_min'] = x_min
     case_dict['x_max'] = x_max
@@ -246,6 +256,8 @@ class MetaPolicyRunner():
                                                                                episode_start=self.policy_dict[case_name]['episode_starts'],
                                                                                deterministic=deterministic,
                                                                                )
+      if isinstance(partial_act, dict):
+        partial_act = self._dict_actions_to_array(case_name, partial_act)
       # Rescale the action
       partial_act = self._rescale_actions(partial_act,
                                           self.policy_dict[case_name]['rescale_factors'])
@@ -261,6 +273,30 @@ class MetaPolicyRunner():
       partial_act = deepcopy(self.policy_dict[case_name]['partial_act'])
 
     return partial_act, state
+
+  # --------------------------------------------
+  def _dict_actions_to_array(self, case_name: str, actions: dict) -> np.ndarray:
+    """
+    Convert dict actions keyed by agent name into ordered numpy array.
+    """
+    agent_names = self.policy_dict[case_name]['agent_name']
+    ctrl_array_size = self.conf.runner.ctrl_array_size
+    action_array = np.zeros((len(agent_names), ctrl_array_size))
+
+    for i, agent in enumerate(agent_names):
+      if agent not in actions:
+        raise KeyError(f"[Meta] Missing action for agent: {agent}")
+      act = np.asarray(actions[agent]).reshape(-1)
+      if act.size == 1:
+        action_array[i, :] = act[0]
+      elif act.size == ctrl_array_size:
+        action_array[i, :] = act
+      else:
+        raise ValueError(
+            f"[Meta] Action size mismatch for agent {agent}: "
+            f"got {act.size}, expected {ctrl_array_size}"
+        )
+    return action_array
 
   # --------------------------------------------
   def local_reward(self, raw_rewards: np.ndarray):
@@ -385,7 +421,7 @@ class MetaPolicyRunner():
     elif (case_dict["rL_algorithm"] == "OC") or (case_dict["rL_algorithm"] == "BL"):
       if case_dict["rL_algorithm"] == 'OC':
         from lib.AFC import OppoCtrl as RL_algorithm
-        loaded_model = RL_algorithm(agent_list=case_dict["agents_list"],
+        loaded_model = RL_algorithm(agent_list=case_dict["agent_name"],
                                     ctrl_max_amp=case_dict['ctrl_max_amp'],
                                     )
         rescale_factors = [
@@ -394,7 +430,7 @@ class MetaPolicyRunner():
         ]
       elif case_dict["rL_algorithm"] == 'BL':
         from lib.AFC import BLCtrl as RL_algorithm
-        loaded_model = RL_algorithm(agent_list=case_dict["agents_list"],
+        loaded_model = RL_algorithm(agent_list=case_dict["agent_name"],
                                     ctrl_max_amp=case_dict['ctrl_max_amp'],
                                     )
         rescale_factors = [

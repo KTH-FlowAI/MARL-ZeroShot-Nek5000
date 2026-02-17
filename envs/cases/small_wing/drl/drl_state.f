@@ -302,7 +302,7 @@ c=============================================
         integer ifld       ! Field count 
         integer totpts 
         integer wel,wface,wx,wy,wz ! indicies for the wall
-        real vf, uti, xi 
+        real vf, uti, xi, yi 
         real scale_mask(LX1,LY1,LZ1,LELT) 
         real scale_array(TOTCTRL) 
         integer ix,iy,iz
@@ -320,7 +320,8 @@ c=============================================
 #ifdef UTAU 
         do il=1,TOTCTRL
         xi  = pos_agt(1,il) 
-        call X2Utau(xi,uti)
+        yi  = pos_agt(2,il)
+        call X2Utau(xi,yi,uti)
         ! Should be consistent with sensing plane
         !call X2Utau_const(xi,uti)
         scale_array(il) = uti + 1e-15

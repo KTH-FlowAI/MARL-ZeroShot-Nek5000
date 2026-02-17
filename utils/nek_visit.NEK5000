@@ -1,5 +1,5 @@
 NEK5000
 version: 1.0
 filetemplate: ../runs/601001/env_001/la2small_wing%01d.f%05d
-Firsttimestep: 1
+Firsttimestep: 2
 numtimesteps: 1

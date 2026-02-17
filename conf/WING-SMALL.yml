@@ -8,22 +8,24 @@ runner:
 
     case_name       : 601001 
 
-    agent_ctrl_area : [[0.23,0.40],[0.4,0.5],[0.5,0.7],[0.7,0.88]] # Tricks: use a smaller lower bound and larger upper bound, as the code will adopt the actual minimal.
+    agent_ctrl_area : [[0.23,0.40],[0.4,0.5],[0.5,0.7],[0.7,0.88],[0.23,0.88]] # Tricks: use a smaller lower bound and larger upper bound, as the code will adopt the actual minimal.
+    agent_ctrl_side : ["SS","SS","SS","SS","PS"]
     ## A list of integer to indicate agent case
-    agent_run_name : ["601031","602031","603031", "604031"]
+    agent_run_name : ["601031","602031","603031", "604031", "601031"]
     ## A list of string to indicate which policy to read
-    policy : ["rl_model_749700000_steps", "rl_model_716625000_steps","rl_model_217800000_steps","rl_model_2914890000_steps"]
+    policy : ["rl_model_749700000_steps", "rl_model_716625000_steps","rl_model_217800000_steps","rl_model_2914890000_steps", "rl_model_749700000_steps"]
     ## A list of string to indicate the RL algorithm
-    RL_algorithm : ["TD3","TD3","TD3","TD3"]
+    # RL_algorithm : ["TD3","TD3","TD3","TD3","TD3"]
+    RL_algorithm : ["BL","BL","BL","BL","BL"]
     ## A list of float indicating the local u_tau 
-    u_tau :  [1.0,1.0,1.0, 1.0] # We use local scale from NEK 
+    u_tau :  [1.0,1.0,1.0, 1.0, 1.0] # We use local scale from NEK 
     ## A list of float indicating the local dU/dy 
-    dUdy : [1135.83, 940.90, 759.46, 485.32]
+    dUdy : [1135.83, 940.90, 759.46, 485.32, 1135.83]
     ## Action bounds in tuple
-    action_bounds : [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
+    action_bounds : [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
     ## The drl update interval 
     # 36, 44, 52, 80 -> 36, 45, 54, 81
-    drl_steps : [4, 5, 6, 9] # make ndrl=4 therefore mpi time will be reduced!
+    drl_steps : [4, 5, 6, 9, 4] # make ndrl=4 therefore mpi time will be reduced!
 
     ## Some IO Management 
     vars_record      : True
@@ -43,11 +45,11 @@ simulation:
     solver_version : "v17"
     #------------------------------------------
     # Generally VERY IMPORTANT
-    TOTCTRL : 500        # Be consistent with SIZE
+    TOTCTRL : 1000        # Be consistent with SIZE
     # Rank of the test case
     nproc   : 12         
     ndrl    : 3          # Steps to update the rewards (t^+=0.6)
-    znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
+    znmf_avg: 0           # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
     #------------------------------------------
 #--------------------------

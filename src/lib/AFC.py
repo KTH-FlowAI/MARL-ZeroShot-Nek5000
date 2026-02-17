@@ -20,12 +20,25 @@ class AFC:
       raise NotImplementedError('[ERROR] Please Add the policy function!')
     return action
   
-  def predict(self,observations:dict,state,episode_start,deterministic):
+  def predict(self,observations,state,episode_start,deterministic):
     """
     Return the action to ENV based on the policy 
     """
-    actions = { agent:self.policy(observations[agent]) for agent in observations.keys()}
-    return actions, None
+    if isinstance(observations, dict):
+      actions = {agent: self.policy(observations[agent]) for agent in observations.keys()}
+      return actions, None
+
+    if isinstance(observations, (list, tuple, np.ndarray)):
+      if self.agent_list is None:
+        agents = list(range(len(observations)))
+      else:
+        agents = self.agent_list
+      if len(agents) != len(observations):
+        raise ValueError("[ERROR] Observations length does not match agent_list length.")
+      actions = {agent: self.policy(obs) for agent, obs in zip(agents, observations)}
+      return actions, None
+
+    raise TypeError("[ERROR] observations must be dict, list, tuple, or numpy.ndarray.")
 
 
 

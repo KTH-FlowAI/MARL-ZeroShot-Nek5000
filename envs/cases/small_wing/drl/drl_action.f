@@ -223,7 +223,7 @@ c=============================================
       real avgVX(LX1,LY1,ynel,znel)
       real wrk_buff(LX1,LY1,LZ1,LELT)
       real vf,va,vo
-      real xi, uti 
+      real xi, yi, uti 
       
       ! Handlers for gop average
       integer igs_x,igs_z
@@ -242,8 +242,11 @@ c=============================================
       ! Rescale the actions by local u_tau
 #ifdef UTAU
       do il = 1, NUMCTRL
+        ! Get the position of the control point
         xi = pos_agt(1,il) 
-        call X2Utau(xi,uti) 
+        yi = pos_agt(2,il)
+        call X2Utau(xi,yi,uti) 
+        ! Get the element and face information
         iel = info_agt(1,il) 
         iel = gllel(iel)
         ix = info_agt(3,il) 

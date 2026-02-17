@@ -26,6 +26,8 @@ class Runner:
 
     # A list of lists of control area
     agent_ctrl_area: list = field(default_factory=list)
+    # A list of lists of control side "SS" or "PS", indicating the suction side or pressure side
+    agent_ctrl_side: list = field(default_factory=list)
     # A list of integer to indicate agent case
     agent_run_name: list = field(default_factory=list)
     # A list of string to indicate which policy to read

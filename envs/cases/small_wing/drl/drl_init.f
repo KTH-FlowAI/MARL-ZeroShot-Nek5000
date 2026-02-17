@@ -427,7 +427,7 @@ c=============================================
                 snx = body_cos(ix,iy,iz,ie)
                 sny = body_sin(ix,iy,iz,ie)
 
-                call X2Utau(xw,utaux)       ! Interploation to achieve the friction velocity
+                call X2Utau(xw,yw,utaux)       ! Interploation to achieve the friction velocity, based on x and y 
 
 c------------------------------------------
 c  CASE 1        The benchmark case: 
@@ -435,6 +435,7 @@ c------------------------------------------
                 ynorm = ypctrl * nuctrl / utaux 
 c------------------------------------------
                 ! Inclination due to the surface curvature
+                ! Note on the P.S the angle is already negative, so we don't need to flip the sign
                 dyx = ynorm*snx
                 dyy = ynorm*sny
                 
@@ -473,7 +474,7 @@ c--------------------------------------------------------------------
 
 ! cc: NOTE: This libaray is ought to be updated once you have High-Fidelity Results
 ! c--------------------------------------------------------------------
-         subroutine X2Utau(xw,utaux)
+         subroutine X2Utau(xw,yw,utaux)
 ! cc YW: A subroutine used for interoplation the value of u_tau from the x corrdinates
 ! cc NOTE Suction Side ONLY
 ! cc this is based on the prior knowledge 
@@ -484,7 +485,7 @@ c--------------------------------------------------------------------
          include "SIZE"
          include "DRL"
          integer ix ! Iteration
-         real xw    ! input
+         real xw, yw    ! input
          real utaux ! output utau based on input x
          real pl(10)! Polynominal   
 ! c=============================================
@@ -507,6 +508,7 @@ cc---------------------------------------
 cc Statistics obtained from 0.2% U.S 
 cc valid from 0.2 - 0.9 x/c on the Suction Side 
 cc---------------------------------------
+        if (yw.gt.0) then ! On suction side 
          pl(1)=1.936442
          pl(2)=-36.616019
          pl(3)=305.250200
@@ -517,7 +519,18 @@ cc---------------------------------------
          pl(8)=-5951.648881
          pl(9)=2368.046962
          pl(10)=-401.201730
-
+        else ! On pressure side
+         pl(1)=-1.936442
+         pl(2)=-36.616019
+         pl(3)=305.250200
+         pl(4)=-1413.230899
+         pl(5)=4010.116445
+         pl(6)=-7250.013554
+         pl(7)=8367.411199
+         pl(8)=-5951.648881
+         pl(9)=2368.046962
+         pl(10)=-401.201730
+        endif
 
 ! c Adding up the polynominal 
 ! c-------------------------------------------
