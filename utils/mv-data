@@ -7,6 +7,7 @@ ID="001"
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
     case $1 in
+        --source_root) SOURCE_ROOT="$2"; shift ;; # Set source root
         --case_name) CASE_NAME="$2"; shift ;; # Set case name
         --run_name) RUN_NAME="$2"; shift ;; # Set run name
         --id) ID="$2"; shift ;; # Set id
@@ -15,6 +16,12 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+echo "-------------------------"
+echo "SOURCE_ROOT: ${SOURCE_ROOT}"
+echo "CASE_NAME: ${CASE_NAME}"
+echo "RUN_NAME: ${RUN_NAME}"
+echo "ID: ${ID}"
+echo "-------------------------"
 
 result_path="$SOURCE_ROOT/data/results"
 mkdir -p "$result_path"
