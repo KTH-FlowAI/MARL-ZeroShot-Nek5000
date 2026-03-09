@@ -252,14 +252,6 @@ c-------------------------------------------------
       ! find the normal projection angle 
       snx = body_cos(ix,iy,iz,iel)
       sny = body_sin(ix,iy,iz,iel)
-      ! Check the side 
-      if (y.gt.0) then
-            snx = snx
-            sny = sny
-      else
-            snx = -snx
-            sny = -sny
-      endif
       ! Project onto Cartesia
       ! Positive <=> Blow; Negative <=> Suction n Coordinates
       ux = vf*snx + Vb*snx ! Add uniform suction 

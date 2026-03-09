@@ -356,12 +356,19 @@ c  Step2: Compute the real angle for projecting wall-normal direction at OFF-WAL
                 endif
 !!!! before maximum chamber and over the pressure side (C)
                 if((xpts.le.xnn).AND.(ypts.le.0)) then
-                body_sin(ie,1,1,1)=-bsin
-                body_cos(ie,1,1,1)=-bcos
+                !! Original implementation
+                !body_sin(ie,1,1,1)=-bsin
+                !body_cos(ie,1,1,1)=-bcos
+
+                body_sin(ie,1,1,1)=bsin
+                body_cos(ie,1,1,1)=bcos
                 endif
 !!!! after maximum chamber and over the pressure side (D)
                 if((xpts.gt.xnn).AND.(ypts.le.0)) then
-                body_sin(ie,1,1,1)=-bsin
+                !! Original implementation
+                !body_sin(ie,1,1,1)=-bsin
+                !body_cos(ie,1,1,1)=bcos
+                body_sin(ie,1,1,1)=bsin
                 body_cos(ie,1,1,1)=bcos
                 endif
         enddo ! ie=1,ntot 
@@ -440,8 +447,13 @@ c------------------------------------------
                 dyy = ynorm*sny
                 
                 ! Take the inclination on x,y dir into account 
+                if (yw.ge.0) then
                 xct = xw + dyx 
                 yct = yw + dyy 
+                else
+                xct = xw - dyx 
+                yct = yw - dyy 
+                endif 
                 zct = zw
                 
                 ! Store the position into array

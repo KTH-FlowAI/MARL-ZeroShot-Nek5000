@@ -20,7 +20,7 @@ runner:
     ## A list of float indicating the local u_tau 
     u_tau :  [1.0,1.0,1.0, 1.0, 1.0] # We use local scale from NEK 
     ## A list of float indicating the local dU/dy 
-    dUdy : [1135.83, 940.90, 759.46, 485.32, 1135.83]
+    dUdy : [1135.83, 940.90, 759.46, 485.32, 417.136]
     ## Action bounds in tuple
     action_bounds : [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
     ## The drl update interval 
