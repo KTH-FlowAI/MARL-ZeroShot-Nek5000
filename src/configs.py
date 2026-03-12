@@ -104,6 +104,7 @@ class Simulation:
     ys_bdf:float            = 20.0 # Volume for Body-Force
     amp_bdf :float          = 5.0 # Amplitude for Body-Force
     ret_bdf :float          = 207.0 # Scale for Body-Force, it depends on the uncontrolled channel, but the drl sensing plane depends on the body-force channel
+    gll_unique:int          = 1 # Unique GLL points for DRL (0==No, 1==Yes)
     #--------------------------------
     
     # slurm specific 

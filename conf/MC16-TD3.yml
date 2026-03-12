@@ -64,6 +64,7 @@ simulation:
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
     retau : 180.0 
     y_sensing : 15.0
+    gll_unique : 1  # (if 1 -> DRL, 0->AFC)
     #------------------------------------------
 
     # slurm specific 

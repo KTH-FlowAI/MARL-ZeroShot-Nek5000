@@ -227,6 +227,8 @@ class NEK_INIT():
             fpar.write('userParam%02d = %s \n' % (userp, self.nek.amp_bdf)) # Amplitude for Body-Force
             userp += 1
             fpar.write('userParam%02d = %s \n' % (userp, self.nek.ret_bdf)) # Scale for Body-Force
+            userp += 1
+            fpar.write('userParam%02d = %s \n' % (userp, self.nek.gll_unique)) # Unique GLL points for DRL (0==No, 1==Yes)
             # userp+ = 1
             fpar.write('#---------------------\n')
             fpar.write("\n")

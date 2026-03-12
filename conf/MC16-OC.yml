@@ -55,12 +55,13 @@ simulation:
     #------------------------------------------
     # Generally VERY IMPORTANT
     TOTCTRL : 220        # Be consistent with SIZE
-    nproc   : 10         # ranks for running
+    nproc   : 10         
     ndrl    : 1          # Steps to update the rewards (t^+=0.6)
     znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
     retau : 180.0 
     y_sensing : 15.0
+    gll_unique : 0 
     #------------------------------------------
 
     # slurm specific 
