@@ -2,8 +2,8 @@
     2.610000     NEKTON VERSION
    3 DIMENSIONAL RUN
           118 PARAMETERS FOLLOW
-  1.00000E+00     p001 DENSITY
-  -0.75000E+05     p002  ==> Re=75k
+1.000000E+00	p001	DENSITY
+-2.000000E+05	p002	==>	Re=75k
   0.000000E+00     p003
   0.000000E+00     p004
   0.000000E+00     p005
@@ -12,22 +12,22 @@
   1.00000         p008 CONDUCT
   0.000000E+00     p009
   00.000          p010 FINTIME
-  10.00E+00        p011 NSTEPS
-  -1.000000E-04     p012 DT
+5.000000E+06	p011	NSTEPS
+-1.500000E-05	p012	DT
   20.0000         p013 IOCOMM
   0.000000         p014 IOTIME
-  5000.00E+00      p015 IOSTEP
+5.000000E+00	p015	IOSTEP
   0.000000E+00     p016
   0.000000E+00     p017
   0.500000E-01     p018 GRID < 0 --> # cells on screen
   -1.00000         p019 INTYPE
   3.00000         p020 (default N, for postnek only)
-  1.000000E-08     p021 DIVERGENCE
-  1.000000E-08     p022 HELMHOLTZ
+1.000000E-06	p021	DIVERGENCE
+1.000000E-08	p022	HELMHOLTZ
   0.000000E+00     p023 NPSCAL
   1.000000E-02     p024 TOLREL
   1.000000E-01     p025 TOLABS
-  0.400000         p026 COURANT/NTAU
+2.000000E+00	p026	COURANT/NTAU
   3.00000         p027 TORDER
   0.000000E+00     p028 TORDER: mesh velocity (0: p28=p27)
   0.000000E+00     p029 = magnetic visc if > 0, = -1/Rm if < 0
@@ -52,7 +52,7 @@
   0.000000E+00     p048                         FREE
   0.000000E+00     p049                         ?
   0.000000E+00     p050                         FREE
-  0.000000E+00     p051 YW: occupied by istount
+5.000000E+01	p051	YW:	occupied	by	istount
   0.000000E+00     p052 IOHIS
   0.000000E+00     p053                         FREE
   0.000000E+00     p054 fixed flow rate dir: |p54|=1,2,3=x,y,z
@@ -68,16 +68,16 @@
   0.000000E+00     p064 =1 --> perturbation restart
   0.000000E+00     p065 #iofiles (eg, 0 or 64); <0 --> sep. dirs
   6.000000E+00     p066 output : <0=ascii, else binary
-  3.000000E+00     p067 restart: <0=ascii, else binary
+6.000000E+00	p067	restart:	<0=ascii,	else	binary
   0.000000E+00     p068
   100.0000E+00     p069                         UPRM_PRB
-  5.000000E+00     p070                       L2FREQ Write the La2file
+5.000000E+00	p070	L2FREQ	Write	the	La2file
   0.000000E+00     p071                         FIXGEOM
   0.000000E-05     p072                         NEW_DT
   0.000000E+00     p073                         FREE
   0.000000E+00     p074 verbose Helmholtz
-  50.000000E+00    p075                         CHKPTSTEP pts file 
-  1.000000E+00     p076                         IFCHKPTRST
+2.500000E+03	p075	CHKPTSTEP	pts	file
+1.000000E+00	p076	IFCHKPTRST
   0.00000E+00      p077                          FREE
   2.000000E+00     p078                         RT_KUT
   -2000.000E+00     p079                         RT_CHI
@@ -88,10 +88,10 @@
   0.000000E+00     p084 !=0 --> sets initial timestep if p12>0
   0.000000E+00     p085 dt ratio if p84 !=0, for timesteps>0
   0.000000E+00     p086 reserved
-  2.000000E+00     p087                        STAT_COMP  Time-series frequency 
-  5.000000E+00     p088                        STAT_OUTP Save statistics frequency
-  25.000000E+00    p089 YW: DRL_STEPS
-  1.000000E+00     p090 YW: If ZNMF (<=0 <==> OFF)                       
+1.000000E+01	p087	STAT_COMP	Time-series	frequency
+5.000000E+00	p088	STAT_OUTP	Save	statistics	frequency
+3.000000E+00	p089	YW:	DRL_STEPS
+0.000000E+00	p090	YW:	If	ZNMF	(<=0	<==>	OFF)
   0.000000E+00     p091 Free 
   0.000000E+00     p092 Free
   40.00000E+00     p093 Number of previous pressure solns saved

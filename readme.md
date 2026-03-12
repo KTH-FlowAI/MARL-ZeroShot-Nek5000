@@ -33,6 +33,11 @@
 
         ./utils/compile_case.sh --m small_wing --version v17 --case_name_v17 small_wing
 
++ For the naca0012 nek: 
+
+        ./utils/compile_case.sh --m naca0012_200k --version v17 --case_name_v17 naca_wing
+
+
 ### Running a minimal-channel drl 
 + Run the minimal channel via: 
 
