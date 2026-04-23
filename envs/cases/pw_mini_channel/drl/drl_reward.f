@@ -60,11 +60,7 @@ c       Define variable
 c=============================================
          implicit none
          include 'SIZE'
-         include 'SOLN'     ! vx,vy,vz
-         include 'PARALLEL'
-         ! include 'GEOM'     ! rxm1
-         include 'NEKUSE'
-         include 'TSTEP'
+         include 'TOTAL'
          include 'DRL'
          ! For calculating Derivative
          real duidxj(LX1,LY1,LZ1,lelt,3)
@@ -77,8 +73,11 @@ c=============================================
          real avgVX(LX1,LY1,ynel,znel)
 
          ! Constants:
-         real dnu,rho,tauw(LX1,LY1,LZ1,LELT) ! Density, visousity and wall-shear stress
+         real denu,rho
+         real dudy_i, tau_w, pwvw_i, v3_i
+         real tauw(LX1,LY1,LZ1,LELT) ! Density, visousity and wall-shear stress
          real pwvw(LX1,LY1,LZ1,LELT), v3(LX1,LY1,LZ1,LELT) ! pressure-vel and cubic vel
+         real buffer(LX1,LY1,LZ1,LELT), wrk_buff(LX1,LY1,LZ1,LELT)
 
          ! Iteration
          integer i_evolv
@@ -103,7 +102,7 @@ c-----------------------------------------------
 #endif
          ! Useful constant, rho and viscousity
          rho = param(1)
-         dnu = param(2)
+         denu = param(2)
 
          nxyz=LX1*LY1*LZ1
          ntot=LX1*LY1*LZ1*LELT
@@ -112,7 +111,7 @@ c-----------------------------------------------
             ! call interp_wall_pts
             call gtpp_gs_setup(igs_z,xnel*ynel,1,znel,3) ! z-avx
             call gtpp_gs_setup(igs_x,xnel,ynel,znel,1) ! x-avx
-            if (NID.eq.0) print *, "[REWARD] AVG HANDLE INIT!",igs_z,igs_x
+            if (NID.eq.0) print *, "[REWARD] HANDLE INIT!",igs_z,igs_x
          endif
 
 c-----------------------------------------------
@@ -163,7 +162,107 @@ c-----------------------------------------------
          ! where <p_w> is the spatial mean of the wall pressure
 
 ! take the pressure field from the solution:
-         call copy(pwvw(1,1,1,1),p(1,1,1,1),ntot)
+         call copy(buffer(1,1,1,1),pr(1,1,1,1),ntot)
+! Initialize the buffer
+         call copy(pwvw(1,1,1,1),pr(1,1,1,1),ntot)
+!------- NOTE  THIS ONLY WORKED FOR NEW version!-----------
+         if (rwd_zavg) then
+            ! call gtpp_gs_setup(igs_z,xnel*ynel,1,znel,3) ! z-avx
+            call planar_avg(avgV,buffer,igs_z)
+            ! Update the Reward
+            call copy(buffer,avgV,ntot)
+#ifdef YWDEBUG
+            if (NID.eq.0) print *, "[REWARD] Z-AVG Pressure!"
+#endif
+         endif ! if (rwd_zavg)
+
+         ! Do streamwise average if it allowed/defined
+         if (rwd_xavg) then
+            ! call gtpp_gs_setup(igs_x,xnel,ynel,znel,1) ! x-avx
+            call planar_avg(avgV,buffer,igs_x)
+            ! Update the avgeraged Reward
+            call copy(buffer,avgV,ntot)
+#ifdef YWDEBUG
+            if (NID.eq.0) print *, "[REWARD] X-AVG Pressure!"
+#endif
+         endif
+
+         ! Subtract the mean pressure from the pressure field
+         call sub3(wrk_buff,pwvw,buffer) ! wrk_buff = p' = p - <p>
+         ! Now replace the <p> with p'
+         call copy(buffer(1,1,1,1),wrk_buff(1,1,1,1),ntot) ! buffer <- wrk_buff
+         ! bring up the wall-actuation from ACTION buffer
+         call copy(wrk_buff(1,1,1,1),ACTIONS(1,1,1,1),ntot)
+         ! multiply pwvw = p' * v_w
+         call col3(pwvw,buffer,wrk_buff)
+         ! Take abstract value of it
+         pwvw = abs(pwvw)
+
+! Now average the pwvw field too
+! take the pressure field from the solution:
+         call copy(buffer(1,1,1,1),pwvw(1,1,1,1),ntot)
+!------- NOTE  THIS ONLY WORKED FOR NEW version!-----------
+         if (rwd_zavg) then
+            ! call gtpp_gs_setup(igs_z,xnel*ynel,1,znel,3) ! z-avx
+            call planar_avg(avgV,buffer,igs_z)
+            ! Update the Reward
+            call copy(buffer,avgV,ntot)
+#ifdef YWDEBUG
+            if (NID.eq.0) print *, "[REWARD] Z-AVG Pressure!"
+#endif
+         endif ! if (rwd_zavg)
+
+         ! Do streamwise average if it allowed/defined
+         if (rwd_xavg) then
+            ! call gtpp_gs_setup(igs_x,xnel,ynel,znel,1) ! x-avx
+            call planar_avg(avgV,buffer,igs_x)
+            ! Update the avgeraged Reward
+            call copy(buffer,avgV,ntot)
+#ifdef YWDEBUG
+            if (NID.eq.0) print *, "[REWARD] X-AVG Pressure!"
+#endif
+         endif
+
+         ! Put it back
+         call copy(pwvw(1,1,1,1),buffer(1,1,1,1),ntot)
+
+
+
+c-----------------------------------------------
+c: Step 5: Caculate the Cubic velocity
+c-----------------------------------------------
+         ! The term is expressed as <|v^3_w|>
+
+! take the action field from the solution:
+         call copy(v3(1,1,1,1),ACTIONS(1,1,1,1),ntot)
+! Take cubic of its abs:
+         v3 = abs(v3**3)
+! Copy by buffer to do average
+         call copy(buffer(1,1,1,1),v3(1,1,1,1),ntot)
+!------- NOTE  THIS ONLY WORKED FOR NEW version!-----------
+         if (rwd_zavg) then
+            ! call gtpp_gs_setup(igs_z,xnel*ynel,1,znel,3) ! z-avx
+            call planar_avg(avgV,buffer,igs_z)
+            ! Update the Reward
+            call copy(buffer,avgV,ntot)
+#ifdef YWDEBUG
+            if (NID.eq.0) print *, "[REWARD] Z-AVG Pressure!"
+#endif
+         endif ! if (rwd_zavg)
+
+         ! Do streamwise average if it allowed/defined
+         if (rwd_xavg) then
+            ! call gtpp_gs_setup(igs_x,xnel,ynel,znel,1) ! x-avx
+            call planar_avg(avgV,buffer,igs_x)
+            ! Update the avgeraged Reward
+            call copy(buffer,avgV,ntot)
+#ifdef YWDEBUG
+            if (NID.eq.0) print *, "[REWARD] X-AVG Pressure!"
+#endif
+         endif
+
+         ! Put it back
+         call copy(v3(1,1,1,1),buffer(1,1,1,1),ntot)
 
 c-----------------------------------------------
 c: Step Last: Get the value at the Agent
@@ -179,7 +278,19 @@ c-----------------------------------------------
             ix=info_agt(3,il)
             iy=info_agt(4,il)
             iz=info_agt(5,il)
-            rwd_i=velV(ix,iy,iz,ie)
+
+            !---------------------
+            ! The reward cacluation
+            !---------------------
+            dudy_i=velV(ix,iy,iz,ie) ! dudy
+            tau_w = rho * denu  * dudy_i ! tau_w = rho * \nu * dudy
+            pwvw_i=pwvw(ix,iy,iz,ie)
+            v3_i=v3(ix,iy,iz,ie)
+            ! Reward on the numerator
+            rwd_i = tau_w + pwvw_i + v3_i
+            !---------------------
+
+            ! Copy the current reward
             rwd_c=rwd_agt(il)
 
             ! Moving Average
@@ -270,7 +381,7 @@ c-----------------------------------------------
             ! call interp_wall_pts
             call gtpp_gs_setup(igs_z,xnel*ynel,1,znel,3) ! z-avx
             call gtpp_gs_setup(igs_x,xnel,ynel,znel,1) ! x-avx
-            if (NID.eq.0) print *, "[REWARD] AVG HANDLE INIT!",igs_z,igs_x
+            if (NID.eq.0) print *, "[REWARD] HANDLE INIT!",igs_z,igs_x
          endif
 
 c-----------------------------------------------
@@ -623,7 +734,8 @@ c     What follows computes some statistics ...
                open(unit=55,file='reward.dat',status='old',
      &            position='append',action='write')
             else
-               open(unit=55,file='reward.dat',status='new',action='write')
+               open(unit=55,file='reward.dat',
+     &              status='new',action='write')
                write(55,'(A)')
      $         '  time ut Ret t+ mu'
 
