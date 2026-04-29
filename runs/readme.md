@@ -8,7 +8,12 @@ Output folder for all training and evaluation runs. Each subdirectory is named b
 | ID   | Config                  | Reward                       | Description |
 |------|-------------------------|------------------------------|-------------|
 | 2001 | MC16-TD3-ng-val.yml     | NETGAIN α=1 β=0 γ=0          | Validation: pure drag reduction via net-gain code path |
-| 2002 | MC16-TD3-ng-full.yml    | NETGAIN α=1 β=1 γ=1          | Full net-gain: drag reduction minus actuator costs |
+| 2002 | MC16-TD3-ng-full.yml    | NETGAIN α=1 β=1 γ=1          | Full net-gain: drag reduction minus actuator costs (old R_v3 norm) |
+| 2003 | MC16-TD3-ng-100.yml     | NETGAIN α=1 β=0 γ=0          | Pure drag reduction; R_v3/u_τ³ normalisation |
+| 2004 | MC16-TD3-ng-110.yml     | NETGAIN α=1 β=1 γ=0          | Drag reduction + pressure-velocity cost |
+| 2005 | MC16-TD3-ng-111.yml     | NETGAIN α=1 β=1 γ=1          | Full net-gain with R_v3/u_τ³ normalisation |
+| 2006 | MC16-TD3-ng-011.yml     | NETGAIN α=0 β=1 γ=1          | Actuator costs only (no drag term); ablation |
+| 2007 | MC16-TD3-ng-101.yml     | NETGAIN α=1 β=0 γ=1          | Drag reduction + kinetic energy cost only |
 
 ## Directory layout
 

@@ -31,11 +31,11 @@ runner:
     keep_frac     : 0.25
     buffer_mode   : 'rotate'
 
-    seed            : 2002
+    seed            : 2003
 
     random_init     : 6
     rank            : 1
-    agent_run_name  : 2002
+    agent_run_name  : 2003
 
     evaluation      : False
     learnt_policy   : False
@@ -43,11 +43,11 @@ runner:
     u_tau           : 0.0638
     dUdy            : 12.4271
 
-    # Net-gain reward — full: equal weight on drag reduction and actuator costs
+    # Net-gain reward — alpha only: pure drag reduction (R_tau); no actuator costs
     reward_fn       : net_gain
     reward_alpha    : 1.0
-    reward_beta     : 1.0
-    reward_gamma    : 1.0
+    reward_beta     : 0.0
+    reward_gamma    : 0.0
 
 
 simulation:
