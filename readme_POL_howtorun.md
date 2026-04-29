@@ -1,11 +1,3 @@
-# How to Run a Training — End-to-End Guide
-
-**Author:** pol.suarez  
-**Cluster:** JUWELS (Forschungszentrum Jülich)  
-**Date:** 2026-04-29
-
----
-
 ## Overview
 
 This guide walks through a complete training cycle:
