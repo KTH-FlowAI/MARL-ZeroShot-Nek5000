@@ -58,6 +58,10 @@ Note: set `simulation.solver_version: "v17"` in the meta config when using NEK50
         
         python utils/read-history --id 1998 --mean 
 
++ Live multi-run monitoring (total reward + R_τ / R_pw / R_v3 components):
+
+        python utils/monitor_runs.py    # saves utils/monitor_runs.png
+
 + To visualize snapshots via VISIT: 
 
         visit -o utils/nek_visit.NEK5000 

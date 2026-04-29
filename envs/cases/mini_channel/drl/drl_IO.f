@@ -48,13 +48,25 @@ c=============================================
             
             call nekgsync()
             
-            if (i_evolv.eq.drl_step) then 
-            if(NUMCTRL.ne.0) then 
+            if (i_evolv.eq.drl_step) then
+            if(NUMCTRL.ne.0) then
+#ifdef NETGAIN
+            call copy(send_buff(1),rwd_tau(1),TOTCTRL)
+            call MPI_SEND(send_buff, TOTCTRL, MPI_DOUBLE,
+     $                  0, NID+80000, DRL_COMM, ierr)
+            call copy(send_buff(1),rwd_pw(1),TOTCTRL)
+            call MPI_SEND(send_buff, TOTCTRL, MPI_DOUBLE,
+     $                  0, NID+81000, DRL_COMM, ierr)
+            call copy(send_buff(1),rwd_v3(1),TOTCTRL)
+            call MPI_SEND(send_buff, TOTCTRL, MPI_DOUBLE,
+     $                  0, NID+82000, DRL_COMM, ierr)
+#else
             call copy(send_buff(1),rwd_agt(1),TOTCTRL)
-            call MPI_SEND(send_buff, TOTCTRL, MPI_DOUBLE, 
-     $                  0, NID+80000, 
+            call MPI_SEND(send_buff, TOTCTRL, MPI_DOUBLE,
+     $                  0, NID+80000,
      $                  DRL_COMM, ierr)
-            else ! 
+#endif
+            else !
             call copy(send_buff(1),rwd_agt(1),TOTCTRL)
             endif ! if(NUMCTRL.ne.0)
             endif ! if (i_evolv eq. drl_step)

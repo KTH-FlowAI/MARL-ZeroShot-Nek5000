@@ -12,7 +12,11 @@ from mpi4py import MPI
 # Tensorboard
 from stable_baselines3.common.vec_env import VecMonitor
 from stable_baselines3.common.logger import configure
-from lib.replay_buffer import SubsampleOnInsertBuffer, SelectiveReplayBuffer
+try:
+    from lib.replay_buffer import SubsampleOnInsertBuffer, SelectiveReplayBuffer
+except ModuleNotFoundError:
+    SubsampleOnInsertBuffer = None
+    SelectiveReplayBuffer = None
 import yaml
 import os
 import pickle

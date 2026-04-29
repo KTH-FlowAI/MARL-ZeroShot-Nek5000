@@ -52,8 +52,12 @@
         parameter(act_xavg=.TRUE.,act_zavg=.TRUE.)  ! REWARD
 
         common /YW_drl / NUMCTRL,inth_hpts1,
-     $                   iwk,rwk, val_obs,        
-     $                   pos_obs,pos_agt,rwd_agt !Real for ctrl 
+     $                   iwk,rwk, val_obs,
+     $                   pos_obs,pos_agt,rwd_agt !Real for ctrl
+
+! Separate reward components for weighted combination (used with NETGAIN flag)
+        real rwd_tau(totctrl), rwd_pw(totctrl), rwd_v3(totctrl)
+        common /drl_netgain/ rwd_tau, rwd_pw, rwd_v3
         common /drl_act/ actions, msk_act
         common /drl_IO/  agent_own,iptctl,proc,w_u,mult_local
         common /drl_buff/ info_agt

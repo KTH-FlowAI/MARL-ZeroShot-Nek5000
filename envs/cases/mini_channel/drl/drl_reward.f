@@ -38,7 +38,11 @@ c=============================================
         ! YW: OCT15 I got a issue regarding the MEMORY
         ! I comment this and will test it on cluster in the future.
         !-----------------
+#ifdef NETGAIN
+        call compute_netGain(i_evolv)
+#else
         call compute_dudy(i_evolv)
+#endif
         !-----------------
         call drl_reward_out(i_evolv)
         
@@ -198,6 +202,152 @@ c-----------------------------------------------
 
         end subroutine compute_dudy
 
+
+c------------------------------------------------------------------
+      subroutine compute_netGain(i_evolv)
+c Net energy saving: sends (tau_w + |p'_w*v_w| + 0.5*|v^3_w|) to Python
+c Python reward = 1 - sent/tau_w_ref = (Cf_ref - Cf_ctrl - win) / Cf_ref
+c where win = |p'_w*v_w| + 0.5*|v^3_w|
+c=============================================
+c       Define variable
+c=============================================
+         implicit none
+         include 'SIZE'
+         include 'TOTAL'
+         include 'DRL'
+         real duidxj(LX1,LY1,LZ1,lelt,3)
+         real devU1(LX1,LY1,LZ1,lelt)
+
+         real velV(LX1,LY1,LZ1,LELT),avgV(LX1,LY1,LZ1,LELT)
+         real avgVZ(LX1,LY1,xnel,ynel)
+         real avgVX(LX1,LY1,ynel,znel)
+
+         real denu,rho
+         real dudy_i, tau_w, pwvw_i, v3_i
+         real tauw(LX1,LY1,LZ1,LELT)
+         real pwvw(LX1,LY1,LZ1,LELT), v3(LX1,LY1,LZ1,LELT)
+         real buffer(LX1,LY1,LZ1,LELT), wrk_buff(LX1,LY1,LZ1,LELT)
+
+         integer i_evolv
+         real    rwd_i, rwd_c
+         integer im, jm, km, fmid(6)
+         integer ie,iface,ix,iy,iz,lgi
+         integer NEL,nfaces,KX1,KX2,KY1,KY2,KZ1,KZ2
+         integer ntot,nxyz
+         integer igs_x,igs_z
+         save igs_x,igs_z
+         integer il,jl,kl,ll,ilx,ily
+         character*4 str, str1
+c=============================================
+c       Function
+c=============================================
+         rho  = param(1)
+         denu = param(2)
+
+         nxyz=LX1*LY1*LZ1
+         ntot=LX1*LY1*LZ1*LELT
+
+         if (igs_z.eq.0.and.igs_x.eq.0) then
+            call gtpp_gs_setup(igs_z,xnel*ynel,1,znel,3)
+            call gtpp_gs_setup(igs_x,xnel,ynel,znel,1)
+            if (NID.eq.0) print *, "[REWARD] NETGAIN HANDLE INIT!",
+     $                             igs_z,igs_x
+         endif
+
+c------- Step 1: Compute dUdy and apply spatial average
+         call copy(devU1(1,1,1,1),vx(1,1,1,1),ntot)
+         call gradm1(duidxj(1,1,1,1,1),
+     $               duidxj(1,1,1,1,2),
+     $               duidxj(1,1,1,1,3),
+     $               devU1(1,1,1,1))
+         call copy(velV(1,1,1,1),duidxj(1,1,1,1,2),ntot)
+
+         if (rwd_zavg) then
+            call planar_avg(avgV,velV,igs_z)
+            call copy(velV,avgV,ntot)
+         endif
+         if (rwd_xavg) then
+            call planar_avg(avgV,velV,igs_x)
+            call copy(velV,avgV,ntot)
+         endif
+
+c------- Step 2: Compute pressure-velocity term |p'_w * v_w|
+         call copy(buffer(1,1,1,1),pr(1,1,1,1),ntot)
+         call copy(pwvw(1,1,1,1),pr(1,1,1,1),ntot)
+         if (rwd_zavg) then
+            call planar_avg(avgV,buffer,igs_z)
+            call copy(buffer,avgV,ntot)
+         endif
+         if (rwd_xavg) then
+            call planar_avg(avgV,buffer,igs_x)
+            call copy(buffer,avgV,ntot)
+         endif
+         call sub3(wrk_buff,pwvw,buffer,ntot)
+         call copy(buffer(1,1,1,1),wrk_buff(1,1,1,1),ntot)
+         call copy(wrk_buff(1,1,1,1),ACTIONS(1,1,1,1),ntot)
+         call col3(pwvw,buffer,wrk_buff,ntot)
+         pwvw = abs(pwvw)
+
+         call copy(buffer(1,1,1,1),pwvw(1,1,1,1),ntot)
+         if (rwd_zavg) then
+            call planar_avg(avgV,buffer,igs_z)
+            call copy(buffer,avgV,ntot)
+         endif
+         if (rwd_xavg) then
+            call planar_avg(avgV,buffer,igs_x)
+            call copy(buffer,avgV,ntot)
+         endif
+         call copy(pwvw(1,1,1,1),buffer(1,1,1,1),ntot)
+
+c------- Step 3: Compute kinetic energy term 0.5*|v^3_w|
+         call copy(v3(1,1,1,1),ACTIONS(1,1,1,1),ntot)
+         v3 = 0.5 * abs(v3**3)
+         call copy(buffer(1,1,1,1),v3(1,1,1,1),ntot)
+         if (rwd_zavg) then
+            call planar_avg(avgV,buffer,igs_z)
+            call copy(buffer,avgV,ntot)
+         endif
+         if (rwd_xavg) then
+            call planar_avg(avgV,buffer,igs_x)
+            call copy(buffer,avgV,ntot)
+         endif
+         call copy(v3(1,1,1,1),buffer(1,1,1,1),ntot)
+
+c------- Step 4: Assemble reward at each agent location
+         if (i_evolv.eq.1) call rzero(rwd_agt,TOTCTRL)
+
+         do il=1,NUMCTRL
+            ie=info_agt(1,il)
+            ie=gllel(ie)
+            iface=info_agt(2,il)
+            ix=info_agt(3,il)
+            iy=info_agt(4,il)
+            iz=info_agt(5,il)
+
+            dudy_i = velV(ix,iy,iz,ie)
+            tau_w  = rho * denu * dudy_i
+            pwvw_i = pwvw(ix,iy,iz,ie)
+            v3_i   = v3(ix,iy,iz,ie)
+
+            if (i_evolv.eq.1) then
+               rwd_tau(il) = tau_w
+               rwd_pw(il)  = pwvw_i
+               rwd_v3(il)  = v3_i
+            else
+               rwd_tau(il) = (rwd_tau(il)*i_evolv + tau_w)
+     $                     / (i_evolv+1)
+               rwd_pw(il)  = (rwd_pw(il)*i_evolv + pwvw_i)
+     $                     / (i_evolv+1)
+               rwd_v3(il)  = (rwd_v3(il)*i_evolv + v3_i)
+     $                     / (i_evolv+1)
+            endif
+         enddo
+
+#ifdef YWDEBUG
+         if (NID.eq.0) print *, "[REWARD] NETGAIN ASSIGNED!"
+#endif
+
+      end subroutine compute_netGain
 
 
 c------------------------------------------------------------------

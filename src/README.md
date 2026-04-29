@@ -1,11 +1,17 @@
 # Source code
 
 This folder contains the code to train and evaluate the MARL agents:
-- **configs.py**: contains the default configuration of all the parameters
-- **run.py** and **evaluate.py**: contain the routines to train and evaluate the agents, respectively. 
-- **nek_marl.py**: contains the definition of the environment using the PettingZoo/Gym framework for DRL.
-- **lib/**: contains additional routines to generate the solver input files, for instance.
+- **configs.py**: default configuration schema (`Runner` and `Simulation` dataclasses). Reward
+  parameters (`reward_fn`, `reward_alpha/beta/gamma`) live here.
+- **run.py** and **evaluate.py**: training and deterministic evaluation loops.
+- **nek_marl.py**: PettingZoo environment + MPI communication with NEK5000.
+  Implements `_normalize_reward()` for both `dudy` and `net_gain` reward functions.
+- **lib/**:
+  - `sb3_utils.py` — SB3 model init, callbacks, MPI split
+  - `nek_utils.py` — run folder setup, restart file management
+  - `reward_logger.py` — real-time CSV logging of per-step rewards and reward components
+    (`mean_R_tau`, `mean_R_pw`, `mean_R_v3`) to `history/rewards_aggregated_*.csv`
 
-A script for evaluation is also provided
-- **evaluate-script.sh**: allows to run several evaluations at the same time. The evaluation runs are saved in the `runs/[timestamp]/` folder.  
+A script for evaluation is also provided:
+- **evaluate-script.sh**: runs several evaluations at once; results saved in `runs/[timestamp]/`.
 

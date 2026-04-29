@@ -95,8 +95,9 @@ class RewardLogger:
             self.aggregated_file_handle = open(self.aggregated_file, 'w', newline='')
             self.aggregated_writer = csv.writer(self.aggregated_file_handle)
             # Write header
-            header = ['timestamp', 'episode', 'step', 'mean_reward', 'std_reward', 
-                     'min_reward', 'max_reward', 'total_reward', 'num_agents']
+            header = ['timestamp', 'episode', 'step', 'mean_reward', 'std_reward',
+                     'min_reward', 'max_reward', 'total_reward', 'num_agents',
+                     'mean_R_tau', 'mean_R_pw', 'mean_R_v3']
             self.aggregated_writer.writerow(header)
             
         if self.episode_writer is None:
@@ -107,11 +108,12 @@ class RewardLogger:
                      'min_reward', 'max_reward', 'total_reward', 'duration_seconds']
             self.episode_writer.writerow(header)
     
-    def log_rewards(self, 
-                   rewards: Dict[str, float], 
+    def log_rewards(self,
+                   rewards: Dict[str, float],
                    dUdy_raw: Optional[Dict[str, float]] = None,
                    episode: Optional[int] = None,
-                   step: Optional[int] = None):
+                   step: Optional[int] = None,
+                   components: Optional[Dict[str, float]] = None):
         """
         Log rewards for all agents.
         
@@ -153,8 +155,12 @@ class RewardLogger:
         
         # Log aggregated rewards
         if self.log_aggregated:
-            row = [current_time, episode, step, mean_reward, std_reward, 
-                   min_reward, max_reward, total_reward, num_agents]
+            c = components or {}
+            row = [current_time, episode, step, mean_reward, std_reward,
+                   min_reward, max_reward, total_reward, num_agents,
+                   c.get('R_tau', float('nan')),
+                   c.get('R_pw',  float('nan')),
+                   c.get('R_v3',  float('nan'))]
             self.aggregated_writer.writerow(row)
         
         # Store in buffer for episode summary

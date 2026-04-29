@@ -134,8 +134,12 @@ class parallel_env(ParallelEnv):
         self.action_shape=[1,]
 
         # -----------REWARD--------------
+        self.reward_fn = self.conf.runner.reward_fn
         # Baseline Reward
-        self.baseline_dudy=self.conf.runner.dUdy # For N=5 @ x/c = 0.4 
+        self.baseline_dudy=self.conf.runner.dUdy # For N=5 @ x/c = 0.4
+        # tau_wall = nu * dUdy; nu = 1/|viscosity| when viscosity < 0 (NEK convention)
+        nu = 1.0 / abs(self.conf.simulation.viscosity)
+        self.baseline_tau_wall = nu * self.baseline_dudy
         # Reward history logging variables
         self.restart_index = 0
         self.act_index = 0
@@ -528,25 +532,39 @@ class parallel_env(ParallelEnv):
             # Recv Buffer only at the last step, reduce the work load of MPI.
             #--------------------------------
             if i_evolv == self.conf.simulation.ndrl:
-                ws_stress_buffer=np.ndarray(shape=(self.nNID,self.conf.simulation.TOTCTRL,),
-                                    dtype=tag_dict["REWRD"]['py_dtype'])
-                # Recv Data from the expected NID 
-                for il, nid in enumerate(self.uniqID):
-                    recv_buffer=np.ndarray(shape=(self.conf.simulation.TOTCTRL,),dtype=np.float64)
-                    self.sub_comm.Recv([recv_buffer,tag_dict['REWRD']['mpi_dtype']],
-                                        nid,tag=nid+tag_dict["REWRD"]['tag'])
-                    ws_stress_buffer[il,:] = recv_buffer
-                # Expand the dimension to fit the _distribute_field 
-                ws_stress_buffer = self._distribute_field({'fld':np.expand_dims(ws_stress_buffer,1)},
-                                                            reward=True)
+                TOTCTRL = self.conf.simulation.TOTCTRL
+                if self.reward_fn == 'net_gain':
+                    tau_buf = np.ndarray(shape=(self.nNID, TOTCTRL), dtype=np.float64)
+                    pw_buf  = np.ndarray(shape=(self.nNID, TOTCTRL), dtype=np.float64)
+                    v3_buf  = np.ndarray(shape=(self.nNID, TOTCTRL), dtype=np.float64)
+                    for il, nid in enumerate(self.uniqID):
+                        rb = np.ndarray(shape=(TOTCTRL,), dtype=np.float64)
+                        self.sub_comm.Recv([rb, MPI.DOUBLE], nid, tag=nid+tag_dict['REWRD']['tag'])
+                        tau_buf[il, :] = rb
+                        self.sub_comm.Recv([rb, MPI.DOUBLE], nid, tag=nid+tag_dict['REWRD_PW']['tag'])
+                        pw_buf[il, :] = rb
+                        self.sub_comm.Recv([rb, MPI.DOUBLE], nid, tag=nid+tag_dict['REWRD_V3']['tag'])
+                        v3_buf[il, :] = rb
+                    tau_dist = self._distribute_field({'fld': np.expand_dims(tau_buf, 1)}, reward=True)
+                    pw_dist  = self._distribute_field({'fld': np.expand_dims(pw_buf,  1)}, reward=True)
+                    v3_dist  = self._distribute_field({'fld': np.expand_dims(v3_buf,  1)}, reward=True)
+                else:
+                    ws_stress_buffer = np.ndarray(shape=(self.nNID, TOTCTRL),
+                                                  dtype=tag_dict["REWRD"]['py_dtype'])
+                    for il, nid in enumerate(self.uniqID):
+                        recv_buffer = np.ndarray(shape=(TOTCTRL,), dtype=np.float64)
+                        self.sub_comm.Recv([recv_buffer, tag_dict['REWRD']['mpi_dtype']],
+                                           nid, tag=nid+tag_dict["REWRD"]['tag'])
+                        ws_stress_buffer[il, :] = recv_buffer
+                    ws_stress_buffer = self._distribute_field(
+                        {'fld': np.expand_dims(ws_stress_buffer, 1)}, reward=True)
             #--------------------------------
             i_evolv +=1
         #---- While Loop End here---------
 
-        # Scale the dUdy to be reward in 0.0~1.0
+        # Compute normalized rewards
         rewards = {}
-        mean_reward = 0; num_rwd=0
-        for il, nid in enumerate(self.uniqID): 
+        for il, nid in enumerate(self.uniqID):
             indx = np.where((self.agent_info['NID']==nid))[0]
             for jl, gllid in enumerate(self.agent_info['GLLID'][indx]):
                 agent_name = self.nameAgent(nid=nid,gllid=gllid,
@@ -555,25 +573,38 @@ class parallel_env(ParallelEnv):
                                             iy=self.agent_info['iy'][indx][jl],
                                             iz=self.agent_info['iz'][indx][jl],
                                             )
-                
-                r_reward   = ws_stress_buffer[agent_name]
-                i_reward   = self._normalize_reward(r_reward)
+                if self.reward_fn == 'net_gain':
+                    i_reward = self._normalize_reward(
+                        tau_w=tau_dist[agent_name],
+                        pw=pw_dist[agent_name],
+                        v3=v3_dist[agent_name],
+                    )
+                    r_reward = tau_dist[agent_name]  # for logging
+                else:
+                    r_reward = ws_stress_buffer[agent_name]
+                    i_reward = self._normalize_reward(dudy=r_reward)
                 rewards[agent_name] = i_reward
 
-        # Logging reward for debugging and further analysis
+        # Logging
         self.reward_log.append(i_reward)
-        
-        # Real-time reward logging
-        dUdy_raw_dict = {agent_name: r_reward.squeeze() for agent_name in rewards.keys()}
+        raw_dict = {agent_name: r_reward.squeeze() for agent_name in rewards.keys()}
+        if self.reward_fn == 'net_gain':
+            ref = self.baseline_tau_wall
+            components = {
+                'R_tau': float(1.0 - np.mean([np.mean(tau_dist[a]) for a in rewards]) / ref),
+                'R_pw':  float(-np.mean([np.mean(pw_dist[a])  for a in rewards]) / ref),
+                'R_v3':  float(-np.mean([np.mean(v3_dist[a])  for a in rewards]) / ref),
+            }
+        else:
+            components = None
         self.reward_logger.log_rewards(
             rewards=rewards,
-            dUdy_raw=dUdy_raw_dict,
+            dUdy_raw=raw_dict,
             episode=self.restart_index,
-            step=self.act_index
+            step=self.act_index,
+            components=components,
         )
-        
-        
-        print(f"[LOGGER] act_index={self.act_index} dUdy={r_reward.squeeze():.5f} R={i_reward:.5f} ",flush=True)
+        print(f"[LOGGER] act_index={self.act_index} raw_rwd={r_reward.squeeze():.5f} R={i_reward:.5f} fn={self.reward_fn}",flush=True)
         
         return rewards
         
@@ -693,9 +724,24 @@ class parallel_env(ParallelEnv):
         else:
             raise NotImplementedError("[REWARD] Please Choose Available Assign Method!")
 
-    def _normalize_reward(self,reward):
-        """Normalizing the reward in the range of 0~1""" 
-        return (1 - (np.mean(reward)/self.baseline_dudy))
+    def _normalize_reward(self, dudy=None, tau_w=None, pw=None, v3=None):
+        """Compute scalar reward from raw Fortran buffers.
+
+        'dudy' mode  : R = 1 - dUdy / dUdy_ref
+        'net_gain'   : R = alpha*(1 - tau_w/ref) + beta*(-pw/ref) + gamma*(-v3/ref)
+                         = alpha*R_wallshear + beta*R_pw + gamma*R_v3
+        """
+        ref = self.baseline_tau_wall
+        if self.reward_fn == 'net_gain':
+            alpha = self.conf.runner.reward_alpha
+            beta  = self.conf.runner.reward_beta
+            gamma = self.conf.runner.reward_gamma
+            R_wallshear = 1.0 - np.mean(tau_w) / ref
+            R_pw        = -np.mean(pw)  / ref
+            R_v3        = -np.mean(v3)  / ref
+            return alpha * R_wallshear + beta * R_pw + gamma * R_v3
+        else:
+            return 1.0 - (np.mean(dudy) / self.baseline_dudy)
 
     
     def restart_handle(self):
@@ -878,6 +924,18 @@ tag_dict = {
                         },
             
             'REWRD':{"tag":80000,
+                        "mpi_dtype":MPI.DOUBLE,
+                        'py_dtype':np.float64,
+                        'cate':'request',
+                        },
+
+            'REWRD_PW':{"tag":81000,
+                        "mpi_dtype":MPI.DOUBLE,
+                        'py_dtype':np.float64,
+                        'cate':'request',
+                        },
+
+            'REWRD_V3':{"tag":82000,
                         "mpi_dtype":MPI.DOUBLE,
                         'py_dtype':np.float64,
                         'cate':'request',

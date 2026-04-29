@@ -76,6 +76,10 @@ class Runner:
     
     u_tau:float         = 0.047
     dUdy:float          = 12.875
+    reward_fn:str       = 'dudy'  # 'dudy' or 'net_gain' (requires NETGAIN compile flag in Fortran)
+    reward_alpha:float  = 1.0    # weight on R_wallshear = 1 - tau_w/tau_w_ref
+    reward_beta:float   = 1.0    # weight on R_pw        = -|p'v|/tau_w_ref
+    reward_gamma:float  = 1.0    # weight on R_v3        = -0.5|v^3|/tau_w_ref
 
 
 @dataclass 
