@@ -650,7 +650,7 @@ class parallel_env(ParallelEnv):
             mean_action=0;num_=0
             for il, aval in enumerate(ctrl_value.values()):
                 mean_action+=aval
-                num_ =+il 
+                num_ +=1
             mean_action/=num_
             
             for agent_name in ctrl_value.keys():

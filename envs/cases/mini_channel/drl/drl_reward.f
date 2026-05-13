@@ -167,11 +167,11 @@ c-----------------------------------------------
         rwd_c=rwd_agt(il)
         
         ! Moving Average
-        if (i_evolv.eq.1) then 
+        if (i_evolv.eq.1) then
         rwd_agt(il)=rwd_i
         else
-        rwd_agt(il)=(rwd_c*i_evolv+rwd_i)/(i_evolv+1) 
-        endif 
+        rwd_agt(il)=(rwd_c*(i_evolv-1)+rwd_i)/i_evolv
+        endif
 
         enddo ! do il=1,NUMCTRL
 
@@ -334,12 +334,12 @@ c------- Step 4: Assemble reward at each agent location
                rwd_pw(il)  = pwvw_i
                rwd_v3(il)  = v3_i
             else
-               rwd_tau(il) = (rwd_tau(il)*i_evolv + tau_w)
-     $                     / (i_evolv+1)
-               rwd_pw(il)  = (rwd_pw(il)*i_evolv + pwvw_i)
-     $                     / (i_evolv+1)
-               rwd_v3(il)  = (rwd_v3(il)*i_evolv + v3_i)
-     $                     / (i_evolv+1)
+               rwd_tau(il) = (rwd_tau(il)*(i_evolv-1) + tau_w)
+     $                     / i_evolv
+               rwd_pw(il)  = (rwd_pw(il)*(i_evolv-1) + pwvw_i)
+     $                     / i_evolv
+               rwd_v3(il)  = (rwd_v3(il)*(i_evolv-1) + v3_i)
+     $                     / i_evolv
             endif
          enddo
 

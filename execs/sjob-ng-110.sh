@@ -4,7 +4,7 @@
 #SBATCH -p batch
 #SBATCH --exclusive
 #SBATCH -N 1
-#SBATCH --ntasks-per-node=11
+#SBATCH --ntasks-per-node=41
 #SBATCH --cpus-per-task=1
 #SBATCH -J ng-110
 #SBATCH --mail-type=ALL
@@ -18,8 +18,10 @@ export UCX_WARN_UNUSED_ENV_VARS=n
 export HWLOC_HIDE_ERRORS=1
 export UCX_TLS=sm,self,tcp,cma,sysv,posix
 export OMPI_MCA_btl=self,vader,tcp
+unset PYTHONPATH
 LOG_DIR="log-files"
 mkdir -p ${LOG_DIR}
+PYTHON_EXE="/p/project1/deepwing/polsm/env_setup/miniforge3/envs/nek/bin/python"
 
 echo "Starting at $(date)"
 echo "Running on hosts: $SLURM_NODELIST"
@@ -29,7 +31,7 @@ CONFIG_NAME="MC16-TD3-ng-110.yml"
 RUN_MODE="run"
 echo "DRL CONFIG: ${CONFIG_NAME}, RUN MODE: ${RUN_MODE}"
 
-mpirun -n 1 python -m nek_MARL initial ../conf/${CONFIG_NAME} \
+mpirun -n 1 ${PYTHON_EXE} -m nek_MARL initial ../conf/${CONFIG_NAME} \
     > ${LOG_DIR}/log.initial.${CONFIG_NAME} 2>&1
 
 AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
@@ -46,7 +48,7 @@ mv "${RUN_PATH}/history" "${RUN_PATH}/round${fileNUM}" 2>/dev/null || true
 echo "History archived to round${fileNUM}"
 
 mpirun --mca io ompio \
-    -n 1 python -m nek_MARL ${RUN_MODE} ../conf/${CONFIG_NAME} runner.policy=${AGENT} :\
+    -n 1 ${PYTHON_EXE} -m nek_MARL ${RUN_MODE} ../conf/${CONFIG_NAME} runner.policy=${AGENT} :\
     -n ${NTOT} bash -c "cd ${RUN_PATH} && ./nek5000" \
     > ${LOG_DIR}/log.run.${CONFIG_NAME} 2>&1
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-"""Live monitor for ng-val (2001) and ng-full (2002) training runs.
+"""Live monitor for net-gain ablation runs (2003-2007) and reference runs (2001, 2002).
 Plots total reward + three components (R_tau, R_pw, R_v3) when available.
-Run:  python utils/monitor_runs.py
+Run:  python utils/monitor_runs.py              # new ablation runs (2003-2007)
+      python utils/monitor_runs.py --runs all   # all runs including 2001/2002
       python utils/monitor_runs.py --out /tmp/my_plot.png
 """
 import argparse
@@ -20,12 +21,24 @@ import os
 BASE = "/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/runs"
 OUT  = "/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/utils/monitor_runs.png"
 
-RUNS = {
+# Net-gain ablation runs (2003-2007) — the active training set
+RUNS_NEW = {
+    "2003 ng-100 (α=1 β=0 γ=0)": f"{BASE}/2003/train/history",
+    "2004 ng-110 (α=1 β=1 γ=0)": f"{BASE}/2004/train/history",
+    "2005 ng-111 (α=1 β=1 γ=1)": f"{BASE}/2005/train/history",
+    "2006 ng-011 (α=0 β=1 γ=1)": f"{BASE}/2006/train/history",
+    "2007 ng-101 (α=1 β=0 γ=1)": f"{BASE}/2007/train/history",
+}
+# Reference runs from previous campaign
+RUNS_REF = {
     "2001 ONLY WSE  (α=1 β=0 γ=0)": f"{BASE}/2001/train/history",
     "2002 WSE+pv+v^3 (α=1 β=1 γ=1)": f"{BASE}/2002/train/history",
 }
-# Professional, colorblind-friendly palette
-PALETTE = ["#ff0000", "#2d7600", "#3d00cd", "#d28c00", "#e41a1c"]
+# Default: ablation runs only
+RUNS = RUNS_NEW
+
+# Professional, colorblind-friendly palette (7 colors)
+PALETTE = ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00", "#a65628", "#f781bf"]
 COLORS = PALETTE
 COMP_STYLE = {
     'mean_R_tau': dict(color="tab:green",  ls="-",  label="R_τ  wallshear"),
@@ -220,8 +233,16 @@ if __name__ == "__main__":
     p.add_argument("--out", default=OUT)
     p.add_argument("--conf", default=None,
                    help="Path to user config YAML (used to read nb_interactions/ndrl)")
+    p.add_argument("--runs", default="new", choices=["new", "ref", "all"],
+                   help="Which runs to plot: 'new' (2003-2007, default), 'ref' (2001-2002), 'all'")
     args = p.parse_args()
-    # Attach config path to main for later reading
+
+    if args.runs == "ref":
+        RUNS.clear(); RUNS.update(RUNS_REF)
+    elif args.runs == "all":
+        RUNS.clear(); RUNS.update(RUNS_REF); RUNS.update(RUNS_NEW)
+    # default "new": RUNS already set to RUNS_NEW at module level
+
     main.user_conf = args.conf
     main(args.out)
 

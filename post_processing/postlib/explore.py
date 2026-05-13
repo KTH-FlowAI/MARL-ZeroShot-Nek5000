@@ -124,8 +124,47 @@ def initalize_case(run_path,case_list):
         case_dict[case]['reward_max_index'] = case_dict[case]['episode_idx'][np.argmax(case_dict[case]['reward_mean'])]
         case_dict[case]['reward_max_index'] = np.ceil(case_dict[case]['reward_max_index']).astype(int)
         
-        #print(f"Reward smooth max R: {case_dict[case]['reward_smooth_max']:.2f} at episode {case_dict[case]['reward_smooth_max_index']}")
         print(f"Reward mean max R: {case_dict[case]['reward_mean_max']:.2f} at episode {case_dict[case]['reward_max_index']}")
-        print(f"---- End ----\n") 
-        # Plot the reward smooth
+
+        # Load reward components (mean_R_tau, mean_R_pw, mean_R_v3) from aggregated CSVs
+        comp_raw = {'mean_R_tau': [], 'mean_R_pw': [], 'mean_R_v3': []}
+        for round_path in round_list:
+            try:
+                flist = os.listdir(round_path)
+            except Exception:
+                continue
+            csv_files = sorted([
+                os.path.join(round_path, f) for f in flist
+                if f.startswith('rewards_aggregated_') and f.endswith('.csv')
+            ])
+            for csv_file in csv_files:
+                try:
+                    df = pd.read_csv(csv_file, usecols=['mean_R_tau', 'mean_R_pw', 'mean_R_v3'])
+                    df = df.dropna()
+                    if not df.empty:
+                        for k in comp_raw:
+                            comp_raw[k].append(df[k].values)
+                except Exception:
+                    pass
+
+        if any(len(v) > 0 for v in comp_raw.values()):
+            for k in comp_raw:
+                vals = np.concatenate(comp_raw[k]) * 100.0   # → %
+                case_dict[case][k] = vals
+                case_dict[case][f'{k}_smooth'] = smooth_Value(vals, window_size=window_size)
+            n_comp = len(case_dict[case]['mean_R_tau'])
+            case_dict[case]['comp_episode'] = np.arange(window_size, n_comp + 1) / window_size
+            n_eps_comp = n_comp // window_size
+            for k in comp_raw:
+                vals = case_dict[case][k]
+                case_dict[case][f'{k}_eps'] = np.array(
+                    [np.mean(vals[i * window_size:(i + 1) * window_size])
+                     for i in range(n_eps_comp)]
+                )
+            case_dict[case]['comp_episode_idx'] = np.arange(1, n_eps_comp + 1)
+            print(f"Components loaded: {n_comp} steps, {n_eps_comp} episodes")
+        else:
+            print(f"No component data found (non net_gain run?)")
+
+        print(f"---- End ----\n")
     return case_dict
