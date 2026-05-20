@@ -62,6 +62,31 @@ Note: set `simulation.solver_version: "v17"` in the meta config when using NEK50
 
         python utils/monitor_runs.py    # saves utils/monitor_runs.png
 
+### Reward Functions
+
+Two reward modes are available, selected via `runner.reward_fn` in the YAML config:
+
+| Mode | Formula | Fortran flag |
+|---|---|---|
+| `dudy` (default) | `R = 1 − dU/dy / (dU/dy)_ref` | no flag needed |
+| `net_gain` | `R = α·(1−τ_w/τ_ref) + β·(−\|p'v\|/τ_ref) + γ·(−0.5\|v³\|/τ_ref)` | compile with `NETGAIN` |
+
+Quick config for `net_gain`:
+
+```yaml
+runner:
+  reward_fn: net_gain
+  reward_alpha: 1.0   # weight on drag-reduction term
+  reward_beta:  1.0   # weight on pressure-velocity cost
+  reward_gamma: 1.0   # weight on kinetic-energy cost
+```
+
+> **Important:** `reward_fn: net_gain` in Python **must** match the `NETGAIN` compile flag
+> in Fortran (`compile_script`). Mismatching causes MPI deadlock (3 buffers vs 1).
+
+See [readme_POL_netgain.md](readme_POL_netgain.md) for the full derivation, averaging
+pipeline, MPI protocol, and ablation run table.
+
 + To visualize snapshots via VISIT: 
 
         visit -o utils/nek_visit.NEK5000 
