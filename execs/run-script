@@ -9,7 +9,7 @@
 ORIG_ARGS=("$@")
 set --
 source ~/.bashrc.openmpi_ucx
-source ~/.bashrc.miniforge
+source ~/.bashrc.nek
 set -- "${ORIG_ARGS[@]}"
 unset OMPI_MCA_pml OMPI_MCA_osc UCX_TLS UCX_NET_DEVICES
 LOG_DIR="log-files"
