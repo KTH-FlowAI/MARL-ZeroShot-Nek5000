@@ -1,24 +1,24 @@
-### makefile automatically created by makenek 04/29/2026 17:18:51 ###
+### makefile automatically created by makenek 05/21/2026 16:41:44 ###
 BINNAME=nek5000
 LIBNAME=libnek5000.a
 CASENAME:=phill
-CASEDIR:=/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/cases/mini_channel
-S=/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Nek5000/core
-SCMT=/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Nek5000/core/cmt
+CASEDIR:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/cases/mini_channel
+S=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/core
+SCMT=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/core/cmt
 OPT_INCDIR=./
 OBJDIR=obj
 
-FC=mpif77  -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/driver/comm -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/driver/frame -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/driver/frame/monitor -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/driver/frame/runparam -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/io/checkpoint -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/io/checkpoint/mstep -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/io/io_tools -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/tools/tstepper -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/tools/baseflow/sfd -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/tools/tstepper/powerit -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/utility/conht -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/utility/math -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/utility/forcing/noise_box -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/utility/forcing/sponge_box -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Toolbox/utility/grid/map2D
+FC=mpif77  -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/driver/comm -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/driver/frame -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/driver/frame/monitor -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/driver/frame/runparam -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/io/checkpoint -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/io/checkpoint/mstep -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/io/io_tools -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/tools/tstepper -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/tools/baseflow/sfd -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/tools/tstepper/powerit -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/conht -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/math -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/forcing/noise_box -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/forcing/sponge_box -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/grid/map2D
 CC=mpicc
 FFLAGS+=-cpp -fdefault-real-8 -fdefault-double-8 -std=legacy 
 CFLAGS+=
 LDFLAGS+= -Wl,--allow-multiple-definition
 
 PPPO=
-PPS=MPIIO DRL YWDEBUG TSRS NETGAIN MPI UNDERSCORE GLOBAL_LONG_LONG TIMER
+PPS=MPIIO DRL YWDEBUG TSRS NETGAIN GAINMONITOR MPI UNDERSCORE GLOBAL_LONG_LONG TIMER
 
 USR=frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o chkpoint.o chkpt_mstp.o map2D.o stat.o stat_IO.o math_tools.o misc.o drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o tsrs.o tsrs_IO.o pts_redistribute.o
-USR_LFLAGS= -L/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/blasLapack -lblasLapack -L/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/gslib/lib -lgs
+USR_LFLAGS= -L/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/blasLapack -lblasLapack -L/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/gslib/lib -lgs
 
 MPI=1
 CMT=0
@@ -28,7 +28,7 @@ VISIT=0
 VISIT_IFLAGS=
 VISIT_LFLAGS=
 HYPRE_IFLAGS=
-GSLIB_IFLAGS:= -I/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/gslib/include
+GSLIB_IFLAGS:= -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/gslib/include
 PARRSB_IFLAGS=
 
 ################################################################################

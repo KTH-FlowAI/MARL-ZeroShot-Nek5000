@@ -12,11 +12,11 @@ c
       ! BASIC
       parameter (ldim=3)               ! domain dimension (2 or 3)
       parameter (lx1=6,lxd=9)                ! p-order (avoid uneven and values <6)
-      ! parameter (lx1=8,lxd=12)                ! p-order for over-integration (dealiasing) 
+      ! parameter (lx1=8,lxd=12)                ! p-order for over-integration (dealiasing)
       parameter (lx2=lx1-2)            ! p-order for pressure (lx1 or lx1-2)
       parameter (lelg=128)            ! max total number of elements
-      parameter (lp=40)
-      parameter (lelt=4)             ! max number of local elements per MPI rank
+      parameter (lp=10)
+      parameter (lelt=13)             ! max number of local elements per MPI rank
       parameter (ldimt=1)              ! max auxiliary fields (temperature + scalars)
 
       ! OPTIONAL
@@ -38,16 +38,16 @@ c
       parameter (lpelt=1)              ! linear stability
       parameter (lcvelt=1)             ! cvode
       parameter (lfdm=0)               ! == 1 for fast diagonalization method
-      
-      ! FOR CTRL / DRL 
+
+      ! FOR CTRL / DRL
       ! parameter (totctrl=120) ! 3th ord
       ! parameter (totctrl=160) ! 3th ord
       parameter (totctrl=220) ! 3th ord
       ! The correct mesh information
-      !! USED FOR AVERAGE 
+      !! USED FOR AVERAGE
       parameter (xnel=4)
       parameter (ynel=8)
       parameter (znel=4)
-      
+
       ! INTERNALS
       include 'SIZE.inc'

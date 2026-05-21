@@ -271,33 +271,46 @@ c------- Step 1: Compute dUdy and apply spatial average
             call copy(velV,avgV,ntot)
          endif
 
-c------- Step 2: Compute pressure-velocity term |p'_w * v_w|
-         call copy(buffer(1,1,1,1),pr(1,1,1,1),ntot)
-         call copy(pwvw(1,1,1,1),pr(1,1,1,1),ntot)
-         if (rwd_zavg) then
-            call planar_avg(avgV,buffer,igs_z)
-            call copy(buffer,avgV,ntot)
-         endif
-         if (rwd_xavg) then
-            call planar_avg(avgV,buffer,igs_x)
-            call copy(buffer,avgV,ntot)
-         endif
-         call sub3(wrk_buff,pwvw,buffer,ntot)
-         call copy(buffer(1,1,1,1),wrk_buff(1,1,1,1),ntot)
-         call copy(wrk_buff(1,1,1,1),ACTIONS(1,1,1,1),ntot)
-         call col3(pwvw,buffer,wrk_buff,ntot)
-         pwvw = abs(pwvw)
-
-         call copy(buffer(1,1,1,1),pwvw(1,1,1,1),ntot)
-         if (rwd_zavg) then
-            call planar_avg(avgV,buffer,igs_z)
-            call copy(buffer,avgV,ntot)
-         endif
-         if (rwd_xavg) then
-            call planar_avg(avgV,buffer,igs_x)
-            call copy(buffer,avgV,ntot)
-         endif
+! [YW] Modify the pressure fluctuation term 
+c------- Step 2: Compute pressure-velocity term |pprime_w * v_w|
+         ! [IMPORTANT] First map pressure to the GLL space
+         call mappr(buffer,pr,pwvw,velV) ! The last two tensor is just for grabage
+         ! Normalized the pressure by subtracting the wall integration pressure.
+       !  call normal_pressure(buffer)
+         ! Give a copy of it
          call copy(pwvw(1,1,1,1),buffer(1,1,1,1),ntot)
+         if (rwd_zavg) then
+            call planar_avg(avgV,buffer,igs_z)
+            call copy(buffer,avgV,ntot)
+         endif
+         if (rwd_xavg) then
+            call planar_avg(avgV,buffer,igs_x)
+            call copy(buffer,avgV,ntot)
+         endif
+         ! wrk_buff <= pressure_mapped - mean 
+         call sub3(wrk_buff,pwvw,buffer,ntot)
+         ! buffer <= wrk_buff == pre fluctuation
+         call copy(buffer(1,1,1,1),wrk_buff(1,1,1,1),ntot)
+         ! wrk_buff <= v_w (zero-mean)
+         call copy(wrk_buff(1,1,1,1),ACTIONS(1,1,1,1),ntot)
+         ! Correlation: pwvw = p'_w * v_w
+         call col3(pwvw,buffer,wrk_buff,ntot)
+        
+        ! Now take the absolute value and take the mean 
+        pwvw = abs(pwvw)
+        call copy(buffer(1,1,1,1),pwvw(1,1,1,1),ntot)
+        if (rwd_zavg) then
+            call planar_avg(avgV,buffer,igs_z)
+            call copy(buffer,avgV,ntot)
+        endif
+        if (rwd_xavg) then
+            call planar_avg(avgV,buffer,igs_x)
+            call copy(buffer,avgV,ntot)
+        endif
+        ! Make copy
+        call copy(pwvw(1,1,1,1),buffer(1,1,1,1),ntot)
+        
+        
 
 c------- Step 3: Compute kinetic energy term 0.5*|v^3_w|
          call copy(v3(1,1,1,1),ACTIONS(1,1,1,1),ntot)
@@ -343,457 +356,148 @@ c------- Step 4: Assemble reward at each agent location
             endif
          enddo
 
+#ifdef GAINMONITOR
+         call write_reward_monitor(i_evolv)
+#endif
+
 #ifdef YWDEBUG
-         if (NID.eq.0) print *, "[REWARD] NETGAIN ASSIGNED!"
+        if (NID.eq.0) print *, "[REWARD] NETGAIN ASSIGNED!"
+        if (ISTEP.le.3) then 
+        if (NUMCTRL.ne.0) then 
+
+        write(str,"(i4.4)") NID
+        open(51001,file="Reward.txt"//str)
+        write(51001,*) "NID  ", "X  ", "Y  ", "Z  ",
+     $                  "ie  ", "iface  ", "ix ",
+     $                  "iy  ", "iz  ", "nid  ",
+     $                  "tauw  ", "pwvw  ", "v3  "
+        do ilx = 1,numctrl
+                write(51001,*) proc(ilx),
+     $         (pos_agt(ily,ilx), ily=1,NDIM), 
+     $         (info_agt(ily,ilx), ily=1,5),
+     $         rwd_tau(ilx), rwd_pw(ilx), rwd_v3(ilx)
+        enddo
+        close(51001)
+        endif ! if (NUMCTRL.ne.0)
+        endif 
 #endif
 
       end subroutine compute_netGain
+        
+c------------------------------------------------------
+      subroutine normal_pressure(pres)
+c=============================================
+c       Define variable
+c=============================================
+         implicit none
+         include 'SIZE'
+         include 'SOLN'
+         include 'INPUT'
+         include 'NEKUSE'
+         include 'PARALLEL'
+         include 'TSTEP'
+         include 'TOPOL'
+         include 'GEOM' !unx, uny, unz
+         include 'DRL'
 
+         real pres(LX1,LY1,LZ1,LELT)
+         real vrtmp(lx1*lz1)       ! work array for face
+         real vrtmp2(2)            ! work array
+         real vlsum ! function
 
-c------------------------------------------------------------------
-c Calculate the dUidxj from OLD Statistics 
-      subroutine comp_derivat(duidxj,u,v,w,ur,us,ut,vr,vs,vt,wr,ws,wt)
+         integer ifll,itmp
+         integer il,jl,kl,ll,ilx,ily
+         integer ictrl
+         character*4 str, str1
+c=============================================
+c       Function
+c=============================================
+      ! normalise pressure
+      ! in this example I integrate pressure over top faces marked "W"
+      ifll = 1     ! I'm interested in velocity bc
+      ! relying on mesh structure given by genbox set face number
+      jl = 3
+      call rzero(vrtmp2,2)  ! zero work array
+      itmp = LX1*LZ1
+      do ictrl=1,NUMCTRL   ! loop across the agents, here represents the entire wall but not applied for the wing
+         il = info_agt(1,ictrl)
+         il = gllel(il)
+         jl = info_agt(2,ictrl)
+         vrtmp2(1) = vrtmp2(1) + vlsum(area(1,1,jl,il),itmp)
+         call ftovec(vrtmp,pres,il,jl,lx1,ly1,lz1)
+         call col2(vrtmp,area(1,1,jl,il),itmp)
+         vrtmp2(2) = vrtmp2(2) + vlsum(vrtmp,itmp)
+      enddo
+      ! global communication
+      call gop(vrtmp2,vrtmp,'+  ',2)
+      ! missing error check vrtmp2(1) == 0
+      vrtmp2(2) = -vrtmp2(2)/vrtmp2(1)
+      ! remove mean pressure
+      itmp = LX1*LY1*LZ1*NELV
+
+#ifdef YWDEBUG
+      if (NID.eq.0) print *, "[NORMAL PRESSURE]", vrtmp2(2)
+#endif
+      call cadd(pres,vrtmp2(2),itmp)
+
+      end subroutine normal_pressure
+
+c------------------------------------------------------
+      subroutine write_reward_monitor(i_evolv)
+c     Append a one-line time-series record of the three NETGAIN reward
+c     components to reward_monitor.dat (rank-0 only).
+c     All agents share the same value after x/z averaging, so a global
+c     mean across agents recovers the uniform scalar cleanly.
+c=============================================
+      implicit none
       include 'SIZE'
-      include 'TOTAL'
+      include "NEKUSE"
+      include "SOLN"
+      include "TSTEP"
+      include 'PARALLEL'
+      include 'DRL'
 
-      integer e
-
-      real duidxj(lx1*ly1*lz1,lelt,3*ldim)    ! 9 terms
-      real u  (lx1*ly1*lz1,lelt)
-      real v  (lx1*ly1*lz1,lelt)
-      real w  (lx1*ly1*lz1,lelt)
-      real ur (1) , us (1) , ut (1)
-      real vr (1) , vs (1) , vt (1)
-      real wr (1) , ws (1) , wt (1)
-c
-c      common /dudxyj/ jacmi(lx1*ly1*lz1,lelt)
-c      real jacmi
-c
-      n    = nx1-1                          ! Polynomial degree
-      nxyz = nx1*ny1*nz1
-
-      do e=1,nelv
-         call local_grad3(ur,us,ut,u,N,e,dxm1,dxtm1)
-         call local_grad3(vr,vs,vt,v,N,e,dxm1,dxtm1)
-         call local_grad3(wr,ws,wt,w,N,e,dxm1,dxtm1)
-
-!     Derivative tensor computed by using the inverse of 
-!     the Jacobian array jacmi
-      do k=1,nxyz
-        ! dudx
-         duidxj(k,e,1) = jacmi(k,e)*(ur(k)*rxm1(k,1,1,e)+
-     $        us(k)*sxm1(k,1,1,e)+
-     $        ut(k)*txm1(k,1,1,e))
-        ! dvdy
-         duidxj(k,e,2) = jacmi(k,e)*(vr(k)*rym1(k,1,1,e)+
-     $        vs(k)*sym1(k,1,1,e)+
-     $        vt(k)*tym1(k,1,1,e))
-        ! dwdz
-         duidxj(k,e,3) = jacmi(k,e)*(wr(k)*rzm1(k,1,1,e)+
-     $        ws(k)*szm1(k,1,1,e)+
-     $        wt(k)*tzm1(k,1,1,e))
-        !dudy
-         duidxj(k,e,4) = jacmi(k,e)*(ur(k)*rym1(k,1,1,e)+
-     $        us(k)*sym1(k,1,1,e)+
-     $        ut(k)*tym1(k,1,1,e))
-        !dvdz
-         duidxj(k,e,5) = jacmi(k,e)*(vr(k)*rzm1(k,1,1,e)+
-     $        vs(k)*szm1(k,1,1,e)+
-     $        vt(k)*tzm1(k,1,1,e))
-        ! dwdx
-         duidxj(k,e,6) = jacmi(k,e)*(wr(k)*rxm1(k,1,1,e)+
-     $        ws(k)*sxm1(k,1,1,e)+
-     $        wt(k)*txm1(k,1,1,e))
-        ! dudz
-         duidxj(k,e,7) = jacmi(k,e)*(ur(k)*rzm1(k,1,1,e)+
-     $        us(k)*szm1(k,1,1,e)+
-     $        ut(k)*tzm1(k,1,1,e))
-        ! dvdx
-         duidxj(k,e,8) = jacmi(k,e)*(vr(k)*rxm1(k,1,1,e)+
-     $        vs(k)*sxm1(k,1,1,e)+
-     $        vt(k)*txm1(k,1,1,e))
-        ! dwdy
-         duidxj(k,e,9) = jacmi(k,e)*(wr(k)*rym1(k,1,1,e)+
-     $        ws(k)*sym1(k,1,1,e)+
-     $        wt(k)*tym1(k,1,1,e))
-      enddo
-      enddo
-
-      return
-      end
-
-c------------------------------------------------------------------
-
-
-
-
-c------------------------------------------------------------------
-        subroutine switch_BC_2Wall
-c Change Wall-BC According to the indicies obtained before 
+      integer i_evolv, iglsum
+      integer il, nc
+      real wrk(3), tmp3(3)
+      logical fexist
+      integer, parameter :: iunit = 52002
 c=============================================
-c       Define variable
-c=============================================
+      ! Sum local agent values; divide by global count for the mean.
+      ! Since rwd_xavg=rwd_zavg=.TRUE., all agents hold the same value,
+      ! so mean == that value regardless of how agents are distributed.
+      nc     = iglsum(NUMCTRL, 1)
+      wrk(1) = 0.0
+      wrk(2) = 0.0
+      wrk(3) = 0.0
+      if (NUMCTRL.gt.0) then
+         do il = 1, NUMCTRL
+            wrk(1) = wrk(1) + rwd_tau(il)
+            wrk(2) = wrk(2) + rwd_pw(il)
+            wrk(3) = wrk(3) + rwd_v3(il)
+         enddo
+      endif
+      call gop(wrk, tmp3, '+  ', 3)
+      if (nc.gt.0) then
+         wrk(1) = wrk(1) / nc
+         wrk(2) = wrk(2) / nc
+         wrk(3) = wrk(3) / nc
+      endif
 
-        implicit none 
-        include "SIZE"
-        include "TOTAL"
-        include "NEKUSE"
-cc YW:
-        include "DRL"
+      if (NID.eq.0) then
+         inquire(file='reward_monitor.dat', exist=fexist)
+         if (fexist) then
+            open(iunit, file='reward_monitor.dat', position='append')
+         else
+            open(iunit, file='reward_monitor.dat', status='new')
+            write(iunit,'(A)')
+     $         '# time          i_evolv'//
+     $         '  rwd_tau         rwd_pw          rwd_v3'
+         endif
+         write(iunit,'(E16.8,1X,I6,3(1X,E16.8))')
+     $      time, i_evolv, wrk(1), wrk(2), wrk(3)
+         close(iunit)
+        print *, "[MONITOR] RECORD",time,i_evolv,wrk(1),wrk(2),wrk(3)
+      endif
 
-        integer im, jm, km, fmid(6) ! Face mid points on each direction 
-        
-        integer ie,iface,ix,iy,iz ! Iteration
-        integer NEL,nfaces,KX1,KX2,KY1,KY2,KZ1,KZ2 ! Face related
-        integer idx
-        real xf,yf,zf
-        real xr,yr,zr
-        character*3 bcb
-
-        ! For test 
-        integer ilx, ily
-        character*4 str, str1
-c=============================================
-c       Function
-c=============================================
-        if (NUMCTRL.ne.0) then 
-            do idx=1,NUMCTRL
-            ie=info_agt(1,idx)         ! Local indicies
-            iface=info_agt(2,idx)      ! Number of face
-            CBC(iface,ie,1)='W  '
-            enddo
-        endif
-        if (NID.eq.0) print*,"[DRL] Switch B.C to WALL FOR REWARD"
-        
-        end subroutine switch_BC_2Wall
-c------------------------------------------------------------------
-
-c------------------------------------------------------------------
-        subroutine switch_BC_2Drichlet
-c Change Wall-BC According to the indicies obtained before 
-c=============================================
-c       Define variable
-c=============================================
-
-        implicit none 
-        include "SIZE"
-        include "TOTAL"
-        include "NEKUSE"
-cc YW:
-        include "DRL"
-
-        integer im, jm, km, fmid(6) ! Face mid points on each direction 
-        
-        integer ie,iface,ix,iy,iz ! Iteration
-        integer NEL,nfaces,KX1,KX2,KY1,KY2,KZ1,KZ2 ! Face related
-        integer idx
-        real xf,yf,zf
-        real xr,yr,zr
-        character*3 bcb
-
-        ! For test 
-        integer ilx, ily
-        character*4 str, str1
-c=============================================
-c       Function
-c=============================================
-        if (NUMCTRL.ne.0) then 
-            do idx=1,NUMCTRL
-            ie=info_agt(1,idx)         ! Local indicies
-            iface=info_agt(2,idx)      ! Number of face
-            CBC(iface,ie,1)='v  '
-            enddo
-        endif
-        if (NID.eq.0) print*,"[DRL] Switch B.C to Dirichlet FOR CTRL"
-        
-        end subroutine switch_BC_2Drichlet
-c------------------------------------------------------------------
-
-
-
-
-
-c------------------------------------------------------------------
-        subroutine compute_utau
-c=============================================
-c       Define variable
-c=============================================
-        include 'SIZE'
-        include 'TOTAL'
-
-        real x0(3)
-        data x0 /0.0, 0.0, 0.0/ 
-        save x0
-
-        integer icalld
-        save    icalld
-        data    icalld /0/
-
-        real atime,timel
-        save atime,timel
-
-        integer ntdump
-        save    ntdump
-
-        real    rwk(INTP_NMAX,ldim+1) ! r, s, t, dist2
-        integer iwk(INTP_NMAX,3)      ! code, proc, el 
-        save    rwk, iwk
-
-        integer nint, intp_h
-        save    nint, intp_h
-
-        logical iffpts
-        save iffpts
-        
-        real XLEN,ZLEN
-
-        real xint(INTP_NMAX),yint(INTP_NMAX),zint(INTP_NMAX)
-        real yi
-        save xint, yint, zint
-        save igs_x, igs_z
-
-        parameter(nstat=9)
-        real ravg(lx1*ly1*lz1*lelt,nstat)
-        real stat(lx1*ly1*lz1*lelt,nstat)
-        real stat_y(INTP_NMAX*nstat)
-        save ravg, stat, stat_y
-
-        save dragx_avg
-
-        logical ifverbose,ifexist
-        common /gaaa/  wo1(lx1,ly1,lz1,lelv)
-     &              ,  wo2(lx1,ly1,lz1,lelv)
-     &              ,  wo3(lx1,ly1,lz1,lelv)
-
-        real tplus
-        real tmn, tmx
-
-        integer bIDs(1)
-        save iobj_wall
-
-        !-------------------------------
-        n     = nx1*ny1*nz1*nelv
-        nelx  = XNEL
-        nely  = YNEL
-        nelz  = ZNEL    
-        ! NOTE: THIS have to be modified when it comes to WING
-        XLEN = glmax(xm1,n)
-        ZLEN = glmax(zm1,n)
-        !-------------------------------
-
-
-        if (istep.eq.0) then
-            bIDs(1) = 1
-            call create_obj(iobj_wall,bIDs,1)
-            nm = iglsum(nmember(iobj_wall),1)
-            if(nid.eq.0) write(6,*) 'obj_wall nmem:', nm 
-        !     call prepost(.true.,'  ')
-            call set_obj
-        endif
-        ubar = glsc2(vx,bm1,n)/volvm1
-        e2   = glsc3(vy,bm1,vy,n)+glsc3(vz,bm1,vz,n)
-        e2   = e2/volvm1
-        if (nfield.gt.1) then
-            tmn  = glmin(t,n)
-            tmx  = glmax(t,n)
-        endif
-        if(nid.eq.0) write(6,2) time,ubar,e2,tmn,tmx
-    2               format(1p5e13.4,' monitor')
-
-        if (time.lt.tSTATSTART) return
-
-c     What follows computes some statistics ...
-        if(icalld.eq.0) then
-        if(nid.eq.0) write(6,*) 'Start collecting statistics ...'
-
-        nxm = 1 ! mesh is linear
-        ! call interp_setup(intp_h,0.0,nxm,nelt)
-        nint = 0
-        ! if (nid.eq.0) then
-        ! nint = INTP_NMAX
-        ! ! Use the list XCINT to fill the xint
-        ! call cfill(xint,XCINT,size(xint))
-        
-        ! do i = 1,INTP_NMAX 
-        !     yi = (i-1.)/(INTP_NMAX-1)
-        !     yint(i) = tanh(BETAM*(2*yi-1))/tanh(BETAM)
-        ! enddo
-        
-        ! call cfill(zint,ZCINT,size(zint))
-        
-        ! endif
-        iffpts = .true. ! dummy call to find points
-        ! Now we use interp_nfld to find those points for statistics
-!         call interp_nfld(stat_y,ravg,1,xint,yint,zint,nint,
-!      $                   iwk,rwk,INTP_NMAX,iffpts,intp_h)
-!         iffpts = .false.
-!         call gtpp_gs_setup(igs_x,nelx     ,nely,nelz,1) ! x-avx
-!         call gtpp_gs_setup(igs_z,nelx*nely,1   ,nelz,3) ! z-avg
-        call rzero(ravg,size(ravg))
-        dragx_avg = 0
-        atime     = 0
-        timel     = time
-        ntdump    = int(time/tSTATFREQ)
-        icalld = 1
-        endif
-
-        dtime = time - timel
-        atime = atime + dtime
-
-        ! averaging over time
-        if (atime.ne.0. .and. dtime.ne.0.) then
-        beta      = dtime / atime
-
-        alpha     = 1. - beta
-        ifverbose = .false.
-        ! call avg1(ravg(1,1),vx   ,alpha,beta,n,'uavg',ifverbose)
-        ! call avg2(ravg(1,2),vx   ,alpha,beta,n,'urms',ifverbose)
-        ! call avg2(ravg(1,3),vy   ,alpha,beta,n,'vrms',ifverbose)
-        ! call avg2(ravg(1,4),vz   ,alpha,beta,n,'wrms',ifverbose)
-        ! call avg3(ravg(1,5),vx,vy,alpha,beta,n,'uvmm',ifverbose)
-        ! call avg1(ravg(1,6),t    ,alpha,beta,n,'tavg',ifverbose)
-        ! call avg2(ravg(1,7),t    ,alpha,beta,n,'trms',ifverbose)
-        ! call avg3(ravg(1,8),vx,t ,alpha,beta,n,'utmm',ifverbose)
-        ! call avg3(ravg(1,9),vy,t ,alpha,beta,n,'vtmm',ifverbose)
-        
-        call torque_calc(1.0,x0,.false.,.false.) ! compute wall shear
-        dragx_avg = alpha*dragx_avg + beta*dragx(iobj_wall)
-        endif
-
-        timel = time
-
-        ! write statistics to file
-        if(istep.gt.0 .and. time.gt.(ntdump+1)*tSTATFREQ) then
-        ! averaging over statistical homogeneous directions (x-z)
-        !     do i = 1,nstat
-        !         call planar_avg(wo1      ,ravg(1,i),igs_x)
-        !         call planar_avg(stat(1,i),wo1      ,igs_z)
-        !     enddo
-
-!             ! extract data along wall normal direction (1D profile)
-!             call interp_nfld(stat_y,stat,nstat,xint,yint,zint,nint,
-!      $                    iwk,rwk,INTP_NMAX,iffpts,intp_h)
-
-            ntdump = ntdump + 1
-            if (nid.ne.0) goto 998 
-
-            rho    = param(1)
-            dnu    = param(2)
-            A_w    = XLEN * ZLEN
-            tw     = dragx_avg / A_w
-            u_tau  = sqrt(tw / rho)
-            Re_tau = u_tau / dnu
-            tplus  = time * u_tau**2 / dnu
-
-            write(6,*) "[DRL] REWARD: u_tau",u_tau, "Re_tau", Re_tau
-            
-            ! Write Down the Reward from calculation
-            inquire(file='reward.dat',exist=ifexist)
-            if (ifexist) then
-            open(unit=55,file='reward.dat',status='old',
-     &         position='append',action='write')
-            else
-            open(unit=55,file='reward.dat',status='new',action='write')
-            write(55,'(A)') 
-     $    '  time ut Ret t+ mu'
-
-            endif 
-            write(55,3)
-     &        time,
-     &        u_tau,
-     &        Re_tau,
-     &        tplus,
-     &        dnu
-            close(55)
-!             open(unit=56,file='vel_fluc_prof.dat')
-!             write(56,'(A,1pe14.7)') '#time = ', time
-!             write(56,'(A)') 
-!      $    'y    y+    uu    vv    ww    uv'
-
-!             open(unit=57,file='mean_prof.dat')
-!             write(57,'(A,1pe14.7)') '#time = ', time
-!             write(57,'(A)') 
-!      $    '#  y    y+    Umean'
-
-!             do i = 1,nint
-!                 yy = 1+yint(i)
-!                 write(56,3) 
-!      &           yy,
-!      &           yy*Re_tau,
-!      &           (stat_y(1*nint+i)-(stat_y(0*nint+i))**2)/u_tau**2,
-!      &           stat_y(2*nint+i)/u_tau**2,
-!      &           stat_y(3*nint+i)/u_tau**2,
-!      &           stat_y(4*nint+i)/u_tau**2
-
-!                 write(57,3) 
-!      &           yy,
-!      &           yy*Re_tau, 
-!      &           stat_y(0*nint+i)/u_tau
-
-!             enddo
-!             close(56)
-!             close(57)
-    3        format(1p15e17.9)
-
-  998       endif
-
-            return
-            end subroutine compute_utau
-c------------------------------------------------------------------
-
-
-c------------------------------------------------------------------
-            subroutine set_obj  ! define objects for surface integrals
-c=============================================
-c       Define variable
-c=============================================
-            include 'SIZE'
-            include 'TOTAL'
-
-            integer e,f,eg
-
-c=============================================
-c       Functions
-c=============================================
-            nobj = 1
-            iobj = 0
-            do ii=nhis+1,nhis+nobj
-                iobj = iobj+1
-                hcode(10,ii) = 'I'
-                hcode( 1,ii) = 'F'
-                hcode( 2,ii) = 'F'
-                hcode( 3,ii) = 'F'
-                lochis(1,ii) = iobj
-            enddo
-            nhis = nhis + nobj
-
-            if (maxobj.lt.nobj) then 
-            call exitti('increase maxobj in SIZE$',nobj)
-            endif
-            
-            nxyz  = nx1*ny1*nz1
-            nface = 2*ndim
-
-            do e=1,nelv
-            ! We need to tune this
-            if (abs(ym1(1,1,1,e)) .gt. 0.9) then
-            do f=1,nface
-                if (cbc(f,e,1).eq.'W  ') then
-                    iobj  = 1
-                    if (iobj.gt.0) then
-                    nmember(iobj) = nmember(iobj) + 1
-                    mem = nmember(iobj)
-                    eg  = lglel(e)
-                    object(iobj,mem,1) = eg
-                    object(iobj,mem,2) = f
-                    print*, iobj,mem,f,eg,e,nid,' OBJ'
-                    endif
-                endif ! if (cbc.eq.W)
-            enddo
-            endif
-            enddo
-
-            return
-            end
-c------------------------------------------------------------------
-
+      end subroutine write_reward_monitor
