@@ -55,6 +55,7 @@ AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | awk -F':' '{
 NTOT=$(grep -ri 'nproc' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
 RUN_PATH=$(head -n 1 RUN_PATH_${AGENT_RUN_NAME}.txt)
 
+AGENT_RUN_NAME=$()
 if [ "$RUN_MODE" = "run" ]; then
     AGENT=$(tail -n 1 RUN_PATH_${AGENT_RUN_NAME}.txt)
 else
