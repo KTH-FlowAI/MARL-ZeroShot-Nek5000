@@ -270,6 +270,8 @@ c------- Step 1: Compute dUdy and apply spatial average
             call planar_avg(avgV,velV,igs_x)
             call copy(velV,avgV,ntot)
          endif
+        ! Get the averaged dUdy
+        call copy(devU1(1,1,1,1),velV(1,1,1,1),ntot)
 
 ! [YW] Modify the pressure fluctuation term 
 c------- Step 2: Compute pressure-velocity term |pprime_w * v_w|
@@ -296,8 +298,9 @@ c------- Step 2: Compute pressure-velocity term |pprime_w * v_w|
          ! Correlation: pwvw = p'_w * v_w
          call col3(pwvw,buffer,wrk_buff,ntot)
         
-        ! Now take the absolute value and take the mean 
-        pwvw = abs(pwvw)
+        !! YW: trail one is to take the correlation first and then do the averaging, 
+        !! but it seems to be more noisy than doing the average first.
+        ! pwvw = abs(pwvw)
         call copy(buffer(1,1,1,1),pwvw(1,1,1,1),ntot)
         if (rwd_zavg) then
             call planar_avg(avgV,buffer,igs_z)
@@ -309,6 +312,7 @@ c------- Step 2: Compute pressure-velocity term |pprime_w * v_w|
         endif
         ! Make copy
         call copy(pwvw(1,1,1,1),buffer(1,1,1,1),ntot)
+        pwvw = abs(pwvw)
         
         
 
@@ -337,7 +341,7 @@ c------- Step 4: Assemble reward at each agent location
             iy=info_agt(4,il)
             iz=info_agt(5,il)
 
-            dudy_i = velV(ix,iy,iz,ie)
+            dudy_i = devU1(ix,iy,iz,ie)
             tau_w  = rho * denu * dudy_i
             pwvw_i = pwvw(ix,iy,iz,ie)
             v3_i   = v3(ix,iy,iz,ie)
