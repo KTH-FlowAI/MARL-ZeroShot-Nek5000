@@ -4,34 +4,11 @@ runner:
     ctrl_max_amp    :  1.0 # The alpha
     npl_state       :  2
     ckpt_int        :  5
-
-    nb_episodes        : 20
-    nb_warmup_episodes : 1
-    nb_interactions : 2540        # Time steps in 1 episode t^+ = 1500  steps = nb_interact * ndrl 
-    train_steps     : 300
-    gradient_steps  : 64      # For each training step, how many times we extract the off-policy history from the history buffer with batch size?
-   
-    RL_algorithm    : "SIN"
-    rescale_actions : True
-    learning_rate   : 1e-3
-    batch_size      : 256        # Since we have more envs, this should be sufficiently large
-    buffer_size     : 5_000_000
-    learning_starts : 100
-    tau             : 0.005
-    policy_delay    : 2
-    target_policy_noise : 0.0
-    target_noise_clip : 0.0
-
-    policy_file     : '../conf/default_ddpg_policy.yml'
-    policy          : 'rl_model_9144000_steps'
+    nb_interactions :  12000
+    RL_algorithm    : "OC"
+    rescale_actions : False
     load_agent      :  False
     normalize_input : 'None'   # Between None, utau, std, maxmin
-    
-    # Custom buffer
-    custom_buffer : False   
-    keep_frac     : 0.25
-    buffer_mode   : 'rotate'
-    
     
     random_init     : -1
     rank            : 1          # Which initial contion to use
@@ -40,11 +17,10 @@ runner:
     evaluation      : True
     learnt_policy   : False # Since AFC doesn't need to train, so here is False
 
-    u_tau           : 0.0638
-    dUdy            : 12.4271
+    u_tau           : 0.065
+    dUdy            : 11.91
+    reward_fn  : "net_gain" # PowerSaving, DragReduction, AFC
 
-
-    
 
 simulation: 
     CASENAME : "phill"
@@ -57,9 +33,9 @@ simulation:
     TOTCTRL : 220        # Be consistent with SIZE
     nproc   : 10         
     ndrl    : 1          # Steps to update the rewards (t^+=0.6)
-    znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
+    znmf_avg: 1         # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
-    retau : 180.0 
+    retau : 182.0 
     y_sensing : 15.0
     gll_unique : 0 
     #------------------------------------------
@@ -82,7 +58,7 @@ simulation:
     ### General 
     stopAt : "numSteps"
     numSteps : 500000       # Make it a bit longer so that the simulation not stops
-    dt       : -2.0e-03
+    dt       : -1.0e-03
     tmax     : 100000.0
     timeStepper : "bdf3"
     variableDt : "no"
