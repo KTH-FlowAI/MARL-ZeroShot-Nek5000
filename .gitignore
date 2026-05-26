@@ -1,14 +1,14 @@
 
 # maintain the folder 
-*/runs/**/
-*/data/**/
+/runs/**/
+/data/**/
 *mask*
 !runs/readme.md
 !data/readme.md
 !data/restarts/rs6_mini_Channel/**/*
 envs/solver/**/
 !envs/solver/*tar*
-*/execs/log-files/
+/execs/log-files/
 ucx_mpi/
 miniforge3/
 *log*
