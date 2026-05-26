@@ -1,13 +1,16 @@
 runner:
-    ctrl_max_amp    :  0.0638
-    ctrl_min_amp    : -0.0638
+    ctrl_max_amp    :  0.064
+    ctrl_min_amp    : -0.064
     action_noise    :  0.1
     npl_state       :  2
-    ckpt_int        :  5
+    ckpt_int        :  1
 
-    nb_episodes        : 20
+    if_eval          : True
+    eval_freq        : 5
+
+    nb_episodes        : 100
     nb_warmup_episodes : 1
-    nb_interactions : 2540
+    nb_interactions : 2500
     train_steps     : 300
     gradient_steps  : 64
 
@@ -15,15 +18,14 @@ runner:
     rescale_actions : True
     learning_rate   : 1e-3
     batch_size      : 256
-    buffer_size     : 50_000
+    buffer_size     : 5_000_000
     learning_starts : 100
     tau             : 0.005
     policy_delay    : 2
-    target_policy_noise : 0.0
-    target_noise_clip : 0.0
+
 
     policy_file     : '../conf/default_ddpg_policy.yml'
-    policy          : ''
+    policy     : 'best_model'
     load_agent      :  False
     normalize_input : 'utau'
 
@@ -31,19 +33,19 @@ runner:
     keep_frac     : 0.25
     buffer_mode   : 'rotate'
 
-    seed            : 2001
+    seed            : 1998
 
     random_init     : 6
     rank            : 1
-    agent_run_name  : 2001
+    agent_run_name  : 2002
 
     evaluation      : False
-    learnt_policy   : False
+    learnt_policy   : True
 
-    u_tau           : 0.0638
-    dUdy            : 12.4271
+    u_tau           : 0.064
+    dUdy            : 11.75 
 
-    # Net-gain reward — validation: alpha-only == same signal as plain dUdy reward
+    # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
     reward_fn       : net_gain
     reward_alpha    : 1.0
     reward_beta     : 0.0
@@ -56,11 +58,11 @@ simulation:
     compile_path   : "../envs/cases/mini_channel"
     restart_folder : "../data/restarts/rs6_mini_Channel"
     TOTCTRL : 220
-    nproc   : 40
-    ndrl    : 6
+    nproc   : 32
+    ndrl    : 10
     znmf_avg: 1
     target_cfl: 2.0
-    retau : 180.0
+    retau : 182.0
     y_sensing : 15.0
     gll_unique : 1
 
@@ -76,9 +78,9 @@ simulation:
     nzs       :  1
 
     stopAt : "numSteps"
-    numSteps : 500000
-    dt       : -1.0e-2
-    tmax     : 100000.0
+    numSteps : 50000000
+    dt       : -5.0e-03
+    tmax     : 10000000.0
     timeStepper : "bdf3"
     variableDt : "no"
     writeControl : 'timeStep'
@@ -94,7 +96,7 @@ simulation:
     v_residualTol   :  1e-8
     v_residualProj  :  "no"
     density         :  1.0
-    viscosity       :  -2800
+    viscosity       :  -2900
     advection       :  "yes"
 
     PARFWRITE :  "no"

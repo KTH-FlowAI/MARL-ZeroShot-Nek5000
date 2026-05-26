@@ -3,7 +3,10 @@ runner:
     ctrl_min_amp    : -0.064
     action_noise    :  0.1
     npl_state       :  2
-    ckpt_int        :  5
+    ckpt_int        :  1
+
+    if_eval          : True
+    eval_freq        : 5
 
     nb_episodes        : 100
     nb_warmup_episodes : 1
@@ -20,8 +23,9 @@ runner:
     tau             : 0.005
     policy_delay    : 2
 
+
     policy_file     : '../conf/default_ddpg_policy.yml'
-    policy          : ''
+    policy     : 'best_model'
     load_agent      :  False
     normalize_input : 'utau'
 
@@ -33,19 +37,19 @@ runner:
 
     random_init     : 6
     rank            : 1
-    agent_run_name  : 2004
+    agent_run_name  : 2002
 
     evaluation      : False
-    learnt_policy   : False
+    learnt_policy   : True
 
     u_tau           : 0.064
-    dUdy            : 11.51
+    dUdy            : 11.75 
 
-    # Net-gain reward — drag reduction + pressure-velocity cost; no kinetic energy term
+    # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
     reward_fn       : net_gain
     reward_alpha    : 1.0
-    reward_beta     : 1.0
-    reward_gamma    : 0.0
+    reward_beta     : 0.0
+    reward_gamma    : 1.0
 
 
 simulation:
@@ -54,8 +58,8 @@ simulation:
     compile_path   : "../envs/cases/mini_channel"
     restart_folder : "../data/restarts/rs6_mini_Channel"
     TOTCTRL : 220
-    nproc   : 10
-    ndrl    : 6
+    nproc   : 32
+    ndrl    : 10
     znmf_avg: 1
     target_cfl: 2.0
     retau : 182.0
@@ -75,7 +79,7 @@ simulation:
 
     stopAt : "numSteps"
     numSteps : 50000000
-    dt       : -1.0e-2
+    dt       : -5.0e-03
     tmax     : 10000000.0
     timeStepper : "bdf3"
     variableDt : "no"
@@ -92,7 +96,7 @@ simulation:
     v_residualTol   :  1e-8
     v_residualProj  :  "no"
     density         :  1.0
-    viscosity       :  -2800
+    viscosity       :  -2900
     advection       :  "yes"
 
     PARFWRITE :  "no"

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 runner: 
     ctrl_max_amp    :  1.0 # The alpha
+    ctrl_min_amp    :  -1.0
     npl_state       :  2
     ckpt_int        :  5
     nb_interactions :  12000
@@ -27,15 +28,15 @@ simulation:
     #I/O
     exeName : 'nek5000'
     compile_path   : "../envs/cases/mini_channel"
-    restart_folder : "../data/restarts/rs6_mini_Channel"
+    restart_folder : "../data/restarts/rs6_mini_Channel_2"
     #------------------------------------------
     # Generally VERY IMPORTANT
     TOTCTRL : 220        # Be consistent with SIZE
     nproc   : 10         
     ndrl    : 1          # Steps to update the rewards (t^+=0.6)
-    znmf_avg: 1         # NEK(1 == open, 0=close,) -1== Naive Average 
+    znmf_avg: 0         # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
-    retau : 182.0 
+    retau : 180.0 
     y_sensing : 15.0
     gll_unique : 0 
     #------------------------------------------
@@ -58,12 +59,12 @@ simulation:
     ### General 
     stopAt : "numSteps"
     numSteps : 500000       # Make it a bit longer so that the simulation not stops
-    dt       : -1.0e-03
+    dt       : -5.0e-03
     tmax     : 100000.0
     timeStepper : "bdf3"
     variableDt : "no"
     writeControl : 'timeStep' #runTime
-    writeInterval : 10 
+    writeInterval : 10000
     dealiasing : "yes"
     filtering : "none"
     filterWeight : 0.01
@@ -78,7 +79,7 @@ simulation:
     v_residualTol   :  1e-8
     v_residualProj  :  "no"
     density         :  1.0
-    viscosity       :  -2800
+    viscosity       :  -2900
     advection       :  "yes"
     
     #[_RUNPAR]               # Runtime parameter section for rprm module
