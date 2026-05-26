@@ -77,7 +77,7 @@ cc YW:
         integer ie,iface,ix,iy,iz,lgi ! Iteration
         integer NEL,nfaces,KX1,KX2,KY1,KY2,KZ1,KZ2 ! Face related
         integer idx
-        integer gll_unique
+        integer gll_unique ! Flag for unique GLL points
         real xf,yf,zf
         real xr,yr,zr
         character*3 bcb
@@ -111,9 +111,9 @@ cc YW: FOR DRL, we only find the face mid points
         ! call build_owner_mask_wall
         ! Note: Using NEK5000's built-in velocity masks (v1mask, v2mask, v3mask) for ownership
         ! instead of custom agent_own array. This leverages NEK5000's proven ownership system.
-
         gll_unique = UPARAM(8)
         if (NID.eq.0) print *, "YW: GLL UNIQUE=",gll_unique
+
 
         NUMCTRL = 0 
         do ie=1,NEL
@@ -124,6 +124,7 @@ cc YW: FOR DRL, we only find the face mid points
                 bcb=CBC(iface,ie,1)
                 if (bcb.eq.'W  ') then
                 ! YW Modified here to avoid overlapping
+                ! call facindr(KX1,KX2,KY1,KY2,KZ1,KZ2,NX1,NY1,NZ1,iface)
                 if (gll_unique.eq.1) then
                 call facindf(KX1,KX2,KY1,KY2,KZ1,KZ2,NX1,NY1,NZ1,iface)
                 else

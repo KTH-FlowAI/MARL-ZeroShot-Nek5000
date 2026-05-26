@@ -98,7 +98,11 @@ def read_deterministic_run(run_path,case_list,verbose=True):
               print(f"[IO] Reading {rec_data_file}")
           mat_data = sio.loadmat(rec_data_file)
           possible_agents = [k for k in mat_data.keys() if 'jet' in k]
-          rew_sub, act_sub, obs_sub = [], [], [] 
+          if not possible_agents:
+            if verbose:
+                print(f"[IO] Skipping {rec_data_file} (no jet keys)")
+            continue
+          rew_sub, act_sub, obs_sub = [], [], []
           for agent in possible_agents: 
             rew_ = mat_data[agent]['rew_rec'][0][0][:,0] 
             act_ = mat_data[agent]['act_rec'][0][0][:,0] 
@@ -251,6 +255,108 @@ def process_observation(observation:np.ndarray,
   else:
     observations = observation
   return tplus, observations, ind_eval, ind_trans
+
+def stitch_reward_monitor(env_path, verbose=False):
+    """
+    Stitch reward_monitor0000X.dat files from one env folder in numerical order.
+
+    Returns
+    -------
+    time        : np.ndarray  [M]
+    reward_names: list[str]   length N  (columns whose name starts with 'rwd_')
+    data        : np.ndarray  [N, M]
+    """
+    import re
+    files = sorted(
+        [f for f in os.listdir(env_path) if re.match(r'reward_monitor\d+\.dat$', f)]
+    )
+    if not files:
+        raise FileNotFoundError(f"No reward_monitor*.dat files found in {env_path}")
+
+    time_parts, data_parts, reward_names = [], [], None
+    for fname in files:
+        fpath = os.path.join(env_path, fname)
+        with open(fpath, 'r', encoding='utf-8') as fh:
+            header = fh.readline().strip()
+        columns = header.lstrip('#').split()
+        arr = np.loadtxt(fpath, comments='#')
+        if arr.ndim == 1:
+            arr = arr.reshape(1, -1)
+        series = {c: arr[:, i] for i, c in enumerate(columns)}
+        if reward_names is None:
+            reward_names = [c for c in columns if c.startswith('rwd_')]
+        time_parts.append(series['time'])
+        data_parts.append(np.stack([series[n] for n in reward_names], axis=0))  # [N, M_i]
+        if verbose:
+            print(f"[IO] Read {fname}: {arr.shape[0]} rows")
+
+    time = np.concatenate(time_parts)            # [M]
+    data = np.concatenate(data_parts, axis=1)    # [N, M]
+    return time, reward_names, data
+
+
+def load_reward_monitor_case(case_path, save_path, run_name=None, verbose=True):
+    """
+    Load and stitch reward monitor data across all env_00K sub-folders.
+
+    Parameters
+    ----------
+    case_path : str   path to the case directory (contains env_001, env_002, …)
+    save_path : str   directory where the .mat file will be written
+    run_name  : str   prefix for the output file (defaults to basename of case_path)
+    verbose   : bool
+
+    Returns
+    -------
+    time         : np.ndarray  [M]          simulation time
+    reward_array : np.ndarray  [K, N, M]    K envs, N reward components, M samples
+    reward_names : list[str]   length N
+    """
+    env_dirs = sorted([d for d in os.listdir(case_path) if d.startswith('env_')])
+    env_paths = [os.path.join(case_path, d) for d in env_dirs]
+    if not env_paths:
+        raise FileNotFoundError(f"No env_* folders found in {case_path}")
+
+    all_time, all_rewards, reward_names = None, [], None
+    for env_path in env_paths:
+        try:
+            t, names, data = stitch_reward_monitor(env_path, verbose=verbose)
+        except FileNotFoundError:
+            if verbose:
+                print(f"[IO] Skipping {env_path} (no reward_monitor files)")
+            continue
+        if reward_names is None:
+            reward_names = names
+        if all_time is None:
+            all_time = t
+        all_rewards.append(data)   # [N, M_k]
+
+    if not all_rewards:
+        raise RuntimeError(f"No reward monitor data found under {case_path}")
+
+    # Align lengths across envs
+    min_M = min(r.shape[1] for r in all_rewards)
+    reward_array = np.stack([r[:, :min_M] for r in all_rewards], axis=0)  # [K, N, M]
+    all_time = all_time[:min_M]
+
+    if verbose:
+        K, N, M = reward_array.shape
+        print(f"[IO] reward_monitor array: K={K} envs, N={N} components, M={M} samples")
+
+    if run_name is None:
+        run_name = os.path.basename(case_path)
+    os.makedirs(save_path, exist_ok=True)
+    mat_path = os.path.join(save_path, f"{run_name}_reward_monitor.mat")
+    sio.savemat(mat_path, {
+        'time': all_time,
+        'reward': reward_array,
+        'reward_names': np.array(reward_names, dtype=object),
+    })
+    if verbose:
+        print(f"[IO] Saved {mat_path}")
+
+    return all_time, reward_array, reward_names
+
 
 def PDF(InterSecX,InterSecY,
         xmin = -1,xmax = 1,x_grid = 50,

@@ -348,7 +348,7 @@ c=============================================
 
 #ifdef YWDEBUG
         if (NID.eq.0) print *,"[DRL] GET FINDPTS"
-#endif 
+#endif YWDEBUG
 
 
 c$$$ TEST: Write down all the sensing points that we have found and the averaged velocity
