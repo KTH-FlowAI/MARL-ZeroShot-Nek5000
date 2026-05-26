@@ -31,7 +31,7 @@ residualProj = no
 residualTol = 1e-8
 residualProj = no
 density = 1.0
-viscosity = -2800
+viscosity = -2900
 advection = yes
 
 [_MONITOR]              # Runtime parameter section for monitor module
@@ -42,8 +42,8 @@ WALLTIME             = 04:00                  # Simulation wall time
 [_PSTAT2D]                # Runtime paramere section for pstat module
 C2D_FNUM             = 1                      # c2D file number
 AMR_NREF             = 0
-STS_NFILE            = 20 #Number of stat files
-STS_STIME            =0.1200030000002E+03        # Statistics starting time
+STS_NFILE            = 5 #Number of stat files
+STS_STIME            = 0.200030000002E+03        # Statistics starting time
 STS_NSTEP            = 10                     # Number of steps between averaging (in sts file)
 
 

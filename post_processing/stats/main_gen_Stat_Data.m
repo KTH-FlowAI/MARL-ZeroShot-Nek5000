@@ -11,7 +11,7 @@ clear
 pyenv(Version="/home/yuninw/apps/mpi_drl/miniforge3/envs/matlab/bin/python3.10");
 %%
 % Add parameters
-Reb = 2800;
+Reb = 2900;
 ys = 0;
 amp = 0;
 
