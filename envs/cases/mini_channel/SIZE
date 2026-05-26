@@ -15,7 +15,7 @@ c
       ! parameter (lx1=8,lxd=12)                ! p-order for over-integration (dealiasing)
       parameter (lx2=lx1-2)            ! p-order for pressure (lx1 or lx1-2)
       parameter (lelg=128)            ! max total number of elements
-      parameter (lp=10)
+      parameter (lp=32)
       parameter (lelt=13)             ! max number of local elements per MPI rank
       parameter (ldimt=1)              ! max auxiliary fields (temperature + scalars)
 
