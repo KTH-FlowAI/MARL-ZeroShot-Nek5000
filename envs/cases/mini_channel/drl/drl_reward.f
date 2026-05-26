@@ -466,6 +466,11 @@ c=============================================
       real wrk(3), tmp3(3)
       logical fexist
       integer, parameter :: iunit = 52002
+      integer, parameter :: MAX_MON_LINES = 10000
+      integer, save      :: ifile = 0
+      integer :: nlines, ios
+      character(len=200) :: cbuf
+      character(len=40)  :: fname
 c=============================================
       ! Sum local agent values; divide by global count for the mean.
       ! Since rwd_xavg=rwd_zavg=.TRUE., all agents hold the same value,
@@ -489,11 +494,35 @@ c=============================================
       endif
 
       if (NID.eq.0) then
-         inquire(file='reward_monitor.dat', exist=fexist)
+c        Build current filename
+        write(fname,'(A,I5.5,A)') 'reward_monitor', ifile, '.dat'
+
+         inquire(file=trim(fname), exist=fexist)
          if (fexist) then
-            open(iunit, file='reward_monitor.dat', position='append')
+c           Count existing data lines (skip header) before appending
+            nlines = 0
+            open(iunit, file=trim(fname), status='old')
+            read(iunit,'(A)',iostat=ios) cbuf
+            do
+               read(iunit,'(A)',iostat=ios) cbuf
+               if (ios.ne.0) exit
+               nlines = nlines + 1
+            end do
+            close(iunit)
+c           File full: roll over to a new numbered file
+            if (nlines.ge.MAX_MON_LINES) then
+               ifile = ifile + 1
+               write(fname,'(A,I5.5,A)')
+     $            'reward_monitor', ifile, '.dat'
+               open(iunit, file=trim(fname), status='new')
+               write(iunit,'(A)')
+     $            '# time          i_evolv'//
+     $            '  rwd_tau         rwd_pw          rwd_v3'
+            else
+               open(iunit, file=trim(fname), position='append')
+            end if
          else
-            open(iunit, file='reward_monitor.dat', status='new')
+            open(iunit, file=trim(fname), status='new')
             write(iunit,'(A)')
      $         '# time          i_evolv'//
      $         '  rwd_tau         rwd_pw          rwd_v3'
