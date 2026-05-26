@@ -80,6 +80,9 @@ def run(conf_file, overrides, **ignored_kwargs):
     #--------------------------------
     # Definition of the learning callbacks
     callbacks = callback_checkpoint(conf, rank_folder)
+    if conf.runner.if_eval:
+        callbacks.append(callback_evalenv(conf, env, nAgents, conf.runner.eval_freq))
+        print(f"[STB3] EVAL CALLBACK",flush=True)
     ##--------------------------------
     # Configure the logger
     init_logger(run_folder,env,model)

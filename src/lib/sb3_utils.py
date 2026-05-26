@@ -39,9 +39,21 @@ def mpi_split(comm_world):
     
     local_comm = comm_world.Split(color, mpi_rank)
     print(f"[PY] SPLIT the color comm!",flush=True)
-    sub_comm = local_comm.Create_intercomm(local_leader=0, peer_comm=MPI.COMM_WORLD, 
+    sub_comm = local_comm.Create_intercomm(local_leader=0, peer_comm=comm_world, 
                                             remote_leader=1, tag=99)
     return sub_comm
+
+
+def duplicate_comm(comm):
+    """
+    Create an independent MPI communicator handle.
+
+    This is useful when two environment instances need to talk to the same
+    solver/worker group without sharing communicator state or lifecycle.
+    """
+    if comm == MPI.COMM_NULL:
+        return MPI.COMM_NULL
+    return comm.Dup()
 
 def io_path(conf):
     # Identify if it is a pre-trained model 
@@ -168,9 +180,15 @@ def init_model(conf, env, run_folder,nAgents,
         else: 
             print('[IO] RESTART TRAINING',flush=True)
             
-            ckpt_file = f"{run_folder}/"+\
-                f"logs/{conf.runner.agent_run_name}-"+\
-                f"{conf.runner.policy}"
+            ckpt_file = f"{run_folder}/logs/"
+
+            # [YW] If the policy name already contains 'best_model' (e.g., from EvalCallback), use it directly; 
+            if 'best_model' in conf.runner.policy:
+                ckpt_file += f"{conf.runner.policy}"
+            # otherwise, construct the checkpoint filename based on agent_run_name and policy
+            else:
+                ckpt_file +=f"{conf.runner.agent_run_name}-"+\
+                            f"{conf.runner.policy}"
             
             model= RLA.load(path=ckpt_file,
                     env=env,
@@ -231,6 +249,40 @@ def callback_checkpoint(conf, run_folder):
                                 )
     callbacks.append(checkpoint_callback)
     return callbacks
+
+def callback_evalenv(conf, env, nAgents, eval_freq):
+    """
+    Evaluation callback for stable-baselines3
+    conf: configuration object
+    eval_freq: frequency of evaluation (in timesteps)
+    """ 
+    from stable_baselines3.common.callbacks import EvalCallback
+    from copy import deepcopy
+
+    class ClosingEvalCallback(EvalCallback):
+        """
+        EvalCallback that closes its evaluation environment explicitly.
+
+        The evaluation env owns a duplicated MPI communicator, so closing it
+        is what releases the communicator handle.
+        """
+
+        def _on_training_end(self) -> None:
+            if hasattr(self, "eval_env") and self.eval_env is not None:
+                self.eval_env.close()
+            super()._on_training_end()
+
+    eval_conf = deepcopy(conf)
+    eval_conf.runner.random_init = -1 # No shuffle for evaluation
+    rank_folder = io_path(eval_conf)
+    eval_folder = os.path.join(rank_folder,'eval')
+    eval_callback = EvalCallback(
+        eval_env=env,
+        eval_freq=eval_freq*conf.runner.nb_interactions, # Evaluate every eval_freq episodes, in terms of timesteps, it is eval_freq*nb_interactions
+        n_eval_episodes=nAgents*1, # Evaluate each agent for 1 episode, total n_eval_episodes = nAgents*1
+        best_model_save_path=rank_folder+"/logs/",
+    )
+    return eval_callback
 
 #--------------------------------
 # Transfer Learning

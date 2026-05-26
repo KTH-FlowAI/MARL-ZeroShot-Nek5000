@@ -18,6 +18,8 @@ class Runner:
     nb_warmup_episodes:int =   1         # Only for transfer learning, the number of episodes to warm up the critic
     train_steps:int     =   300         # Off-policy only:  Steps to train the model, N-train = n_episode // train_steps
     ckpt_int: int       =   1           # Frequncy of saving policy
+    if_eval:bool        =   True        # Whether to evaluate the policy during training, only for transfer learning
+    eval_freq:int        =   5           # Frequency of evaluation, in terms of episode number, only for transfer learning
     
     # Common: For Roll-out/Replay buffer
     custom_policy:bool  = True
