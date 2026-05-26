@@ -1,23 +1,21 @@
 #!/bin/bash -l
 #SBATCH -A deepwing
-#SBATCH -t 10:00:00
+#SBATCH -t 24:00:00
 #SBATCH -p batch
 #SBATCH --exclusive
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=41
 #SBATCH --cpus-per-task=1
-#SBATCH -J ng-full
+#SBATCH -J ng-111
 #SBATCH --mail-type=ALL
-#SBATCH --mail-user=polsm@kth.se
-#SBATCH --output=log-files/ng-full-%j.out
-#SBATCH --error=log-files/ng-full-%j.err
+#SBATCH --mail-user=yuninw@umich.edu
+#SBATCH --output=log-files/ng-111-%j.out
+#SBATCH --error=log-files/ng-111-%j.err
 
 source ~/.bashrc.openmpi_ucx
 source ~/.bashrc.miniforge
 export UCX_WARN_UNUSED_ENV_VARS=n
 export HWLOC_HIDE_ERRORS=1
-export UCX_TLS=sm,self,tcp,cma,sysv,posix
-export OMPI_MCA_btl=self,vader,tcp
 LOG_DIR="log-files"
 mkdir -p ${LOG_DIR}
 
@@ -25,8 +23,27 @@ echo "Starting at $(date)"
 echo "Running on hosts: $SLURM_NODELIST"
 echo "Running on $SLURM_NNODES nodes, $SLURM_NPROCS processors."
 
-CONFIG_NAME="MC16-TD3-ng-full.yml"
+CONFIG_NAME="MC16-TD3-ng-111.yml"
 RUN_MODE="run"
+# Parse command line arguments
+# Usage: ./unified-script --config [CONFIG_NAME] --run-mode [RUN_MODE] --rank [RANK]
+# Parse command-line arguments after `--`
+while [[ $# -gt 1 ]]; do
+    case "$1" in
+        --config)
+            CONFIG_NAME="$2"
+            shift 2
+            ;;
+        --run-mode)
+            RUN_MODE="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 1
+            ;;
+    esac
+done
 echo "DRL CONFIG: ${CONFIG_NAME}, RUN MODE: ${RUN_MODE}"
 
 mpirun -n 1 python -m nek_MARL initial ../conf/${CONFIG_NAME} \

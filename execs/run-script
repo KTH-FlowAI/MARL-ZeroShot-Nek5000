@@ -24,7 +24,12 @@ export OMPI_MCA_btl=self,vader,tcp
 # Default values
 CONFIG_NAME="MC16-TD3.yml"
 RUN_MODE="run"
-
+IOSTEP=5000
+writeInterval=5000
+SMPSTEP=6
+reward_alpha=1.0
+reward_beta=1.0
+reward_gamma=1.0
 # Parse command line arguments
 # Usage: ./unified-script --config [CONFIG_NAME] --run-mode [RUN_MODE] --rank [RANK]
 # Parse command-line arguments after `--`
@@ -55,7 +60,6 @@ AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | awk -F':' '{
 NTOT=$(grep -ri 'nproc' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
 RUN_PATH=$(head -n 1 RUN_PATH_${AGENT_RUN_NAME}.txt)
 
-AGENT_RUN_NAME=$()
 if [ "$RUN_MODE" = "run" ]; then
     AGENT=$(tail -n 1 RUN_PATH_${AGENT_RUN_NAME}.txt)
 else
@@ -79,14 +83,31 @@ fi
 #--------------------------------------------
 # Main execution
 if [ "$RUN_MODE" = "evaluate" ]; then
-    # Evaluation mode execution
-    mpirun -n $((1 + ${NTOT})) bash -c "
-    if [ \$OMPI_COMM_WORLD_RANK -eq 0 ]; then
-        python -m nek_MARL ${RUN_MODE} ../conf/${CONFIG_NAME} runner.rank=1
-    else
-        cd ${RUN_PATH} && ./nek5000
-    fi
-    "  > ${LOG_DIR}/log.evaluate.${CONFIG_NAME} 2>&1 
+    for ienv in {1..6}
+    do
+        echo "Count: $ienv"
+        mpirun -n 1 python -m nek_MARL initial ../conf/$CONFIG_NAME \
+        runner.random_init=-1 \
+        runner.rank=${ienv} \
+        runner.evaluation=True runner.learnt_policy=True \
+        runner.load_agent=True \
+	    simulation.IOSTEP=${IOSTEP} \
+	    simulation.writeInterval=${writeInterval} \
+	    simulation.SMPSTEP=${SMPSTEP} 
+       
+       var=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+       
+       RUN_PATH=$(head -n 1 RUN_PATH_${var}.txt)
+       
+       # To use mpi_split, one should launch two programs at once. Therefore 
+       mpirun -n 1 python -m nek_MARL evaluate ../conf/$CONFIG_NAME \
+              runner.rank=${ienv}  runner.random_init=-1\
+	          runner.reward_fn=net_gain \
+	          runner.reward_alpha=1.0 runner.reward_beta=1.0 runner.reward_gamma=1.0 \
+              runner.evaluation=True  \
+              runner.load_agent=True :\
+              -n ${NTOT} bash -c "cd ${RUN_PATH} && ./nek5000" > ${LOG_DIR}/log.run.${CONFIG_NAME} 2>&1
+    done
 else
     # Run mode execution
     mpirun -n $((1 + ${NTOT})) bash -c "
