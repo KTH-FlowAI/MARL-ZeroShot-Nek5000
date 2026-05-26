@@ -1,7 +1,11 @@
 
 # maintain the folder 
 /runs/**/
-/data/**/
+/data/**
+!/data/restarts/
+!/data/restarts/rs6_mini_Channel/
+!/data/restarts/rs6_mini_Channel/**
+/data/restarts/**
 *mask*
 !runs/readme.md
 !data/readme.md
