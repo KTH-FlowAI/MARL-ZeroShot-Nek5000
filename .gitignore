@@ -12,3 +12,4 @@ envs/solver/**/
 ucx_mpi/
 miniforge3/
 *log*
+*DATA*
