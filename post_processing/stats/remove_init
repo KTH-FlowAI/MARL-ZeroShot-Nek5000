@@ -1,0 +1,31 @@
+# !/bin/bash
+## A script for removing the inital sts file for transition
+
+## Parse an argument for how many files to remove
+if [ $# -eq 0 ]; then
+  echo "Usage: $0 <number of files to remove>"
+  exit 1
+fi
+NUM_FILES_TO_REMOVE=$1
+echo "[IO] Removing ${NUM_FILES_TO_REMOVE} files"
+
+TARGET_FOLDER="./DATA"
+CASE_NAME="phill"
+DATA_TYPE='sts'
+
+## Count the total number of files in the target folder
+fileNUM=$(ls $TARGET_FOLDER/$DATA_TYPE$CASE_NAME* -dq |  wc -l)
+echo "[IO] ${fileNUM} FILES"
+
+## Remove the first num_files_to_remove files and rename the rest of the files
+for i in `seq $((NUM_FILES_TO_REMOVE + 1)) $fileNUM`
+do 
+  id_padd1=$(printf "%05d" $i)
+  ((j=i-NUM_FILES_TO_REMOVE))
+  id_padd2=$(printf "%05d" $j)
+  fromData="$TARGET_FOLDER/${DATA_TYPE}${CASE_NAME}0.f${id_padd1}"
+  toData="$TARGET_FOLDER/${DATA_TYPE}${CASE_NAME}0.f${id_padd2}"
+  mv ${fromData} ${toData}
+  echo "[IO] MV ${fromData}: ${toData}"
+
+done 
