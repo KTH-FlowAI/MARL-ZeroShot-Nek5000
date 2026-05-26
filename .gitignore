@@ -17,3 +17,5 @@ ucx_mpi/
 miniforge3/
 *log*
 *DATA*
+/post_processing/stats/int_fld
+*.o
