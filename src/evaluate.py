@@ -102,11 +102,18 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
         # Load model from path
         # custom_objects is required because the action_space
         # is not correctly deserialized when loading from file 
-        loaded_model = RL_algorithm.load(f"{run_folder}/"+\
-            f"logs/{conf.runner.agent_run_name}-"+\
-            f"{conf.runner.policy}",
-            custom_objects={'action_space':env.action_space(env.possible_agents[0])})
-    
+        ckpt_path=f"{run_folder}/logs/"
+        if 'best' in conf.runner.policy: 
+            ckpt_path+=f"{conf.runner.policy}"
+        else:
+            ckpt_path+=f"{conf.runner.agent_run_name}-"+\
+               f"{conf.runner.policy}"
+            
+        loaded_model = RL_algorithm.load(ckpt_path,
+            custom_objects={'action_space':env.action_space(env.possible_agents[0]),
+                            "observation_space":env.observation_space(env.possible_agents[0])},
+            print_system_info=False,)
+
     ## Classical AFC 
     else:
         if conf.runner.RL_algorithm == 'OC':
