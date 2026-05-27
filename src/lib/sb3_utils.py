@@ -281,6 +281,7 @@ def callback_evalenv(conf, env, nAgents, eval_freq):
         eval_freq=eval_freq*conf.runner.nb_interactions, # Evaluate every eval_freq episodes, in terms of timesteps, it is eval_freq*nb_interactions
         n_eval_episodes=nAgents*1, # Evaluate each agent for 1 episode, total n_eval_episodes = nAgents*1
         best_model_save_path=rank_folder+"/logs/",
+        log_path=rank_folder+"/logs/",
     )
     return eval_callback
 
