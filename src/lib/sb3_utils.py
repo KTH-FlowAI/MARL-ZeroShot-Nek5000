@@ -258,6 +258,7 @@ def callback_evalenv(conf, env, nAgents, eval_freq):
     """ 
     from stable_baselines3.common.callbacks import EvalCallback
     from copy import deepcopy
+    import os
 
     class ClosingEvalCallback(EvalCallback):
         """
@@ -283,8 +284,66 @@ def callback_evalenv(conf, env, nAgents, eval_freq):
         best_model_save_path=rank_folder+"/logs/",
         log_path=rank_folder+"/logs/",
     )
+    evaluate_npz = os.path.join(rank_folder,'eval/evaluations.npz')
+    if os.path.exists(evaluate_npz):
+        print(f"[STB3] Resumed EvalCallback with history from {evaluate_npz}",flush=True)
+        eval_callback = resume_eval_callback(eval_callback, 
+                                            npz_path=evaluate_npz))
     return eval_callback
 
+
+def resume_eval_callback(callback: EvalCallback, npz_path: str) -> EvalCallback:
+    """
+    Inject prior evaluation history into an EvalCallback before resuming training.
+
+    This handles the fact that EvalCallback._init_callback() resets internal
+    evaluation lists at the start of learn(), so history must be re-injected
+    after that reset via a patched _init_callback.
+
+    Args:
+        callback:  The EvalCallback instance (not yet passed to learn()).
+        npz_path:  Path to the previous run's evaluations.npz file.
+
+    Returns:
+        The same callback, modified in-place.
+    """
+    from stable_baselines3.common.callbacks import EvalCallback
+    import numpy as np
+    import os
+    old_eval = np.load(npz_path)
+
+    old_timesteps = old_eval["timesteps"]          # shape: (n_evals,)
+    old_results   = old_eval["results"]            # shape: (n_evals, n_episodes)
+    old_lengths   = old_eval["ep_lengths"]         # shape: (n_evals, n_episodes)
+
+    old_mean_rewards = old_results.mean(axis=1)
+
+    # --- 1. best_mean_reward: set now, it is NOT reset by _init_callback ---
+    callback.best_mean_reward = float(old_mean_rewards.max())
+    callback.last_mean_reward = float(old_mean_rewards[-1])
+
+    # --- 2. Stash history so we can inject it AFTER _init_callback resets lists ---
+    callback._resume_timesteps = old_timesteps.tolist()
+    callback._resume_results   = old_results.tolist()
+    callback._resume_lengths   = old_lengths.tolist()
+
+    # --- 3. Patch _init_callback to inject history after the reset ---
+    _original_init = callback._init_callback
+
+    def _patched_init():
+        _original_init()                                          # runs the reset
+        callback.evaluations_timesteps = list(callback._resume_timesteps)
+        callback.evaluations_results   = list(callback._resume_results)
+        callback.evaluations_length    = list(callback._resume_lengths)
+
+    callback._init_callback = _patched_init
+
+    print(f"[resume_eval_callback] Loaded {len(old_timesteps)} prior evaluations.")
+    print(f"  best_mean_reward  : {callback.best_mean_reward:.4f}")
+    print(f"  last_mean_reward  : {callback.last_mean_reward:.4f}")
+    print(f"  last timestep     : {old_timesteps[-1]}")
+
+    return callback
 #--------------------------------
 # Transfer Learning
 #--------------------------------
