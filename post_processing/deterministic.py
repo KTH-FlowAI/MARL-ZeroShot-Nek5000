@@ -1,5 +1,5 @@
-import os
-import copy
+import os, copy
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -12,13 +12,22 @@ from postlib.determine import (
     load_reward_monitor_case,
     PDF,
 )
+parser = argparse.ArgumentParser()
+parser.add_argument("--run_path", default="../runs/")
+parser.add_argument("--fig_path", default="Figs/")
+parser.add_argument("--table_path", default="Tables/")
+parser.add_argument("--save_fig",action='store_true')
+parser.add_argument("--show_fig",action='store_true')
+args = parser.parse_args()
 
 plt_setUp()
-
-run_path = "../runs/"
-fig_path = "Figs/"
+run_path = args.run_path
+fig_path = args.fig_path
+table_path = args.table_path
 if not os.path.exists(fig_path):
     os.makedirs(fig_path)
+if not os.path.exists(table_path):
+    os.makedirs(table_path)
 
 # --- Style ---
 STYLE_OC_RED_A06  = make_style(cc.red,       0.6, 'X', 'OC')
@@ -26,9 +35,15 @@ STYLE_DDPG_GR_A06 = make_style(cc.deepgreen, 0.6, 'D', 'DDPG')
 STYLE_PPO_BL_A06  = make_style(cc.blue,      0.6, 'o', 'PPO')
 
 # --- Case Configuration ---
-SAVE_IMG = True
+SAVE_IMG=False; SHOW_IMG=False
+if args.save_fig:
+    SAVE_IMG = args.save_fig
+if args.show_fig:
+    SHOW_IMG = args.show_fig
+
 Head = 'Reth365'
 case_tuple = [
+    [2001, 'TD3',   STYLE_OC_RED_A06],
     [2001, 'TD3',   STYLE_OC_RED_A06],
 ]
 case_list  = [c[0] for c in case_tuple]
@@ -70,20 +85,30 @@ for il, case in enumerate(case_dict.keys()):
 axs.axvspan(xmin=0, xmax=500, color='gray', alpha=0.2)
 axs.text(0.1, 0.9, "Transition:\n" + r"$\ t^+ \leq 500$", transform=axs.transAxes, fontsize=12)
 axs.text(0.5, 0.9, "Reward Evaluation:\n" + r"$t^+ > 500$",  transform=axs.transAxes, fontsize=12)
-axs.set(xlabel=r"$t^+$", xlim=[-1, 1501], ylim=[-1, 40], ylabel=r"$R [\%]$")
+axs.set(xlabel=r"$t^+$", xlim=[-1, 1501], ylim=[-1, 60], ylabel=r"$R [\%]$")
 axs.legend(prop={"size": 12}, loc='lower right')
 
 if SAVE_IMG:
     out = fig_path + f'{Head}_Reward_Deterministic.jpg'
     plt.savefig(out, dpi=300)
     print(f'Saved {out}')
-plt.show()
+if SHOW_IMG:
+    plt.show()
 
 # ---------------------------------------------------------------------------
 # Reward Monitor (per-component reward time series, all envs)
 # ---------------------------------------------------------------------------
+### Start a panda database to store the avg. results for t+ > 500
+df = {"case_name":[],
+      "rwd_tau_mean":[],"rwd_pw_mean":[],"rwd_v3_mean":[], # individial terms
+      "R_mean":[],"NP_mean":[], # pure DR & Net-pow saving
+      "rwd_tau_std":[],"rwd_pw_std":[],"rwd_v3_std":[], # individial terms
+      "R_std":[],"NP_std":[], # pure DR & Net-pow saving
+      }
+
 COLORS_COMP = ['#2E59A7', '#D23918', '#2CA02C', '#9467BD', '#8C564B']
-label_and_scale= [(r'$\tau_w$', 'linear'), (r"$|p'_w v_w|$", "log"), (r'$|\rho v^3_w|$', "log"),]
+label_and_scale= [(r'$\tau_w$', 'linear',[0.001,0.005]), 
+                  (r"$|p'_w v_w|$", "log",[1e-6,1e-2]), (r'$|\rho v^3_w|$', "log",[1e-8,1e-2])]
 
 for il, case in enumerate(case_dict.keys()):
     case_path  = os.path.join(run_path, str(case))
@@ -95,9 +120,12 @@ for il, case in enumerate(case_dict.keys()):
     )
     Re=np.abs(float(case_dict[case]['conf']['simulation']['viscosity']))
     utau=float(case_dict[case]['conf']['runner']['u_tau'])
+    dUdy=float(case_dict[case]['conf']['runner']['dUdy'])
+    tau_w_ref = dUdy/Re
     t_star = (1/Re)/ utau**2
     time -= time[0]  # align the start time to 0
     time = time / t_star
+    t500 = np.where(time >= 500)[0]
 
     K, N, M = reward_array.shape
     mean_r = reward_array.mean(axis=0)   # [N, M]
@@ -115,9 +143,9 @@ for il, case in enumerate(case_dict.keys()):
         ax.plot(time, mean_r[jl], lw=1.6, color=color,
                 label=f'{name}  (mean and std, {K} envs)')
         ax.set_ylabel(label_and_scale_[0],fontsize=18)
+        ax.set_ylim(label_and_scale_[2])
         if label_and_scale_[1] == 'log':
             ax.set_yscale('log',)
-        
         ax.grid(True, alpha=0.3)
         ax.legend(fontsize=9, loc='upper right')
 
@@ -130,6 +158,31 @@ for il, case in enumerate(case_dict.keys()):
         fig.savefig(out, dpi=200)
         print(f'Saved {out}')
 
+    # Calculate R and NP
+    df['case_name'].append(run_name)
+    ### tau_w
+    df['rwd_tau_mean'].append(mean_r[0][t500].mean())
+    df['rwd_tau_std'].append(std_r[0][t500].mean())
+    ### pv_w
+    df['rwd_pw_mean'].append(mean_r[1][t500].mean())
+    df['rwd_pw_std'].append(std_r[1][t500].mean())
+    ### v3
+    df['rwd_v3_mean'].append(mean_r[2][t500].mean())
+    df['rwd_v3_std'].append(std_r[2][t500].mean())
+    ### R = 1 - tau_w/tau_w
+    df['R_mean'].append(1 - df['rwd_tau_mean'][-1] / tau_w_ref)
+    df['R_std'].append(df['rwd_tau_std'][-1] / tau_w_ref * df['R_mean'][-1])
+    ### NP = 1 - (tau_w + pv + v3)/tau_w_ref
+    df['NP_mean'].append(1 - (df['rwd_tau_mean'][-1] + df['rwd_pw_mean'][-1] + df['rwd_v3_mean'][-1]) / tau_w_ref)
+    df['NP_std'].append((df['rwd_tau_std'][-1] + df['rwd_pw_std'][-1] + df['rwd_v3_std'][-1]) / tau_w_ref * df['NP_mean'][-1])
+
+# Convert into Np array then output
+for key in df.keys():
+    if 'case_name' not in key:
+        df[key] = np.array(df[key])
+df = pd.DataFrame(df)
+df.to_csv(os.path.join(table_path, f'{Head}_NP_Summary.csv'), index=False, float_format='%.2e')
+print(df.head(10))
 # ---------------------------------------------------------------------------
 # Action Inspect
 # ---------------------------------------------------------------------------
@@ -179,7 +232,9 @@ if SAVE_IMG:
     out = fig_path + f'{Head}_Action_Deterministic.jpg'
     plt.savefig(out, dpi=300)
     print(f'Saved {out}')
-plt.show()
+if SHOW_IMG:
+    plt.show()
+quit()
 
 # ---------------------------------------------------------------------------
 # Observation Inspect
@@ -235,4 +290,5 @@ if SAVE_IMG:
     out = fig_path + f'{Head}_Observation_Deterministic.jpg'
     plt.savefig(out, dpi=300)
     print(f'Saved {out}')
-plt.show()
+if SHOW_IMG:
+    plt.show()

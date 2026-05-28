@@ -1,0 +1,2 @@
+case_name,rwd_tau_mean,rwd_pw_mean,rwd_v3_mean,R_mean,NP_mean,rwd_tau_std,rwd_pw_std,rwd_v3_std,R_std,NP_std
+TD3_Retau182_2001,2.10e-03,7.49e-05,1.52e-05,4.88e-01,4.66e-01,5.92e-05,1.37e-05,2.29e-06,7.03e-03,8.53e-03
