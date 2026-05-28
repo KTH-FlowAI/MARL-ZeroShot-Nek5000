@@ -284,15 +284,15 @@ def callback_evalenv(conf, env, nAgents, eval_freq):
         best_model_save_path=rank_folder+"/logs/",
         log_path=rank_folder+"/logs/",
     )
-    evaluate_npz = os.path.join(rank_folder,'eval/evaluations.npz')
+    evaluate_npz = os.path.join(rank_folder,'logs/evaluations.npz')
     if os.path.exists(evaluate_npz):
         print(f"[STB3] Resumed EvalCallback with history from {evaluate_npz}",flush=True)
         eval_callback = resume_eval_callback(eval_callback, 
-                                            npz_path=evaluate_npz))
+                                            npz_path=evaluate_npz)
     return eval_callback
 
 
-def resume_eval_callback(callback: EvalCallback, npz_path: str) -> EvalCallback:
+def resume_eval_callback(callback, npz_path: str):
     """
     Inject prior evaluation history into an EvalCallback before resuming training.
 
