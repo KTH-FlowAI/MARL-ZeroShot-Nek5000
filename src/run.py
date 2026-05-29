@@ -17,6 +17,7 @@ from configs import Config
 from lib.nek_utils import *
 from mpi4py import MPI
 from lib.sb3_utils import *
+from stable_baselines3.common.callbacks import CallbackList
 
 
 device = ('cpu' if not th.cuda.is_available() else "cuda")
@@ -83,6 +84,7 @@ def run(conf_file, overrides, **ignored_kwargs):
     if conf.runner.if_eval:
         callbacks.append(callback_evalenv(conf, env, nAgents, conf.runner.eval_freq))
         print(f"[STB3] EVAL CALLBACK",flush=True)
+    callbacks = CallbackList(callbacks) # YW: Combine the callbacks into a CallbackList
     ##--------------------------------
     # Configure the logger
     init_logger(run_folder,env,model)

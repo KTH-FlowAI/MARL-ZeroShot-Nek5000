@@ -144,6 +144,8 @@ class parallel_env(ParallelEnv):
         self.restart_index = 0
         self.act_index = 0
         self.reward_log = list()
+        self.eval_reward_log = list()
+        
         
         # Initialize real-time reward logger
         self.reward_logger = RewardLogger(
@@ -153,9 +155,16 @@ class parallel_env(ParallelEnv):
             log_aggregated=True,
             flush_frequency=10
         )
+        # Initialize real-time evaluate reward logger
+        self.eval_reward_logger = RewardLogger(
+            log_dir=self.history_path,
+            log_name="eval_rewards",
+            log_per_agent=False,
+            log_aggregated=True,
+            flush_frequency=10
+        )
  
-
-
+        # Scale the reward by the baseline value to ensure a more stable learning process
         print(f"SCALE: dUdy={self.baseline_dudy}\n Utau={self.utau}",flush=True)
         # Reward-related variables
         if self.conf.runner.rew_mode == 'MovingAverage':
@@ -165,6 +174,11 @@ class parallel_env(ParallelEnv):
             # an the reference value
             for i_h in range(self.conf.runner.size_history):
                 self.reward_history.data[i_h] = self.baseline_dudy*np.ones((self.nAgents,))
+        
+        # Initialize for the evaluation environment
+        self.eval_mode = False # We initial it as false and only turn it on when we call the evaluation callback
+        self.eval_env_id = 1
+        self.eval_index = 0
         print(f'------------ FINISH -------------',flush=True)
 
 
@@ -280,23 +294,28 @@ class parallel_env(ParallelEnv):
 
         print("[STB3] RESET!",flush=True)
         self.agents = self.possible_agents[:]
-        # Close the current SIMSON simulation
-        # self.end_simulation()
-        # update restart_index
-        self.restart_index +=1
-        print(f'[STB3] EPISODE={self.restart_index}',flush=True)
+
         # Re-initialize the action index
         self.act_index = 0
-
-        # Save reward log and re-initialized it
-        np.savez(os.path.join(self.history_path,
+        # update restart_index
+        if self.eval_mode == False:
+            self.restart_index +=1
+            print(f'[STB3] EPISODE={self.restart_index}',flush=True)
+            # Save reward log and re-initialized it
+            np.savez(os.path.join(self.history_path,
                             f'rewlog_{self.restart_index:05d}.npz'),
                 rew=np.array(self.reward_log))
-        
-        # Log episode summary
-        self.reward_logger.log_episode_summary(episode=self.restart_index)
-
-        self.reward_log = list()
+            self.reward_logger.log_episode_summary(episode=self.restart_index)
+            self.reward_log = list()
+        else:
+            self.eval_index +=1
+            print(f'[STB3] EVALUATION={self.eval_index}',flush=True)
+            # Save reward log and re-initialized it
+            np.savez(os.path.join(self.history_path,
+                                f'eval_{self.eval_index:05d}.npz'),
+                    rew=np.array(self.eval_reward_log))
+            self.eval_reward_logger.log_episode_summary(episode=self.eval_index)
+            self.eval_reward_log = list()
         print('[STB3] SAVE LOG',flush=True)
 
 
@@ -586,7 +605,10 @@ class parallel_env(ParallelEnv):
                 rewards[agent_name] = i_reward
 
         # Logging
-        self.reward_log.append(i_reward)
+        if self.eval_mode==False:
+            self.reward_log.append(i_reward)
+        else:
+            self.eval_reward_log.append(i_reward)
         raw_dict = {agent_name: r_reward.squeeze() for agent_name in rewards.keys()}
         if self.reward_fn == 'net_gain':
             ref = self.baseline_tau_wall
@@ -597,13 +619,20 @@ class parallel_env(ParallelEnv):
             }
         else:
             components = None
-        self.reward_logger.log_rewards(
+        if self.eval_mode==False:
+            self.reward_logger.log_rewards(
             rewards=rewards,
             dUdy_raw=raw_dict,
             episode=self.restart_index,
             step=self.act_index,
-            components=components,
-        )
+            components=components,)
+        else:
+            self.eval_reward_logger.log_rewards(
+            rewards=rewards,
+            dUdy_raw=raw_dict,
+            episode=self.eval_index,
+            step=self.act_index,
+            components=components,)
         print(f"[LOGGER] act_index={self.act_index} raw_rwd={r_reward.squeeze():.5f} R={i_reward:.5f} fn={self.reward_fn}",flush=True)
         
         return rewards
@@ -751,40 +780,51 @@ class parallel_env(ParallelEnv):
             if random_init == -1, we use the specified No.INIT 
             if random_init == -2 and restart_index==1, Not OverWrite the RSTART for the first run 
         """
-        if self.conf.runner.random_init>0: 
-            n_init = np.random.randint(low=1,high=self.conf.runner.random_init+1)
-            target_folder = os.path.join(self.rstart_folder,f"init_{n_init}")
+        if self.eval_mode:
+            print(f'[RSTART] EVAL MODE, NOT RANDOM',flush=True)
+            target_folder = os.path.join(self.rstart_folder,f"init_{self.eval_env_id}")
             rs_list = os.listdir(target_folder)
             rs_list = [f for f in rs_list if 'rs' in f ]
             for rsfile in rs_list: 
                 rsfile = os.path.join(target_folder,rsfile)
                 shutil.copy(rsfile,dst=self.mpi_info['wdir']+'/')
-                print(f"[RSTART] RESET: {rsfile}",flush=True)
+                print(f"[RSTART] EVAL MODE, RESET: {rsfile}",flush=True)
+            return
+        else:
+            if self.conf.runner.random_init>0: 
+                n_init = np.random.randint(low=1,high=self.conf.runner.random_init+1)
+                target_folder = os.path.join(self.rstart_folder,f"init_{n_init}")
+                rs_list = os.listdir(target_folder)
+                rs_list = [f for f in rs_list if 'rs' in f ]
+                for rsfile in rs_list: 
+                    rsfile = os.path.join(target_folder,rsfile)
+                    shutil.copy(rsfile,dst=self.mpi_info['wdir']+'/')
+                    print(f"[RSTART] RESET: {rsfile}",flush=True)
 
-        elif self.conf.runner.random_init==-1:
-            print(f'[RSTART] NOT SHUFFLE; RANK={self.conf.runner.rank}',flush=True)
-            target_folder = os.path.join(self.rstart_folder,f"init_{self.conf.runner.rank}")
-            n_init = self.conf.runner.rank
-            rs_list = os.listdir(target_folder)
-            rs_list = [f for f in rs_list if 'rs' in f ]
-            for rsfile in rs_list: 
-                rsfile = os.path.join(target_folder,rsfile)
-                shutil.copy(rsfile,dst=self.mpi_info['wdir']+'/')
-                print(f"[RSTART] RESET: {rsfile}",flush=True)
+            elif self.conf.runner.random_init==-1:
+                print(f'[RSTART] NOT SHUFFLE; RANK={self.conf.runner.rank}',flush=True)
+                target_folder = os.path.join(self.rstart_folder,f"init_{self.conf.runner.rank}")
+                n_init = self.conf.runner.rank
+                rs_list = os.listdir(target_folder)
+                rs_list = [f for f in rs_list if 'rs' in f ]
+                for rsfile in rs_list: 
+                    rsfile = os.path.join(target_folder,rsfile)
+                    shutil.copy(rsfile,dst=self.mpi_info['wdir']+'/')
+                    print(f"[RSTART] RESET: {rsfile}",flush=True)
         
-        elif (self.conf.runner.random_init<-1) and (self.restart_index == 1):
-            print(f'[RSTART] NOT OVERWIRTE; RANK {self.conf.runner.rank}',flush=True)
-            target_folder = os.path.join(self.rstart_folder,f"init_{self.conf.runner.rank}")
-            ## But give a Sainty check, ensure at least rs8 files exist
-            source_folder = self.mpi_info['wdir']+'/'
-            rs_list = os.listdir(target_folder)
-            rs_list = [f for f in rs_list if 'rs' in f ]
+            elif (self.conf.runner.random_init<-1) and (self.restart_index == 1):
+                print(f'[RSTART] NOT OVERWIRTE; RANK {self.conf.runner.rank}',flush=True)
+                target_folder = os.path.join(self.rstart_folder,f"init_{self.conf.runner.rank}")
+                ## But give a Sainty check, ensure at least rs8 files exist
+                source_folder = self.mpi_info['wdir']+'/'
+                rs_list = os.listdir(target_folder)
+                rs_list = [f for f in rs_list if 'rs' in f ]
             
-            if len(rs_list) < 3:
-                raise ValueError(f"[RSTART] NOT ENOUGH FILE TO RESTART")
-            else:
-                for rsfile in rs_list:
-                    print(f"[RSTART] EXIST: {rsfile}",flush=True)
+                if len(rs_list) < 3:
+                    raise ValueError(f"[RSTART] NOT ENOUGH FILE TO RESTART")
+                else:
+                    for rsfile in rs_list:
+                        print(f"[RSTART] EXIST: {rsfile}",flush=True)
 
 
 

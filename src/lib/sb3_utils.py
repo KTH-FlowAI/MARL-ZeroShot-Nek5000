@@ -250,6 +250,26 @@ def callback_checkpoint(conf, run_folder):
     callbacks.append(checkpoint_callback)
     return callbacks
 
+def get_base_env(env):
+    """
+    Traverse SuperSuit + SB3 wrapper chain to reach the base env.
+    Handles: concat_vec_envs_v1, pettingzoo_env_to_vec_env_v1, SB3 VecEnvWrapper.
+    """
+    while True:
+        if hasattr(env, 'vec_envs'):      # SuperSuit ConcatVecEnv
+            env = env.vec_envs[0]
+        elif hasattr(env, 'par_env'):     # SuperSuit MarkovVectorEnv
+            env = env.par_env
+        elif hasattr(env, 'venv'):        # SB3 VecEnvWrapper
+            env = env.venv
+        elif hasattr(env, 'envs'):        # SB3 DummyVecEnv
+            env = env.envs[0]
+        elif hasattr(env, 'env'):         # Standard Gym wrapper
+            env = env.env
+        else:
+            break                         # reached the base
+    return env
+
 def callback_evalenv(conf, env, nAgents, eval_freq):
     """
     Evaluation callback for stable-baselines3
@@ -260,29 +280,41 @@ def callback_evalenv(conf, env, nAgents, eval_freq):
     from copy import deepcopy
     import os
 
-    class ClosingEvalCallback(EvalCallback):
-        """
-        EvalCallback that closes its evaluation environment explicitly.
+    # class NekEvalCallback(EvalCallback):
+    #     """EvalCallback that switches the shared Nek env into eval mode."""
+    #     def _on_step(self) -> bool:
+    #         # Switch to deterministic eval mode
+    #         if hasattr(self.eval_env, 'eval_mode'):
+    #             print(f"[STB3] SWITCH ENV TO EVAL MODE",flush=True)
+    #             self.eval_env.eval_mode = True
+    #             result = super()._on_step()   # runs evaluate_policy internally
+    #             # Switch back to training mode
+    #             self.eval_env.eval_mode = False
+    #             return result
+    #         else:
+    #             print(f"[STB3] WARNING: EvalEnv does not have 'eval_mode' attribute. EvalCallback will run without switching modes.", flush=True)
 
-        The evaluation env owns a duplicated MPI communicator, so closing it
-        is what releases the communicator handle.
-        """
-
-        def _on_training_end(self) -> None:
-            if hasattr(self, "eval_env") and self.eval_env is not None:
-                self.eval_env.close()
-            super()._on_training_end()
-
-    eval_conf = deepcopy(conf)
-    eval_conf.runner.random_init = -1 # No shuffle for evaluation
-    rank_folder = io_path(eval_conf)
-    eval_folder = os.path.join(rank_folder,'eval')
-    eval_callback = EvalCallback(
+    class NekEvalCallback(EvalCallback):
+        def _on_step(self) -> bool:
+            base_env = get_base_env(self.eval_env)
+            if hasattr(base_env, 'eval_mode'):
+                print(f"[SB3] SWITCH ENV TO EVAL MODE — base: {type(base_env).__name__}", flush=True)
+                base_env.eval_mode = True
+                result = super()._on_step()
+                base_env.eval_mode = False
+                return result
+            else:
+                print(f"[SB3] WARNING: {type(base_env).__name__} has no 'eval_mode'. "
+                    f"Running eval without mode switch.", flush=True)
+                return super()._on_step()
+    rank_folder = io_path(conf)
+    eval_callback = NekEvalCallback(
         eval_env=env,
         eval_freq=eval_freq*conf.runner.nb_interactions, # Evaluate every eval_freq episodes, in terms of timesteps, it is eval_freq*nb_interactions
         n_eval_episodes=nAgents*1, # Evaluate each agent for 1 episode, total n_eval_episodes = nAgents*1
         best_model_save_path=rank_folder+"/logs/",
         log_path=rank_folder+"/logs/",
+        deterministic=True,
     )
     evaluate_npz = os.path.join(rank_folder,'logs/evaluations.npz')
     if os.path.exists(evaluate_npz):
