@@ -228,7 +228,7 @@ c=============================================
          real pwvw(LX1,LY1,LZ1,LELT), v3(LX1,LY1,LZ1,LELT)
          real buffer(LX1,LY1,LZ1,LELT), wrk_buff(LX1,LY1,LZ1,LELT)
 
-         integer i_evolv
+         integer i_evolv, n_drl
          real    rwd_i, rwd_c
          integer im, jm, km, fmid(6)
          integer ie,iface,ix,iy,iz,lgi
@@ -243,6 +243,7 @@ c       Function
 c=============================================
          rho  = param(1)
          denu = param(2)
+         n_drl = UPARAM(1)
 
          nxyz=LX1*LY1*LZ1
          ntot=LX1*LY1*LZ1*LELT
@@ -361,7 +362,9 @@ c------- Step 4: Assemble reward at each agent location
          enddo
 
 #ifdef GAINMONITOR
-         call write_reward_monitor(i_evolv)
+        if (i_evolv.eq.n_drl) then
+                call write_reward_monitor(i_evolv)
+        endif
 #endif
 
 #ifdef YWDEBUG
@@ -466,7 +469,7 @@ c=============================================
       real wrk(3), tmp3(3)
       logical fexist
       integer, parameter :: iunit = 52002
-      integer, parameter :: MAX_MON_LINES = 1000000
+      integer, parameter :: MAX_MON_LINES = 10000
       integer, save      :: ifile = 0
       integer :: nlines, ios
       character(len=200) :: cbuf
