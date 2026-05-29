@@ -165,11 +165,12 @@ c       Testing
 c=============================================
 c$$$ TEST 
 c        !Write dow1 the face normal 
+#ifdef YWDEBUG
         if (ISTEP.eq.1) then
         call outpost(ctrlVx,ctrlVy,vx,pr,t,'ang')
         if (NID.eq.0) print *,"At",ISTEP,"YW: WIRTE ANGLE FOR TEST"
         endif 
-
+#endif
 c$$$ TEST End
 
         return 
