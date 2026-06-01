@@ -107,8 +107,10 @@ df = {"case_name":[],
       }
 
 COLORS_COMP = ['#2E59A7', '#D23918', '#2CA02C', '#9467BD', '#8C564B']
-label_and_scale= [(r'$\tau_w$', 'linear',[0.001,0.005]), 
+label_and_scale= [(r'$\tau_w$', 'linear',[0.001,0.005]),
                   (r"$|p'_w v_w|$", "log",[1e-6,1e-2]), (r'$|\rho v^3_w|$', "log",[1e-8,1e-2])]
+
+collected = []  # stores (time, mean_r, std_r, run_name, K) for cross-case plots
 
 for il, case in enumerate(case_dict.keys()):
     case_path  = os.path.join(run_path, str(case))
@@ -158,6 +160,8 @@ for il, case in enumerate(case_dict.keys()):
         fig.savefig(out, dpi=200)
         print(f'Saved {out}')
 
+    collected.append((time.copy(), mean_r.copy(), std_r.copy(), run_name, K))
+
     # Calculate R and NP
     df['case_name'].append(run_name)
     ### tau_w
@@ -175,6 +179,36 @@ for il, case in enumerate(case_dict.keys()):
     ### NP = 1 - (tau_w + pv + v3)/tau_w_ref
     df['NP_mean'].append(1 - (df['rwd_tau_mean'][-1] + df['rwd_pw_mean'][-1] + df['rwd_v3_mean'][-1]) / tau_w_ref)
     df['NP_std'].append((df['rwd_tau_std'][-1] + df['rwd_pw_std'][-1] + df['rwd_v3_std'][-1]) / tau_w_ref * df['NP_mean'][-1])
+
+# ---------------------------------------------------------------------------
+# Per-component figures with all cases overlaid
+# ---------------------------------------------------------------------------
+if collected:
+    N_comp = collected[0][1].shape[0]
+    for jl in range(N_comp):
+        label_and_scale_ = label_and_scale[jl] if jl < len(label_and_scale) else (reward_names[jl], 'linear', None)
+        fig_c, ax_c = plt.subplots(1, 1, figsize=(10, 4))
+        for il, (time_c, mean_c, std_c, rname, K_c) in enumerate(collected):
+            color = case_style[il]['c']
+            label = case_name[il]
+            ax_c.fill_between(time_c, mean_c[jl] - std_c[jl], mean_c[jl] + std_c[jl],
+                              alpha=0.20, color=color)
+            ax_c.plot(time_c, mean_c[jl], lw=1.6, color=color,
+                      label=f'{label}  ({K_c} envs)')
+        ax_c.set_xlabel(r'$t^+$', fontsize=14)
+        ax_c.set_ylabel(label_and_scale_[0], fontsize=18)
+        if label_and_scale_[2] is not None:
+            ax_c.set_ylim(label_and_scale_[2])
+        if label_and_scale_[1] == 'log':
+            ax_c.set_yscale('log')
+        ax_c.grid(True, alpha=0.3)
+        ax_c.legend(fontsize=10, loc='upper right')
+        ax_c.set_title(f'Reward component {jl+1}: {label_and_scale_[0]} — all cases')
+        fig_c.tight_layout()
+        if SAVE_IMG:
+            out = os.path.join(fig_path, f'{Head}_reward_comp{jl+1}_all_cases.jpg')
+            fig_c.savefig(out, dpi=200)
+            print(f'Saved {out}')
 
 # Convert into Np array then output
 for key in df.keys():
