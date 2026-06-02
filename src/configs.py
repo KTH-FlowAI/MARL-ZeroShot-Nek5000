@@ -68,6 +68,10 @@ class Runner:
     learnt_policy:bool       = False
     vars_record:bool         = True
     vars_record_freq:int     = 1 
+
+    # For Transfer Learning across different solvers
+    source_solver:str = 'nek' # 'nek' or 'dedalus'
+
     # On Interaction
     rew_mode:str        =  'Homo' # We let all subdomain share the same reward
     normalize_input:str =  'utau'   # Between None, utau, std 
@@ -76,6 +80,7 @@ class Runner:
     ctrl_array_size:int =   1
     npl_state:int       =   2           # Should be consistent with SIZE 
     
+    # Scaling 
     u_tau:float         = 0.047
     dUdy:float          = 12.875
     reward_fn:str       = 'dudy'  # 'dudy' or 'net_gain' (requires NETGAIN compile flag in Fortran)
