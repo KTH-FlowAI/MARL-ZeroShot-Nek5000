@@ -40,9 +40,10 @@ class Runner:
     dUdy: list = field(default_factory=list)
     # Action bounds in list
     action_bounds: list = field(default_factory=list)
-
     # Action update in list
     drl_steps: list = field(default_factory=list)
+    # A list of string to indicate the solver souce for transfer learning
+    source_solvers: list = field(default_factory=list)
 
     evaluation: bool = True
     rank: int = 0  # NAME of test case
