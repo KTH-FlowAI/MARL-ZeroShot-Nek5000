@@ -420,7 +420,7 @@ class MetaPolicyRunner():
                                        f"{case_dict['policy']}",
                                        # custom_objects is required because the action_space
                                        custom_objects={'action_space':self.act_space,
-                                        "observation_space": self.obs_space,
+                                        "observation_space": self.obs_space,}
                                        )
 
       is_low_equal = (loaded_model.action_space.low[0] == case_dict['ctrl_min_amp'])
