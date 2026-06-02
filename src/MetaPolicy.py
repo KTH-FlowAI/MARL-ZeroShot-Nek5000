@@ -389,10 +389,10 @@ class MetaPolicyRunner():
     """
     Rearrange the observation based on the source solver
     """
-    if source_solver == "Dedalus":
+    if source_solver == "dedalus":
       # For Dedalus, we need to flip the observation order
       return np.flip(observation, axis=0)
-    else:
+    else: # if nek
       return observation  # Placeholder - implement actual rearrangement logic based on source_solver
 
   # --------------------------------------------

@@ -43,7 +43,8 @@ class Runner:
     # Action update in list
     drl_steps: list = field(default_factory=list)
     # A list of string to indicate the solver souce for transfer learning
-    source_solvers: list = field(default_factory=list)
+    source_solvers: list = field(default_factory=list) # now we only support "dedalus" and "nek", 
+    # but this can be easily extended to more solvers in the future
 
     evaluation: bool = True
     rank: int = 0  # NAME of test case
