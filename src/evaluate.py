@@ -47,6 +47,19 @@ def parse_omegaconf(conf_file: str, overrides: List[str]):
     )
     return conf
 
+def solver_dep_obs(conf, obs):
+    """
+    Adjust observations based on solver-specific requirements
+    """
+    # This is required because the obs from env is flipped in y direction 
+    # due to the way we read the data from Fortran. 
+    if conf.runner.source_solver == 'dedalus':
+        for agent in obs.keys():# Flip the observation order for Dedalus
+            obs[agent] = np.flip(obs[agent], axis=0)  
+        return obs_flipped
+        print(f"[DEDALUS] FLIPPED OBSERVATIONS {obs_flipped}",flush=True)
+    else:
+        return obs
 
 def evaluate(conf_file,overrides,**ignored_kwargs):
     """
@@ -111,7 +124,8 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
             
         loaded_model = RL_algorithm.load(ckpt_path,
             custom_objects={'action_space':env.action_space(env.possible_agents[0]),
-                            "observation_space":env.observation_space(env.possible_agents[0])},
+                            "observation_space":env.observation_space(env.possible_agents[0]),
+                            },
             print_system_info=False,)
 
     ## Classical AFC 
@@ -158,6 +172,8 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
     # Main Loop 
 
     for i in range(conf.runner.nb_interactions-1):
+        # print(f"[DEBUG] OBSERVATIONS {observations}")
+        observations = solver_dep_obs(conf, observations)
         # Agent Actutaion
         actions, states = loaded_model.predict(observations, state=states, 
                 episode_start=episode_starts, deterministic=True)
