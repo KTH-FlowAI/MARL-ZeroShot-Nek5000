@@ -58,6 +58,8 @@ class MetaPolicyRunner():
       self.policy_dict[_name]['rL_algorithm'] = self.conf.runner.RL_algorithm[il]
       self.policy_dict[_name]['agent_run_name'] = self.conf.runner.agent_run_name[il]
       self.policy_dict[_name]['policy'] = self.conf.runner.policy[il]
+      #[YW-MOD] The source solver for transfer learning
+      self.policy_dict[_name]['source_solver'] = self.conf.runner.source_solvers[il]
 
       # Update time interval
       self.policy_dict[_name]['drl_step'] = self.conf.runner.drl_steps[il]
@@ -75,6 +77,7 @@ class MetaPolicyRunner():
       case_dict = self._load_policy(case_dict=self.policy_dict[_name],
                                     policy_folder=os.path.join(self.conf.logging.policy_dir,
                                                               self.policy_dict[_name]['agent_run_name']))
+      # Case dict is updated with the loaded model and rescale factors, we assign it back to the policy dict
       self.policy_dict[_name] = case_dict
 
       # Indication of start
@@ -94,9 +97,15 @@ class MetaPolicyRunner():
     """
     self.CTRL_MAP = env.agent_info
     print(f"[Meta] GET CTRL MAP", flush=True)
+
     self.Agents_List = np.array(env.possible_agents, dtype=np.string_)
     self.Agents_List_str = env.possible_agents
     print(f"[Meta] GET Agent List", flush=True)
+
+    # [YW] We assume the observation space and action space are the same across agents
+    agent0 = env.possible_agents[0]
+    self.obs_space = env.observation_space(agent0)
+    self.act_space = env.action_space(agent0)
 
     # Vectorizing the environment
     env = ss.pettingzoo_env_to_vec_env_v1(env)
@@ -246,8 +255,11 @@ class MetaPolicyRunner():
     self.policy_dict[case_name]['i_step'] += 1
     if if_update:
       # If requires update, we renew the buffer
-      # Get the observation
-      partial_obs = observation[self.policy_dict[case_name]['agent_idx'], :, :, :]
+      # Get the observation, 
+      # [YW] rearrange it based on the source solver, and normalize it based on the local u_tau
+      partial_obs = self._obs_solver_arrange(observation[self.policy_dict[case_name]['agent_idx'], :, :, :], 
+                                              self.policy_dict[case_name]['source_solver'])
+
       partial_obs = self._normalize_state(partial_obs, self.policy_dict[case_name]['u_tau'])
 
       # React to the partial observation
@@ -373,6 +385,18 @@ class MetaPolicyRunner():
 
   # --------------------------------------------
   @staticmethod
+  def _obs_solver_arrange(observation: np.ndarray, source_solver: str):
+    """
+    Rearrange the observation based on the source solver
+    """
+    if source_solver == "Dedalus":
+      # For Dedalus, we need to flip the observation order
+      return np.flip(observation, axis=0)
+    else:
+      return observation  # Placeholder - implement actual rearrangement logic based on source_solver
+
+  # --------------------------------------------
+  @staticmethod
   def _load_policy(case_dict, policy_folder):
     """
     Load W&B Based on the Algorithm Type
@@ -394,6 +418,9 @@ class MetaPolicyRunner():
       loaded_model = RL_algorithm.load(f"{policy_folder}/" +
                                        f"logs/{case_dict['agent_run_name']}-" +
                                        f"{case_dict['policy']}",
+                                       # custom_objects is required because the action_space
+                                       custom_objects={'action_space':self.act_space,
+                                        "observation_space": self.obs_space,
                                        )
 
       is_low_equal = (loaded_model.action_space.low[0] == case_dict['ctrl_min_amp'])
