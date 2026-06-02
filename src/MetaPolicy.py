@@ -358,46 +358,7 @@ class MetaPolicyRunner():
     return rewards
 
   # --------------------------------------------
-  @staticmethod
-  def _scale_reward(reward: np.ndarray, baseline_dUdy):
-    """
-    Scale the observation based on the friction velocity
-    """
-
-    return 1 - (np.mean(reward) / baseline_dUdy)
-
-  # --------------------------------------------
-  @staticmethod
-  def _normalize_state(observation: np.ndarray, u_tau):
-    """
-    Scale the observation based on the friction velocity
-    """
-    return observation / u_tau
-
-  # --------------------------------------------
-  @staticmethod
-  def _rescale_actions(actions: np.ndarray, rescale_factors):
-    """
-    Rescale the action based on the rescale factors
-    """
-
-    return actions * rescale_factors[-1]
-
-  # --------------------------------------------
-  @staticmethod
-  def _obs_solver_arrange(observation: np.ndarray, source_solver: str):
-    """
-    Rearrange the observation based on the source solver
-    """
-    if source_solver == "dedalus":
-      # For Dedalus, we need to flip the observation order
-      return np.flip(observation, axis=0)
-    else: # if nek
-      return observation  # Placeholder - implement actual rearrangement logic based on source_solver
-
-  # --------------------------------------------
-  @staticmethod
-  def _load_policy(case_dict, policy_folder):
+  def _load_policy(self,case_dict, policy_folder):
     """
     Load W&B Based on the Algorithm Type
     Args:
@@ -473,3 +434,41 @@ class MetaPolicyRunner():
     print(f"[META] W&B LOADED: {case_dict['rL_algorithm']}\t{case_dict['policy']}\t{case_dict['rescale_factors']}", flush=True)
 
     return case_dict
+
+  # --------------------------------------------
+  @staticmethod
+  def _scale_reward(reward: np.ndarray, baseline_dUdy):
+    """
+    Scale the observation based on the friction velocity
+    """
+
+    return 1 - (np.mean(reward) / baseline_dUdy)
+
+  # --------------------------------------------
+  @staticmethod
+  def _normalize_state(observation: np.ndarray, u_tau):
+    """
+    Scale the observation based on the friction velocity
+    """
+    return observation / u_tau
+
+  # --------------------------------------------
+  @staticmethod
+  def _rescale_actions(actions: np.ndarray, rescale_factors):
+    """
+    Rescale the action based on the rescale factors
+    """
+
+    return actions * rescale_factors[-1]
+
+  # --------------------------------------------
+  @staticmethod
+  def _obs_solver_arrange(observation: np.ndarray, source_solver: str):
+    """
+    Rearrange the observation based on the source solver
+    """
+    if source_solver == "dedalus":
+      # For Dedalus, we need to flip the observation order
+      return np.flip(observation, axis=0)
+    else: # if nek
+      return observation  # Placeholder - implement actual rearrangement logic based on source_solver
