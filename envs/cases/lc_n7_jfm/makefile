@@ -1,4 +1,4 @@
-### makefile automatically created by makenek 06/03/2026 22:02:45 ###
+### makefile automatically created by makenek 06/04/2026 10:09:50 ###
 BINNAME=nek5000
 LIBNAME=libnek5000.a
 CASENAME:=tcf
