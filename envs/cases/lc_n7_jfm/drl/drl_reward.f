@@ -282,20 +282,20 @@ c------- Step 2: Compute pressure-velocity term |pprime_w * v_w|
          ! Normalized the pressure by subtracting the wall integration pressure.
        !  call normal_pressure(buffer)
 c---- [YW] A test that not removing the pressure mean
-        !  ! Give a copy of it
-        !  call copy(pwvw(1,1,1,1),buffer(1,1,1,1),ntot)
-        !  if (rwd_zavg) then
-        !     call planar_avg(avgV,buffer,igs_z)
-        !     call copy(buffer,avgV,ntot)
-        !  endif
-        !  if (rwd_xavg) then
-        !     call planar_avg(avgV,buffer,igs_x)
-        !     call copy(buffer,avgV,ntot)
-        !  endif
-        !  ! wrk_buff <= pressure_mapped - mean 
-        !  call sub3(wrk_buff,pwvw,buffer,ntot)
-        !  ! buffer <= wrk_buff == pre fluctuation
-        !  call copy(buffer(1,1,1,1),wrk_buff(1,1,1,1),ntot)
+         ! Give a copy of it
+         call copy(pwvw(1,1,1,1),buffer(1,1,1,1),ntot)
+         if (rwd_zavg) then
+            call planar_avg(avgV,buffer,igs_z)
+            call copy(buffer,avgV,ntot)
+         endif
+         if (rwd_xavg) then
+            call planar_avg(avgV,buffer,igs_x)
+            call copy(buffer,avgV,ntot)
+         endif
+         ! wrk_buff <= pressure_mapped - mean 
+         call sub3(wrk_buff,pwvw,buffer,ntot)
+         ! buffer <= wrk_buff == pre fluctuation
+         call copy(buffer(1,1,1,1),wrk_buff(1,1,1,1),ntot)
          ! wrk_buff <= v_w (zero-mean)
          call copy(wrk_buff(1,1,1,1),ACTIONS(1,1,1,1),ntot)
          ! Correlation: pwvw = p'_w * v_w
@@ -472,20 +472,21 @@ c------- Step 2: Compute pressure-velocity term |pprime_w * v_w|
          ! Normalized the pressure by subtracting the wall integration pressure.
        !  call normal_pressure(buffer)
          ! Give a copy of it
-         call copy(pwvw(1,1,1,1),buffer(1,1,1,1),ntot)
-         if (rwd_zavg) then
-            call planar_avg(avgV,buffer,igs_z)
-            call copy(buffer,avgV,ntot)
-         endif
-         if (rwd_xavg) then
-            call planar_avg(avgV,buffer,igs_x)
-            call copy(buffer,avgV,ntot)
-         endif
-         ! wrk_buff <= pressure_mapped - mean 
-         call sub3(wrk_buff,pwvw,buffer,ntot)
-         ! buffer <= wrk_buff == pre fluctuation
-         call copy(buffer(1,1,1,1),wrk_buff(1,1,1,1),ntot)
-         ! wrk_buff <= v_w (zero-mean)
+c--- Below testing Fede code using the raw pressure
+        !  call copy(pwvw(1,1,1,1),buffer(1,1,1,1),ntot)
+        !  if (rwd_zavg) then
+        !     call planar_avg(avgV,buffer,igs_z)
+        !     call copy(buffer,avgV,ntot)
+        !  endif
+        !  if (rwd_xavg) then
+        !     call planar_avg(avgV,buffer,igs_x)
+        !     call copy(buffer,avgV,ntot)
+        !  endif
+        !  ! wrk_buff <= pressure_mapped - mean 
+        !  call sub3(wrk_buff,pwvw,buffer,ntot)
+        !  ! buffer <= wrk_buff == pre fluctuation
+        !  call copy(buffer(1,1,1,1),wrk_buff(1,1,1,1),ntot)
+        !  ! wrk_buff <= v_w (zero-mean)
          call copy(wrk_buff(1,1,1,1),ACTIONS(1,1,1,1),ntot)
          call col3(pwvw,buffer,wrk_buff,ntot)
          do 100 il=1,ntot
