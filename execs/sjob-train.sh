@@ -49,7 +49,8 @@ echo "DRL CONFIG: ${CONFIG_NAME}, RUN MODE: ${RUN_MODE}"
 mpirun -n 1 python -m nek_MARL initial ../conf/${CONFIG_NAME} \
     > ${LOG_DIR}/log.initial.${CONFIG_NAME} 2>&1
 
-AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+# agent_run_name is now a string: take everything after the first ':', strip spaces and quotes
+AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//")
 NTOT=$(grep -ri 'nproc' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
 RUN_PATH=$(head -n 1 RUN_PATH_${AGENT_RUN_NAME}.txt)
 AGENT=$(tail -n 1 RUN_PATH_${AGENT_RUN_NAME}.txt)
