@@ -53,13 +53,24 @@ def solver_dep_obs(conf, obs):
     """
     # This is required because the obs from env is flipped in y direction 
     # due to the way we read the data from Fortran. 
-    if conf.runner.source_solver == 'dedalus':
-        for agent in obs.keys():# Flip the observation order for Dedalus
-            obs[agent] = np.flip(obs[agent], axis=0)  
-        return obs_flipped
-        print(f"[DEDALUS] FLIPPED OBSERVATIONS {obs_flipped}",flush=True)
-    else:
-        return obs
+    import numpy as np
+
+    if isinstance(obs, np.ndarray):
+        if conf.runner.source_solver == 'dedalus':
+            return np.flip(obs, axis=1)
+        else:
+            return obs
+
+    if isinstance(obs, dict):
+        if conf.runner.source_solver == 'dedalus':
+            for agent in obs.keys():# Flip the observation order for Dedalus
+                obs[agent] = np.flip(obs[agent], axis=0)  
+            print(f"[DEDALUS] FLIPPED OBSERVATIONS {obs}",flush=True)
+            return obs
+        else:
+            return obs
+
+    raise TypeError(f"Unsupported observation type: {type(obs)}")
 
 def evaluate(conf_file,overrides,**ignored_kwargs):
     """
