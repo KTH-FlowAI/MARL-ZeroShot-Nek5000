@@ -65,7 +65,8 @@ def initial(conf_file,overrides,**ignored_kwargs):
         import os
         import re
 
-        pattern = re.compile(rf'{agent_run_name}-(rl_model_(\d+)_steps)\.zip')
+        # re.escape: agent_run_name is now a string and may contain regex metachars
+        pattern = re.compile(rf'{re.escape(str(agent_run_name))}-(rl_model_(\d+)_steps)\.zip')
         latest_step = -1
         latest_file = ""
 
@@ -87,8 +88,8 @@ def initial(conf_file,overrides,**ignored_kwargs):
     conf = parse_omegaconf(conf_file,overrides)
     print(f"[DEBUG] CONFIG: {conf}")
 
-    # Identify if it is a pre-trained model 
-    if conf.runner.agent_run_name != 0:
+    # Identify if it is a pre-trained model
+    if conf.runner.agent_run_name != "":  # "" == fresh run (was != 0)
         conf.logging.run_name = conf.runner.agent_run_name
         conf.runner.load_agent = True
     else:

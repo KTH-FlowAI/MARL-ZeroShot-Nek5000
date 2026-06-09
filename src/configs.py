@@ -59,7 +59,7 @@ class Runner:
 
     # Agent loading/resuming options
     random_init:int          = 2       # -1==No Shuffle, use the No.init = RANK; -2==NOT Cover the current rs8 
-    agent_run_name:int       = 0
+    agent_run_name:str       = ""      # String name of the run; "" == fresh run (was int, 0 == fresh)
     load_agent: bool         = False
     rewrite_input_files:bool = False
     evaluation:bool          = False
@@ -184,7 +184,7 @@ class Simulation:
 
 @dataclass
 class Logging:
-    run_name: int = int(time.time())
+    run_name: str = str(int(time.time()))  # str so it can hold a string agent_run_name
     group: Optional[str] = None
     notes: Optional[str] = None
     save_dir: str = '../runs'

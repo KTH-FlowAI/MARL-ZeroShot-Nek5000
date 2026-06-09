@@ -56,8 +56,8 @@ def duplicate_comm(comm):
     return comm.Dup()
 
 def io_path(conf):
-    # Identify if it is a pre-trained model 
-    if conf.runner.agent_run_name != 0:
+    # Identify if it is a pre-trained model
+    if conf.runner.agent_run_name != "":  # "" == fresh run (was != 0)
         conf.logging.run_name = conf.runner.agent_run_name
         # conf.runner.load_agent = True
     else:
@@ -65,7 +65,7 @@ def io_path(conf):
     # Create run folder
     run_folder = conf.logging.save_dir+f'/{conf.logging.run_name}'
     if not os.path.exists(run_folder):
-        if conf.runner.agent_run_name != 0:
+        if conf.runner.agent_run_name != "":  # "" == fresh run (was != 0)
             raise ValueError("The folder containing the trained agent "+\
                             "does not exist")
         os.mkdir(run_folder)
