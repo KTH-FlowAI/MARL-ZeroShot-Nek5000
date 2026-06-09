@@ -376,9 +376,16 @@ class MetaPolicyRunner():
       elif case_dict["rL_algorithm"] == 'TD3':
         from stable_baselines3 import TD3 as RL_algorithm
 
-      loaded_model = RL_algorithm.load(f"{policy_folder}/" +
-                                       f"logs/{case_dict['agent_run_name']}-" +
-                                       f"{case_dict['policy']}",
+      if 'best_model' in case_dict['policy']:
+          policy_file = f"{policy_folder}/" + \
+                        f"logs/" + \
+                        f"{case_dict['policy']}"
+      else:
+          policy_file = f"{policy_folder}/" + \
+                        f"logs/{case_dict['agent_run_name']}-" + \
+                        f"{case_dict['policy']}"
+
+      loaded_model = RL_algorithm.load(policy_file,
                                        # custom_objects is required because the action_space
                                        custom_objects={'action_space':self.act_space,
                                         "observation_space": self.obs_space,}

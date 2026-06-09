@@ -22,7 +22,7 @@ class Runner:
     random_init: int = 2  # -1==No Shuffle, use the No.init = RANK; -2==NOT Cover the current rs8
 
     # The Meta Running case
-    case_name: int = 0
+    case_name: str = ""
 
     # A list of lists of control area
     agent_ctrl_area: list = field(default_factory=list)
@@ -69,6 +69,11 @@ class Runner:
 
     # u and v
     npl_state: int = 2  # Should be consistent with SIZE
+
+    reward_fn:str       = 'dudy'  # 'dudy' or 'net_gain' (requires NETGAIN compile flag in Fortran)
+    reward_alpha:float  = 1.0    # weight on R_wallshear = 1 - tau_w/tau_w_ref
+    reward_beta:float   = 1.0    # weight on R_pw        = -|p'v|/tau_w_ref
+    reward_gamma:float  = 1.0    # weight on R_v3        = -0.5|v^3|/tau_w_ref
 
 
 @dataclass
@@ -160,7 +165,7 @@ param_mapping = {
 
 @dataclass
 class Logging:
-    run_name: int = int(time.time())
+    run_name: str = str(int(time.time()))  # str so it can hold a string agent_run_name
     group: Optional[str] = None
     notes: Optional[str] = None
     save_dir: str = '../runs'

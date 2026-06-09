@@ -51,7 +51,8 @@ done
 mpirun -n 1 python -m meta_MARL initial ../conf/${CONFIG_NAME} > ${LOG_DIR}/log.initial.${CONFIG_NAME} 2>&1 
 
 #--- Get the agent name and the total number of processes
-CASE_NAME=$(grep -ri 'case_name' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+# CASE_NAME=$(grep -ri 'case_name' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+CASE_NAME=$(grep -ri 'case_name' ../conf/${CONFIG_NAME} | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//")
 NTOT=$(grep -ri 'nproc' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
 RUN_PATH=$(head -n 1 RUN_PATH_${CASE_NAME}.txt)
 

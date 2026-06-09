@@ -1,6 +1,6 @@
 NEK5000
 version: 1.0
-filetemplate: ../runs/1000/train/phill%01d.f%05d
+filetemplate: ../runs/small_wing_nes/env_001/small_wing%01d.f%05d
 #filetemplate: ../runs/601001/env_001/la2small_wing%01d.f%05d
 Firsttimestep: 1 
-numtimesteps: 1
+numtimesteps: 2

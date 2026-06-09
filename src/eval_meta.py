@@ -18,7 +18,8 @@ from configs_meta import Config
 import supersuit as ss
 from pettingzoo.utils import wrappers
 from pettingzoo.utils.conversions import parallel_wrapper_fn as parallel_to_aec
-import nek_marl_meta as nek_marl
+# import nek_marl_meta as nek_marl
+import nek_marl_meta_netgain as nek_marl
 from lib.nek_utils import *
 from lib.AFC import *
 from MetaPolicy import MetaPolicyRunner

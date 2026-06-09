@@ -81,7 +81,8 @@ do
 	simulation.writeInterval=${writeInterval} \
 	simulation.SMPSTEP=${SMPSTEP} 
        
-       var=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+       # agent_run_name is now a string: take everything after the first ':', strip spaces and quotes
+       var=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//")
        
        RUN_PATH=$(head -n 1 RUN_PATH_${var}.txt)
        
