@@ -109,6 +109,10 @@ class parallel_env(ParallelEnv):
             zip(self.possible_agents, list(range(len(self.possible_agents))))
         )
 
+        # Static map of unique chord points (collapses spanwise duplicates)
+        # used to write per-point NETGAIN time-series. See _build_chord_map.
+        self._build_chord_map()
+
         # -----------STATE--------------
         # STATE BUFFER
         self.full_observation = np.ndarray(shape=(self.conf.runner.npl_state, self.nAgents))
@@ -142,6 +146,13 @@ class parallel_env(ParallelEnv):
         self.restart_index = 0
         self.act_index = 0
         self.reward_log = list()
+        # Per-chord-point NETGAIN time-series (one row per control step).
+        # Flushed to a numbered npz every netgain_io_freq steps (and at
+        # reset/close) so the buffer stays bounded for long, never-finishing
+        # episodes. See _save_netgain_ts.
+        self.netgain_log = {'step': [], 'tau': [], 'pw': [], 'v3': []}
+        self.netgain_io_iter = 0
+        self.netgain_io_freq = getattr(self.conf.runner, 'netgain_io_freq', 200)
         print(f"SCALE: dUdy={self.baseline_dudy}\n Utau={self.utau}", flush=True)
         # Reward-related variables
         if self.conf.runner.rew_mode == 'MovingAverage':
@@ -244,6 +255,9 @@ class parallel_env(ParallelEnv):
 
     def close(self):
         print(f"[STB3] CLOSE ENV", flush=True)
+        # Persist whatever NETGAIN time-series remains buffered (the episode
+        # usually never finishes on the wing, so this is the main save path).
+        self._save_netgain_ts()
         self.end_simulation(farewell=True)
         # Wait until all the operations are completed
         time.sleep(1)
@@ -258,6 +272,9 @@ class parallel_env(ParallelEnv):
 
         print("[STB3] RESET!", flush=True)
         self.agents = self.possible_agents[:]
+        # Flush the tail of the finished episode's NETGAIN time-series before
+        # bumping the episode counter, so the chunk is tagged with this episode.
+        self._save_netgain_ts()
         # Close the current SIMSON simulation
         # self.end_simulation()
         # update restart_index
@@ -367,6 +384,91 @@ class parallel_env(ParallelEnv):
         assert icount == self.nAgents, ValueError('[STB3] noAgent NOT MATCH!')
 
         return distributed_fields
+
+    def _build_chord_map(self):
+        """Build a static map from unique chord points to their agents.
+
+        On the wing the reward is averaged in z (spanwise) only, so all
+        agents that share the same (x, y) -- i.e. the same chord location at
+        different spanwise positions -- hold identical reward values. We group
+        them here so the per-point time-series carries one entry per chord
+        location instead of one per (x, y, z) GLL node.
+
+        Side is labelled 'suction'/'pressure' from the sign of (y - chord-line
+        y) at each x, where the chord line is the leading-edge -> trailing-edge
+        segment (min x -> max x). The saved x, y let any other split be
+        recovered offline.
+        """
+        x = np.asarray(self.agent_info['x'], dtype=np.float64)
+        y = np.asarray(self.agent_info['y'], dtype=np.float64)
+
+        # Chord line from leading (min x) to trailing (max x) edge
+        i_le = int(np.argmin(x))
+        i_te = int(np.argmax(x))
+        dx = x[i_te] - x[i_le]
+        if abs(dx) > 0.0:
+            chord_y = y[i_le] + (y[i_te] - y[i_le]) * (x - x[i_le]) / dx
+        else:
+            chord_y = np.zeros_like(x)
+
+        # Group spanwise duplicates by rounded (x, y). Extruded-in-z meshes give
+        # identical (x, y) per chord point, so 8 decimals safely collapses them.
+        ndp = 8
+        groups = {}
+        for i, key in enumerate(zip(np.round(x, ndp), np.round(y, ndp))):
+            groups.setdefault(key, []).append(i)
+
+        agent_groups, cx, cy, cside = [], [], [], []
+        for idxs in groups.values():
+            i0 = idxs[0]
+            agent_groups.append([self.possible_agents[i] for i in idxs])
+            cx.append(x[i0])
+            cy.append(y[i0])
+            cside.append('suction' if y[i0] >= chord_y[i0] else 'pressure')
+
+        cx = np.asarray(cx)
+        cy = np.asarray(cy)
+        cside = np.asarray(cside)
+        # Tidy ordering: group by side, then increasing chord position
+        order = np.lexsort((cx, cside))
+        self.chord_x = cx[order]
+        self.chord_y = cy[order]
+        self.chord_side = cside[order]
+        self.chord_agents_groups = [agent_groups[i] for i in order]
+        self.nChordPts = len(self.chord_agents_groups)
+        print(f"[STB3] CHORD MAP: {self.nChordPts} unique points "
+              f"({int(np.sum(self.chord_side == 'suction'))} suction, "
+              f"{int(np.sum(self.chord_side == 'pressure'))} pressure)",
+              flush=True)
+
+    def _save_netgain_ts(self):
+        """Flush the accumulated NETGAIN time-series to a numbered npz, then
+        clear the in-memory buffer.
+
+        Called every netgain_io_freq control steps and at reset/close so the
+        buffer never grows unbounded -- important on the wing, where a single
+        episode often runs for the whole job without ever finishing. Files are
+        numbered monotonically (netgain_io_iter) and tagged with the current
+        episode so chunks can be concatenated in time order offline.
+        """
+        if self.reward_fn != 'net_gain':
+            return
+        if len(self.netgain_log['step']) == 0:
+            return
+        fname = os.path.join(self.history_path,
+                             f'netgain_ts_{self.netgain_io_iter:05d}.npz')
+        np.savez(fname,
+                 episode=self.restart_index,
+                 step=np.array(self.netgain_log['step']),
+                 tau=np.array(self.netgain_log['tau']),
+                 pw=np.array(self.netgain_log['pw']),
+                 v3=np.array(self.netgain_log['v3']),
+                 x=self.chord_x, y=self.chord_y, side=self.chord_side)
+        print(f"[STB3] SAVE NETGAIN TS chunk={self.netgain_io_iter} "
+              f"ep={self.restart_index} ({len(self.netgain_log['step'])} steps)"
+              f" -> {os.path.basename(fname)}", flush=True)
+        self.netgain_io_iter += 1
+        self.netgain_log = {'step': [], 'tau': [], 'pw': [], 'v3': []}
 
     # -------------------
     # Requested Methods
@@ -505,6 +607,24 @@ class parallel_env(ParallelEnv):
                     tau_dist = self._distribute_field({'fld': np.expand_dims(tau_buf, 1)}, reward=True)
                     pw_dist  = self._distribute_field({'fld': np.expand_dims(pw_buf,  1)}, reward=True)
                     v3_dist  = self._distribute_field({'fld': np.expand_dims(v3_buf,  1)}, reward=True)
+
+                    # Record one per-chord-point row for this control step.
+                    # Spanwise duplicates share a value after z-avg, so the
+                    # group mean simply recovers that value per chord location.
+                    self.netgain_log['step'].append(self.act_index)
+                    self.netgain_log['tau'].append(
+                        [float(np.mean([tau_dist[a] for a in g]))
+                         for g in self.chord_agents_groups])
+                    self.netgain_log['pw'].append(
+                        [float(np.mean([pw_dist[a] for a in g]))
+                         for g in self.chord_agents_groups])
+                    self.netgain_log['v3'].append(
+                        [float(np.mean([v3_dist[a] for a in g]))
+                         for g in self.chord_agents_groups])
+
+                    # Flush at a fixed frequency to bound memory usage.
+                    if len(self.netgain_log['step']) >= self.netgain_io_freq:
+                        self._save_netgain_ts()
                 else:
                     ws_stress_buffer = np.ndarray(shape=(self.nNID, TOTCTRL,),
                                                   dtype=tag_dict["REWRD"]['py_dtype'])

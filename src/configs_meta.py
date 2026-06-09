@@ -53,6 +53,7 @@ class Runner:
     vars_record: bool = True
     vars_record_freq: int = 1
     vars_io_freq: int = 100  # Frequency to save the data
+    netgain_io_freq: int = 200  # Flush per-chord-point NETGAIN time-series every N control steps
 
     # Normalizing Interaction
     rew_mode: str = 'Homo'  # We let all subdomain share the same reward

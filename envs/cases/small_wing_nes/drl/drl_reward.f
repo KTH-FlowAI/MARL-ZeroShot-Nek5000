@@ -612,4 +612,92 @@ c=============================================
         end subroutine switch_BC_2Drichlet
 c------------------------------------------------------------------
 
+c------------------------------------------------------
+      subroutine write_reward_monitor(i_evolv)
+c     Append a one-line time-series record of the three NETGAIN reward
+c     components to reward_monitor.dat (rank-0 only).
+c     All agents share the same value after x/z averaging, so a global
+c     mean across agents recovers the uniform scalar cleanly.
+c=============================================
+      implicit none
+      include 'SIZE'
+      include "NEKUSE"
+      include "SOLN"
+      include "TSTEP"
+      include 'PARALLEL'
+      include 'DRL'
+
+      integer i_evolv, iglsum
+      integer il, nc
+      real wrk(3), tmp3(3)
+      logical fexist
+      integer, parameter :: iunit = 52002
+      integer, parameter :: MAX_MON_LINES = 10000
+      integer, save      :: ifile = 0
+      integer :: nlines, ios
+      character(len=200) :: cbuf
+      character(len=40)  :: fname
+c=============================================
+      ! Sum local agent values; divide by global count for the mean.
+      ! Since rwd_xavg=rwd_zavg=.TRUE., all agents hold the same value,
+      ! so mean == that value regardless of how agents are distributed.
+      nc     = iglsum(NUMCTRL, 1)
+      wrk(1) = 0.0
+      wrk(2) = 0.0
+      wrk(3) = 0.0
+      if (NUMCTRL.gt.0) then
+         do il = 1, NUMCTRL
+            wrk(1) = wrk(1) + rwd_tau(il)
+            wrk(2) = wrk(2) + rwd_pw(il)
+            wrk(3) = wrk(3) + rwd_v3(il)
+         enddo
+      endif
+      call gop(wrk, tmp3, '+  ', 3)
+      if (nc.gt.0) then
+         wrk(1) = wrk(1) / nc
+         wrk(2) = wrk(2) / nc
+         wrk(3) = wrk(3) / nc
+      endif
+
+      if (NID.eq.0) then
+c        Build current filename
+        write(fname,'(A,I5.5,A)') 'reward_monitor', ifile, '.dat'
+
+         inquire(file=trim(fname), exist=fexist)
+         if (fexist) then
+c           Count existing data lines (skip header) before appending
+            nlines = 0
+            open(iunit, file=trim(fname), status='old')
+            read(iunit,'(A)',iostat=ios) cbuf
+            do
+               read(iunit,'(A)',iostat=ios) cbuf
+               if (ios.ne.0) exit
+               nlines = nlines + 1
+            end do
+            close(iunit)
+c           File full: roll over to a new numbered file
+            if (nlines.ge.MAX_MON_LINES) then
+               ifile = ifile + 1
+               write(fname,'(A,I5.5,A)')
+     $            'reward_monitor', ifile, '.dat'
+               open(iunit, file=trim(fname), status='new')
+               write(iunit,'(A)')
+     $            '# time          i_evolv'//
+     $            '  rwd_tau         rwd_pw          rwd_v3'
+            else
+               open(iunit, file=trim(fname), position='append')
+            end if
+         else
+            open(iunit, file=trim(fname), status='new')
+            write(iunit,'(A)')
+     $         '# time          i_evolv'//
+     $         '  rwd_tau         rwd_pw          rwd_v3'
+         endif
+         write(iunit,'(E16.8,1X,I6,3(1X,E16.8))')
+     $      time, i_evolv, wrk(1), wrk(2), wrk(3)
+         close(iunit)
+        print *, "[MONITOR] RECORD",time,i_evolv,wrk(1),wrk(2),wrk(3)
+      endif
+
+      end subroutine write_reward_monitor
 

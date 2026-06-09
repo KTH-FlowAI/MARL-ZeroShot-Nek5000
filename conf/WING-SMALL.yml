@@ -35,6 +35,7 @@ runner:
     vars_io_freq     : 100  ## Freq the save the data
     size_history     : 10 # Number of DRL steps to record the history
 
+    netgain_io_freq : 1
     reward_fn : "net_gain"
 
 
