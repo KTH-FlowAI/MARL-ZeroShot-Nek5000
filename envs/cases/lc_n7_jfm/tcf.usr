@@ -6,10 +6,10 @@
 !
 !-----------------------------------------------------------------------
       subroutine uservp (ix,iy,iz,ieg)
-      include 'SIZE'
-      include 'NEKUSE'          ! UDIFF, UTRANS
+         include 'SIZE'
+         include 'NEKUSE'          ! UDIFF, UTRANS
 
-      UDIFF =0.0
+        UDIFF =0.0
       UTRANS=0.0
 
       return
@@ -194,8 +194,8 @@ c===============
       ! YW Modified here 
       channelh = 1.0
 
-      utau = Ret*viscosity/channelh
-      sig = 0.00055
+         utau = Ret*viscosity/channelh
+         sig = 0.00055
       dup = Ubar*0.25/utau;
 
       ! Wave Length TO Wave Number 
@@ -576,6 +576,9 @@ c-----------------------------------------------------------------------
       
       ! normalise pressure
       ! in this example I integrate pressure over top faces marked "W"
+#ifdef DRL
+      call normal_pressure(pres) ! Find it in ./drl/drl_reward.f
+#else
       ifll = 1     ! I'm interested in velocity bc
       ! relying on mesh structure given by genbox set face number
       jl = 3
@@ -596,7 +599,7 @@ c-----------------------------------------------------------------------
       ! remove mean pressure
       itmp = LX1*LY1*LZ1*NELV
       call cadd(pres,vrtmp2(2),itmp)
-
+#endif
       return
       end subroutine
 !======================================================================
