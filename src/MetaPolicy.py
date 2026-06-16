@@ -8,7 +8,7 @@ import argparse
 from copy import deepcopy
 from pathlib import Path
 from typing import List
-import os
+import os, shutil
 import supersuit as ss
 
 
@@ -25,6 +25,10 @@ class MetaPolicyRunner():
     self.policy_dict = {}
     self.run_folder = run_folder
     self._initialize_config()
+
+    log_path = os.path.join(self.run_folder,"logs")
+    self.log_path = Path(log_path)
+    self.log_path.mkdir(exist_ok=True)
 
   # --------------------------------------------
   def _initialize_config(self):
@@ -385,11 +389,17 @@ class MetaPolicyRunner():
                         f"logs/{case_dict['agent_run_name']}-" + \
                         f"{case_dict['policy']}"
 
-      loaded_model = RL_algorithm.load(policy_file,
+      try:
+        loaded_model = RL_algorithm.load(policy_file,
                                        # custom_objects is required because the action_space
                                        custom_objects={'action_space':self.act_space,
                                         "observation_space": self.obs_space,}
                                        )
+        # Now make a copy to the current logs: 
+        shutil.copy(src=policy_file,dst=self.log_path)
+
+      except:
+        raise FileNotFoundError("[SB3] ERROR: Target Model NOT Found!")
 
       is_low_equal = (loaded_model.action_space.low[0] == case_dict['ctrl_min_amp'])
       is_high_equal = (loaded_model.action_space.high[0] == case_dict['ctrl_max_amp'])
