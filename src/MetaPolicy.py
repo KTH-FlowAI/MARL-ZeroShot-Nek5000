@@ -26,9 +26,6 @@ class MetaPolicyRunner():
     self.run_folder = run_folder
     self._initialize_config()
 
-    log_path = os.path.join(self.run_folder,"logs")
-    self.log_path = Path(log_path)
-    self.log_path.mkdir(exist_ok=True)
 
   # --------------------------------------------
   def _initialize_config(self):
@@ -371,6 +368,9 @@ class MetaPolicyRunner():
     Return:
       case_dict   : case_dict updated with Object of policy and rescale factors
     """
+    log_path = os.path.join(self.run_folder,"logs")
+    if os.path.exists(log_path) == False:
+      os.makedirs(log_path,exist_ok=True)
 
     if (case_dict["rL_algorithm"] == "PPO") or (case_dict["rL_algorithm"] == "DDPG" or case_dict["rL_algorithm"] == "TD3"):
       if case_dict["rL_algorithm"] == 'PPO':
@@ -383,11 +383,11 @@ class MetaPolicyRunner():
       if 'best_model' in case_dict['policy']:
           policy_file = f"{policy_folder}/" + \
                         f"logs/" + \
-                        f"{case_dict['policy']}"
+                        f"{case_dict['policy']}.zip"
       else:
           policy_file = f"{policy_folder}/" + \
                         f"logs/{case_dict['agent_run_name']}-" + \
-                        f"{case_dict['policy']}"
+                        f"{case_dict['policy']}.zip"
 
       try:
         loaded_model = RL_algorithm.load(policy_file,
@@ -396,7 +396,8 @@ class MetaPolicyRunner():
                                         "observation_space": self.obs_space,}
                                        )
         # Now make a copy to the current logs: 
-        shutil.copy(src=policy_file,dst=self.log_path)
+        shutil.copy(src=policy_file,dst=log_path)
+        print(f"[SB3] Copy Policy to {log_path}",flush=True)
 
       except:
         raise FileNotFoundError("[SB3] ERROR: Target Model NOT Found!")
