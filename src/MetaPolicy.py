@@ -487,6 +487,7 @@ class MetaPolicyRunner():
     """
     if source_solver == "dedalus":
       # For Dedalus, we need to flip the observation order
-      return np.flip(observation, axis=0)
+      print(f"[Meta] Rearranging Observation for Dedalus, {observation.shape}", flush=True)
+      return np.flip(observation, axis=1)
     else: # if nek
       return observation  # Placeholder - implement actual rearrangement logic based on source_solver
