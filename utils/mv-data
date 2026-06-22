@@ -86,7 +86,7 @@ echo "       DRL OUTPUTS       "
 echo "-------------------------"
 mv    ${RUN_PATH}/*txt*         ${DATA_PATH}/txt_data/
 echo "[DATA] TXT Moved"
-mv    ${RUN_PATH}/history/**    ${DATA_PATH}/drl_data/ 
+mv    ${CASE_PATH}/history/**    ${DATA_PATH}/drl_data/ 
 echo "[DATA] HISTORY Moved"
 mv    ${CASE_PATH}*vars_record*  ${DATA_PATH}/drl_data/
 echo "[DATA] VARS_RECORD Moved"
