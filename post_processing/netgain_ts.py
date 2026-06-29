@@ -64,6 +64,33 @@ def load_run(run_dir, episode=None):
     return data
 
 
+def save_processed_data(data, path):
+    """Save the concatenated `data` dict (from load_run/load_netgain_ts) to .npz.
+
+    Every value is already a numpy array, so the cache round-trips without
+    pickle. Use load_processed_data() to read it back.
+    """
+    if not path.endswith('.npz'):
+        path = path + '.npz'
+    out_dir = os.path.dirname(path)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+    np.savez(path, **{k: np.asarray(v) for k, v in data.items()})
+    print(f'[netgain_ts] saved processed data to {path}')
+    return path
+
+
+def load_processed_data(path):
+    """Read back a dict written by save_processed_data (sides decoded to str)."""
+    if not path.endswith('.npz'):
+        path = path + '.npz'
+    d = np.load(path, allow_pickle=True)
+    out = {k: d[k] for k in d.files}
+    out['side'] = np.array([str(s) for s in out['side']])
+    print(f'[netgain_ts] loaded processed data from {path}')
+    return out
+
+
 def _set_rc():
     plt.rc("font", family="serif")
     plt.rc("font", size=12)
@@ -141,9 +168,18 @@ if __name__ == "__main__":
     parser.add_argument("--file", type=str, default=None,
                         help="explicit single netgain_ts_*.npz chunk to plot")
     parser.add_argument("--outdir", type=str, default="Figs")
+    parser.add_argument("--cache", type=str, default=None,
+                        help="path to save/read the processed-data .npz cache")
+    parser.add_argument("--use-cache", action="store_true",
+                        help="load processed data from --cache instead of the run/file")
     args = parser.parse_args()
 
-    if args.file is not None:
+    if args.use_cache:
+        if args.cache is None:
+            parser.error("--use-cache requires --cache")
+        data = load_processed_data(args.cache)
+        tag = os.path.splitext(os.path.basename(args.cache))[0]
+    elif args.file is not None:
         data = load_netgain_ts(args.file)
         tag = os.path.splitext(os.path.basename(args.file))[0]
     elif args.run is not None:
@@ -153,6 +189,9 @@ if __name__ == "__main__":
             tag += f"_ep{args.episode:05d}"
     else:
         parser.error("give --file or --run")
+
+    if args.cache is not None and not args.use_cache:
+        save_processed_data(data, args.cache)
 
     n_step, n_pts = data['tau'].shape
     print(f"[netgain_ts] {n_step} steps, {n_pts} chord points "
