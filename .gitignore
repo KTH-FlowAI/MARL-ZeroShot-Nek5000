@@ -19,3 +19,4 @@ miniforge3/
 *DATA*
 /post_processing/stats/int_fld
 *.o
+*RUN_PATH*
