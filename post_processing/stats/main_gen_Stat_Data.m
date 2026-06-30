@@ -16,7 +16,7 @@ ys = 0;
 amp = 0;
 
 %fileName=sprintf('../result_data/LC_Reb%d_bdfd_y%d_amp%d.mat',Reb,ys,amp);
-fileName=sprintf('./results_data/MC_Reb%d.mat',Reb);
+fileName=sprintf('./results_data/MC_OC_Reb%d.mat',Reb);
 fileName
 nu=1/(Reb);
 nx=100;
