@@ -76,7 +76,7 @@ if [ "$RUN_MODE" = "evaluate" ]; then
     else
         cd ${RUN_PATH} && ./nek5000
     fi
-    "  > ${LOG_DIR}/log.evaluate.${CONFIG_NAME} 2>&1 
+    "  > ${LOG_DIR}/log.evaluate.${CONFIG_NAME} 2>&1 | tee ${LOG_DIR}/log.evaluate.${CONFIG_NAME}
 else
     echo "RUN MODE NOT SUPPORTED"
     exit 1

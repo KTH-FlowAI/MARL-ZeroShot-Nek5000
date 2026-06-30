@@ -84,7 +84,8 @@ fi
 #--------------------------------------------
 # Main execution
 if [ "$RUN_MODE" = "evaluate" ]; then
-    for ienv in {1..6}
+    #for ienv in {1..6}
+    for ienv in {2..3}
     do
         echo "Count: $ienv"
         mpirun -n 1 python -m nek_MARL initial ../conf/$CONFIG_NAME \
@@ -92,8 +93,8 @@ if [ "$RUN_MODE" = "evaluate" ]; then
         runner.rank=${ienv} \
         runner.evaluation=True runner.learnt_policy=True \
         runner.load_agent=True \
-	    simulation.IOSTEP=${IOSTEP} \
-	    simulation.writeInterval=${writeInterval} \
+        simulation.IOSTEP=${IOSTEP} \
+        simulation.writeInterval=${writeInterval} \
 	    simulation.SMPSTEP=${SMPSTEP} 
        
        var=$(grep -ri 'agent_run_name' ../conf/${CONFIG_NAME} | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//")
@@ -106,7 +107,10 @@ if [ "$RUN_MODE" = "evaluate" ]; then
 	          runner.reward_fn=net_gain \
 	          runner.reward_alpha=1.0 runner.reward_beta=1.0 runner.reward_gamma=1.0 \
               runner.evaluation=True  \
-              runner.load_agent=True :\
+              runner.load_agent=True \
+	          simulation.IOSTEP=${IOSTEP} \
+	          simulation.writeInterval=${writeInterval} \
+	          simulation.SMPSTEP=${SMPSTEP} : \
               -n ${NTOT} bash -c "cd ${RUN_PATH} && ./nek5000" > ${LOG_DIR}/log.run.${CONFIG_NAME} 2>&1
     done
 else
