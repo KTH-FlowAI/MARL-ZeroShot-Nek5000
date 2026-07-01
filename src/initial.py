@@ -51,13 +51,18 @@ def initial(conf_file,overrides,**ignored_kwargs):
     Initialization of the program
     """
 
-    def get_latest_checkpoint(agent_run_name,log_dir: str) -> str:
+    def get_latest_checkpoint(agent_run_name,log_dir: str,cleanup_buffers: bool = True) -> str:
         """
         Finds the checkpoint file with the highest step number in the log_dir.
+
+        Optionally deletes the replay buffers that do not belong to the latest
+        checkpoint, so their (large) storage is released.
 
         Args:
             agent_run_name (int): The ID of the job
             log_dir (str): Path to the log directory.
+            cleanup_buffers (bool): If True, remove every replay buffer whose
+                step does not match the latest checkpoint.
 
         Returns:
             str: Name the latest checkpoint file, or empty string if none found.
@@ -66,9 +71,13 @@ def initial(conf_file,overrides,**ignored_kwargs):
         import re
 
         # re.escape: agent_run_name is now a string and may contain regex metachars
-        pattern = re.compile(rf'{re.escape(str(agent_run_name))}-(rl_model_(\d+)_steps)\.zip')
+        esc = re.escape(str(agent_run_name))
+        pattern = re.compile(rf'{esc}-(rl_model_(\d+)_steps)\.zip')
+        # Replay buffers saved alongside DDPG/TD3 checkpoints (see sb3_utils.py)
+        buffer_pattern = re.compile(rf'{esc}-rl_model_replay_buffer_(\d+)_steps\.pkl')
         latest_step = -1
         latest_file = ""
+        buffer_files = {}  # step -> filename
 
         for filename in os.listdir(log_dir):
             match = pattern.match(filename)
@@ -77,6 +86,26 @@ def initial(conf_file,overrides,**ignored_kwargs):
                 if step > latest_step:
                     latest_step = step
                     latest_file = match.group(1)
+                continue
+            bmatch = buffer_pattern.match(filename)
+            if bmatch:
+                buffer_files[int(bmatch.group(1))] = filename
+
+        # Free storage: keep only the replay buffer of the latest checkpoint
+        if cleanup_buffers and latest_step >= 0:
+            for step, filename in buffer_files.items():
+                if step != latest_step:
+                    buffer_path = os.path.join(log_dir, filename)
+                    # Remove only if the file actually exists, so we never
+                    # fall into an OSError on a missing/already-removed file.
+                    if os.path.isfile(buffer_path):
+                        try:
+                            os.remove(buffer_path)
+                            print(f"[IO] REMOVED OLD REPLAY BUFFER: {filename}",flush=True)
+                        except OSError as e:
+                            print(f"[IO] FAILED TO REMOVE {filename}: {e}",flush=True)
+                    else:
+                        print(f"[IO] SKIP (NOT FOUND): {filename}",flush=True)
 
         # return os.path.join(log_dir, latest_file) if latest_file else ""
         return latest_file if latest_file else ""
