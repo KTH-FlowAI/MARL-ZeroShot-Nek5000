@@ -12,7 +12,7 @@
 !data/restarts/rs6_mini_Channel/**/*
 envs/solver/**/
 !envs/solver/*tar*
-/execs/log-files/
+/log-files/
 ucx_mpi/
 miniforge3/
 *log*
@@ -20,3 +20,6 @@ miniforge3/
 /post_processing/stats/int_fld
 *.o
 *RUN_PATH*
+# RUN_PATH cache: keep the dir tracked, ignore its RUN_PATH_*.txt (via *RUN_PATH*)
+!/.caches/
+!/.caches/.gitkeep
