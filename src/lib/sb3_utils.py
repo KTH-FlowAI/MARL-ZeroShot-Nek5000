@@ -172,10 +172,10 @@ def init_model(conf, env, run_folder,nAgents,
         else: 
             print('[IO] RESTART TRAINING',flush=True)
             
-            ckpt_file = f"{run_folder}/"+\
-                f"logs/{conf.runner.agent_run_name}-"+\
-                f"{conf.runner.policy}"
-            
+            # [MOD] Prefix removed for consistency with MetaPolicy._load_policy:
+            # `policy` is now the FULL checkpoint file name (no agent_run_name prefix).
+            ckpt_file = f"{run_folder}/logs/{conf.runner.policy}"
+
             model= RLA.load(path=ckpt_file,
                     env=env,
                     custom_objects={'action_space':action_space_sample,
@@ -227,13 +227,9 @@ def init_model(conf, env, run_folder,nAgents,
             
             ckpt_file = f"{run_folder}/logs/"
 
-            # [YW] If the policy name already contains 'best_model' (e.g., from EvalCallback), use it directly; 
-            if 'best_model' in conf.runner.policy:
-                ckpt_file += f"{conf.runner.policy}"
-            # otherwise, construct the checkpoint filename based on agent_run_name and policy
-            else:
-                ckpt_file +=f"{conf.runner.agent_run_name}-"+\
-                            f"{conf.runner.policy}"
+            # [MOD] Prefix removed for consistency with MetaPolicy._load_policy:
+            # `policy` is now the FULL checkpoint file name (no agent_run_name prefix).
+            ckpt_file += f"{conf.runner.policy}"
             
             model= RLA.load(path=ckpt_file,
                     env=env,
@@ -254,10 +250,11 @@ def init_model(conf, env, run_folder,nAgents,
             print(f'[IO] RESTART W&B LOADED:{ckpt_file}',flush=True)
             
             
+            # [MOD] Prefix removed for consistency: `policy` (hence buffer_name)
+            # is now the FULL name, so no agent_run_name prefix is added here
+            # (otherwise the buffer name would be doubly prefixed).
             buffer_name=conf.runner.policy.replace('rl_model_','rl_model_replay_buffer_')
-            buffer_file = f"{run_folder}/"+\
-                f"logs/{conf.runner.agent_run_name}-"+\
-                f"{buffer_name}" + ".pkl"
+            buffer_file = f"{run_folder}/logs/{buffer_name}.pkl"
             print(f"[IO] Buffer File:{buffer_file}",flush=True)
             is_exist = os.path.exists(buffer_file)
             if is_exist:

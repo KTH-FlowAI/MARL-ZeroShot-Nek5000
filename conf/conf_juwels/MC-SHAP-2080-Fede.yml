@@ -26,7 +26,8 @@ runner:
 
 
     policy_file     : 'conf/default_ddpg_policy.yml'
-    policy          : 'shap_cf_pw'
+    ## [REMINDER] policy = FULL checkpoint file name (stem, no .zip); the agent_run_name prefix is NOT auto-added anymore
+    policy          : '801001-shap_cf_pw'
     load_agent      :  True
     normalize_input : 'utau'
 

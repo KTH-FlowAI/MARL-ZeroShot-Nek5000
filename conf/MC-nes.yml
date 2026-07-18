@@ -10,7 +10,7 @@ runner:
 
     nb_episodes        : 100
     nb_warmup_episodes : 1
-    nb_interactions : 1000
+    nb_interactions : 2500
     train_steps     : 300
     gradient_steps  : 64
 
@@ -26,7 +26,7 @@ runner:
 
     policy_file     : 'conf/default_ddpg_policy.yml'
     policy     : 'best_model'
-    load_agent      :  False
+    load_agent      :  True
     normalize_input : 'utau'
 
     custom_buffer : False

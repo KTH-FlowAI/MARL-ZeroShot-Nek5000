@@ -131,11 +131,9 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
         # custom_objects is required because the action_space
         # is not correctly deserialized when loading from file 
         ckpt_path=f"{run_folder}/logs/"
-        if 'best' in conf.runner.policy: 
-            ckpt_path+=f"{conf.runner.policy}"
-        else:
-            ckpt_path+=f"{conf.runner.agent_run_name}-"+\
-               f"{conf.runner.policy}"
+        # [MOD] Prefix removed for consistency with MetaPolicy._load_policy:
+        # `policy` is now the FULL checkpoint file name (no agent_run_name prefix).
+        ckpt_path+=f"{conf.runner.policy}"
             
         loaded_model = RL_algorithm.load(ckpt_path,
             custom_objects={'action_space':env.action_space(env.possible_agents[0]),

@@ -13,7 +13,8 @@ runner:
     ## A list of integer to indicate agent case
     agent_run_name : ["601031","602031","603031", "604031", "601031"]
     ## A list of string to indicate which policy to read
-    policy : ["rl_model_749700000_steps", "rl_model_716625000_steps","rl_model_217800000_steps","rl_model_2914890000_steps", "rl_model_749700000_steps"]
+    ## [REMINDER] policy = FULL policy file name (stem, no .zip); the agent_run_name prefix is NOT auto-added anymore (MetaPolicy._load_policy)
+    policy : ["601031-rl_model_749700000_steps", "602031-rl_model_716625000_steps","603031-rl_model_217800000_steps","604031-rl_model_2914890000_steps", "601031-rl_model_749700000_steps"]
     ## A list of string to indicate the RL algorithm
     # RL_algorithm : ["TD3","TD3","TD3","TD3","TD3"]
     RL_algorithm : ["BL","BL","BL","BL","BL"]

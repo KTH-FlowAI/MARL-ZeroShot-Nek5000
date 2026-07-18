@@ -380,14 +380,10 @@ class MetaPolicyRunner():
       elif case_dict["rL_algorithm"] == 'TD3':
         from stable_baselines3 import TD3 as RL_algorithm
 
-      if 'best_model' in case_dict['policy']:
-          policy_file = f"{policy_folder}/" + \
-                        f"logs/" + \
-                        f"{case_dict['policy']}.zip"
-      else:
-          policy_file = f"{policy_folder}/" + \
-                        f"logs/{case_dict['agent_run_name']}-" + \
-                        f"{case_dict['policy']}.zip"
+      # [MOD] Prefix Removed: 
+      # Just specifying the policy file path, and let the load function handle the rest
+      policy_file = f"{policy_folder}/" + \
+                        f"logs/{case_dict['policy']}.zip"
 
       # [MOD] If the identical policy file already exists in the current
       # agent_run_name logs folder (from a previous copy), load it from there

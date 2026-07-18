@@ -13,6 +13,7 @@ runner:
     ## A list of integer to indicate agent case
     agent_run_name : ["lc_omega1_SS_shap_vel",]
     ## A list of string to indicate which policy to read
+    ## [REMINDER] policy = FULL policy file name (stem, no .zip); the agent_run_name prefix is NOT auto-added anymore (MetaPolicy._load_policy)
     policy : ["best_model_SHAP_VEL_LC", ]
     ## A list of string to indicate the RL algorithm
     RL_algorithm : ["TD3",]

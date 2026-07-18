@@ -24,7 +24,8 @@ runner:
     tau             : 0.005
     
     policy_file     : 'conf/default_ddpg_policy.yml'
-    policy          : 'rl_model_441000000_steps'
+    ## [REMINDER] policy = FULL checkpoint file name (stem, no .zip); the agent_run_name prefix is NOT auto-added anymore
+    policy          : '30013-rl_model_441000000_steps'
     load_agent      : True
     normalize_input : 'utau'   # Between None, utau, std, maxmin
 
