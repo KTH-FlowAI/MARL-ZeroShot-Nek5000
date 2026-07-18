@@ -27,22 +27,28 @@ def initalize_case(run_path,case_list):
         #--- Initialize Case ---
         case_dict[case] = {}
         case_path = os.path.join(run_path, str(case))
-        case_path = os.path.join(case_path, "train")
-        if os.path.exists(case_path):
-            case_dict[case]['path'] = case_path
+        #[MOD] History now lives under runs/<case>/history/ instead of
+        #[MOD] runs/<case>/train/ (see src/initial.py:preserve_and_clean_train).
+        #[MOD] It holds roundXXX folders plus current_history (the latest run).
+        history_root = os.path.join(case_path, "history")
+        if os.path.exists(history_root):
+            case_dict[case]['path'] = history_root
         else:
             print(f"Case {case} not found")
             raise FileNotFoundError(f"Case {case} not found")
-        # Load the config
-        with open(os.path.join(case_path, "current_conf.yml"), "r") as f:
+
+        #[MOD] current_history is the newest run; older runs are roundXXX.
+        history_path = os.path.join(history_root, "current_history")
+
+        #[MOD] Config is saved inside the live history, now current_history.
+        with open(os.path.join(history_path, "current_conf.yml"), "r") as f:
             conf = yaml.load(f, Loader=yaml.FullLoader)
             case_dict[case]['conf'] = conf
 
-        # Load the history, list all the folders named with "round" and "history" stays the lastest one 
-        round_list = os.listdir(case_path)
-        round_list = [os.path.join(case_path, f) for f in round_list if "round" in f]
+        #[MOD] List all roundXXX folders; current_history is appended as latest.
+        round_list = os.listdir(history_root)
+        round_list = [os.path.join(history_root, f) for f in round_list if "round" in f]
         round_list.sort()
-        history_path = os.path.join(case_path, "history")
 
         # Add the history path to the case dictionary
         if os.path.exists(history_path):

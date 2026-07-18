@@ -24,23 +24,25 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+#[MOD] Evaluation runs now live under runs/<case>/eval/env_XXX/ (see
+#[MOD] src/evaluate.py). Reward-monitor paths carry the eval/ level.
 DEFAULT_CASES = [
     (
         "mc_nes_nek",
-        ("runs/mc_nes_nek/env_002/reward_monitor00000.dat",),
+        ("runs/mc_nes_nek/eval/env_002/reward_monitor00000.dat",),
     ),
     (
         "mc_shapvel",
         (
-            # "runs/mc_shapvel/env_002/reward_monitor00000.dat",
-            "runs/mc_shap_vel/env_002/reward_monitor00000.dat",
+            # "runs/mc_shapvel/eval/env_002/reward_monitor00000.dat",
+            "runs/mc_shap_vel/eval/env_002/reward_monitor00000.dat",
         ),
     ),
     (
         "oc_mc",
         (
-            # "runs/oc_mc/env_002/reward_monitor00000.dat",
-            "runs/oc-mc/env_001/reward_monitor00000.dat",
+            # "runs/oc_mc/eval/env_002/reward_monitor00000.dat",
+            "runs/oc-mc/eval/env_001/reward_monitor00000.dat",
         ),
     ),
 ]
@@ -205,6 +207,10 @@ def find_case_conf(path: Path) -> Path:
     run_dir = path.parent.parent
     candidates = [
         run_dir / "current_conf.yml",
+        #[MOD] History was consolidated under history/current_history
+        #[MOD] (see src/initial.py:preserve_and_clean_train). Check it first,
+        #[MOD] keeping the old locations as fallbacks for legacy runs.
+        run_dir / "history" / "current_history" / "current_conf.yml",
         run_dir / "history" / "current_conf.yml",
     ]
     for candidate in candidates:

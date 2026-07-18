@@ -113,7 +113,9 @@ label_and_scale= [(r'$\tau_w$', 'linear',[0.001,0.005]),
 collected = []  # stores (time, mean_r, std_r, run_name, K) for cross-case plots
 
 for il, case in enumerate(case_dict.keys()):
-    case_path  = os.path.join(run_path, str(case))
+    #[MOD] Use the eval/-resolved path from read_deterministic_run so env_XXX
+    #[MOD] folders (now under runs/<case>/eval/) are found consistently.
+    case_path  = case_dict[case]['path']
     save_path  = os.path.join(case_path, case_dict[case]['run_name'])
     run_name   = case_dict[case]['run_name']
 

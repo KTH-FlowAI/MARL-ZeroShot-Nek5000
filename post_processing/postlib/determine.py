@@ -29,6 +29,12 @@ def read_deterministic_run(run_path,case_list,verbose=True):
         #--- Initialize Case ---
         case_dict[case] = {}
         case_path = os.path.join(run_path, str(case))
+        #[MOD] Evaluation results now live under runs/<case>/eval/ (env_XXX +
+        #[MOD] current_conf.yml). Prefer it; fall back to the case root for
+        #[MOD] legacy runs that stored env_XXX directly under the case.
+        eval_path = os.path.join(case_path, 'eval')
+        if os.path.isdir(eval_path):
+            case_path = eval_path
         if os.path.exists(case_path):
             case_dict[case]['path'] = case_path
         else:

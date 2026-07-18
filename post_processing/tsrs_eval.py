@@ -54,8 +54,11 @@ if __name__ == "__main__":
     for case_id in case_ids:
         print(f"Processing case {case_id}")
         print("--------------------------------")
-        config_path = os.path.join(f"../runs/{case_id}/current_conf.yml") 
-        data_path = os.path.join(f"../runs/{case_id}")
+        #[MOD] Evaluation results now live under runs/<case>/eval/ (env_XXX +
+        #[MOD] current_conf.yml); fall back to the case root for legacy runs.
+        base_path = f"../runs/{case_id}"
+        data_path = os.path.join(base_path, "eval") if os.path.isdir(os.path.join(base_path, "eval")) else base_path
+        config_path = os.path.join(data_path, "current_conf.yml")
         path_list = os.listdir(data_path)
         path_list = [os.path.join(data_path,f) for f in path_list if "env" in f]
         path_list.sort()
