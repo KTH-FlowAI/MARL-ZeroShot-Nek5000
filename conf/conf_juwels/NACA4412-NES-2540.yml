@@ -6,17 +6,17 @@ runner:
     random_init     : -2  # -1==No Shuffle, use the No.init = RANK; -2==NOT Cover the current restart file
     rank            : 1 # ID of test case and restart file to use 
 
-    case_name       : "naca4412_ref_SHAP_vel_2540" 
+    case_name       : "naca4412_ref_NES_2540" 
 
     agent_ctrl_area : [[0.23,0.41],] # Tricks: use a smaller lower bound and larger upper bound, as the code will adopt the actual minimal.
     agent_ctrl_side : ["SS",]
     ## A list of integer to indicate agent case
-    agent_run_name : ["naca4412_ref_SHAP_vel_2540",]
+    agent_run_name : ["lc_omega1_SS_nes",]
     ## A list of string to indicate which policy to read
-    policy : ["best_model_SHAP_Vel", ]
+    policy : ["best_model", ]
     ## A list of string to indicate the RL algorithm
     RL_algorithm : ["TD3",]
-    source_solvers : ["dedalus",]
+    source_solvers : ["nek",]
     ## A list of float indicating the local u_tau 
     u_tau :  [1.0,] # We use local scale from NEK 
     ## A list of float indicating the local dU/dy 
@@ -42,14 +42,14 @@ runner:
 
 simulation: 
     #I/O
-    CASENAME: 'small_wing' 
+    CASENAME: 'naca_wing' 
     exeName : 'nek5000'
     compile_path   : "envs/cases/naca4412_ref_PSSS_2586"
     restart_folder : "data/restarts/rs8_naca4412_200k_ref"
     solver_version : "v17"
     #------------------------------------------
     # Generally VERY IMPORTANT
-    TOTCTRL : 1000        # Be consistent with SIZE
+    TOTCTRL : 5000        # Be consistent with SIZE
     # Rank of the test case
     nproc   : 4096         
     ndrl    : 9          # Steps to update the rewards (t^+=0.6)
@@ -75,8 +75,8 @@ simulation:
     #[_CHKPOINT]   # Runtime paramere section for checkpoint module
     READCHKPT           : 1         # p076 # Restat from checkpoint
     CHKPFNUMBER         : 6         # p067 # Restart file number
-    CHKPINTERVAL        : 2500      # p075 # Checkpiont saving frequency (number of time steps)
+    CHKPINTERVAL        : 5000      # p075 # Checkpiont saving frequency (number of time steps)
 
     #[_STAT]             # Runtime paramere section for statistics module
     AVSTEP              : 10        # p087
-    IOSTEP              : 2500     # p088
+    IOSTEP              : 5000     # p088

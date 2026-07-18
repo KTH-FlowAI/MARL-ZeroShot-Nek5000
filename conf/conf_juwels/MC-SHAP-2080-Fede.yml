@@ -6,11 +6,11 @@ runner:
     ckpt_int        :  1
 
     if_eval          : True
-    eval_freq        : 5
+    eval_freq        : 2
 
     nb_episodes        : 100
     nb_warmup_episodes : 1
-    nb_interactions : 1000
+    nb_interactions : 2500
     train_steps     : 300
     gradient_steps  : 64
 
@@ -22,11 +22,12 @@ runner:
     learning_starts : 100
     tau             : 0.005
     policy_delay    : 2
+    source_solver    : "dedalus"
 
 
     policy_file     : 'conf/default_ddpg_policy.yml'
-    policy     : 'best_model'
-    load_agent      :  False
+    policy          : 'shap_cf_pw'
+    load_agent      :  True
     normalize_input : 'utau'
 
     custom_buffer : False
@@ -37,8 +38,7 @@ runner:
 
     random_init     : 6
     rank            : 1
-    agent_run_name  : "mc_nes_nek"
-    source_solver   : "nek"
+    agent_run_name  : 801001
 
     evaluation      : False
     learnt_policy   : True
@@ -49,17 +49,17 @@ runner:
     # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
     reward_fn       : net_gain
     reward_alpha    : 1.0
-    reward_beta     : 0.0
-    reward_gamma    : 0.0
+    reward_beta     : 1.0
+    reward_gamma    : 1.0
 
 
 simulation:
     CASENAME : "phill"
     exeName : 'nek5000'
-    compile_path   : "envs/cases/mini_channel_uv_invest"
+    compile_path   : "envs/cases/mini_channel"
     restart_folder : "data/restarts/rs6_mini_Channel"
     TOTCTRL : 220
-    nproc   : 10
+    nproc   : 32
     ndrl    : 10
     znmf_avg: 1
     target_cfl: 2.0
@@ -85,7 +85,7 @@ simulation:
     timeStepper : "bdf3"
     variableDt : "no"
     writeControl : 'timeStep'
-    writeInterval : 100_000
+    writeInterval : 100_000_000
     dealiasing : "yes"
     filtering : "none"
     filterWeight : 0.01
@@ -109,4 +109,4 @@ simulation:
     CHKPINTERVAL  :  10000000
     AVSTEP     :  10
     IOSTEP     :  300_000_000
-    SMPSTEP : 23
+    SMPSTEP : 100_000_000

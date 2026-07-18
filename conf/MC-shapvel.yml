@@ -24,7 +24,7 @@ runner:
     policy_delay    : 2
 
 
-    policy_file     : '../conf/default_ddpg_policy.yml'
+    policy_file     : 'conf/default_ddpg_policy.yml'
     policy     : 'best_model_SHAP_VEL_LC'
     load_agent      :  False
     normalize_input : 'utau'
@@ -56,8 +56,8 @@ runner:
 simulation:
     CASENAME : "phill"
     exeName : 'nek5000'
-    compile_path   : "../envs/cases/mini_channel_uv_invest"
-    restart_folder : "../data/restarts/rs6_mini_Channel"
+    compile_path   : "envs/cases/mini_channel_uv_invest"
+    restart_folder : "data/restarts/rs6_mini_Channel"
     TOTCTRL : 220
     nproc   : 10
     ndrl    : 10

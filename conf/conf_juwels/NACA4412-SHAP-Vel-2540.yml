@@ -11,9 +11,9 @@ runner:
     agent_ctrl_area : [[0.23,0.41],] # Tricks: use a smaller lower bound and larger upper bound, as the code will adopt the actual minimal.
     agent_ctrl_side : ["SS",]
     ## A list of integer to indicate agent case
-    agent_run_name : ["naca4412_ref_SHAP_vel_2540",]
+    agent_run_name : ["lc_omega1_SS_shap_vel",]
     ## A list of string to indicate which policy to read
-    policy : ["best_model_SHAP_Vel", ]
+    policy : ["best_model_SHAP_VEL_LC", ]
     ## A list of string to indicate the RL algorithm
     RL_algorithm : ["TD3",]
     source_solvers : ["dedalus",]
@@ -42,14 +42,14 @@ runner:
 
 simulation: 
     #I/O
-    CASENAME: 'small_wing' 
+    CASENAME: 'naca_wing' 
     exeName : 'nek5000'
     compile_path   : "envs/cases/naca4412_ref_PSSS_2586"
     restart_folder : "data/restarts/rs8_naca4412_200k_ref"
     solver_version : "v17"
     #------------------------------------------
     # Generally VERY IMPORTANT
-    TOTCTRL : 1000        # Be consistent with SIZE
+    TOTCTRL : 5000        # Be consistent with SIZE
     # Rank of the test case
     nproc   : 4096         
     ndrl    : 9          # Steps to update the rewards (t^+=0.6)

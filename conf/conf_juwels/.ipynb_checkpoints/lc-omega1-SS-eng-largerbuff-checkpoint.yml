@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+runner: 
+    ctrl_max_amp    :  0.0630        # The alpha
+    ctrl_min_amp    : -0.0630        # The alpha
+    action_noise    :  0.1
+    npl_state       :  2
+    ckpt_int        :  1
+    
+    if_eval          : True
+    eval_freq        : 2
+    
+    nb_episodes     : 200
+    nb_interactions : 2500 # Time steps in 1 episode t^+ = 1500  steps = nb_interact * ndrl 
+    train_steps     : 300
+    gradient_steps  : 64      # For each training step, how many times we extract the off-policy history from the history buffer with batch size?
+   
+    RL_algorithm    : "TD3"
+    rescale_actions : True
+    learning_rate   : 1e-3
+    batch_size      : 2048        # Since we have more envs, this should be sufficiently large
+    buffer_size     : 40_000_000
+    learning_starts : 100
+    tau             : 0.005
+    
+    policy_file     : '../conf/default_ddpg_policy.yml'
+    policy          : 'best_model'
+    load_agent      : True
+    normalize_input : 'utau'   # Between None, utau, std, maxmin
+
+    seed : 1998
+
+    custom_buffer  : False
+    keep_frac      : 0.25 
+    buffer_mode    : 'rotate'      
+
+    random_init     : 6
+    rank            : 1          # Which initial contion to use
+    agent_run_name  : 30011
+    
+    evaluation      : False
+    learnt_policy   : True
+
+    u_tau           : 0.0630
+    dUdy            : 13.10
+
+    # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
+    reward_fn       : net_gain
+    reward_alpha    : 1.0
+    reward_beta     : 1.0
+    reward_gamma    : 1.0
+
+
+
+
+simulation: 
+    CASENAME : "tcf"
+    #I/O
+    exeName : 'nek5000'
+    compile_path   : "../envs/cases/lc_n7"
+    restart_folder : "../data/restarts/rs6_lc_noresize_reth365"
+    #------------------------------------------
+    # Generally VERY IMPORTANT
+    TOTCTRL : 128       # Be consistent with SIZE
+    nproc   : 512 
+    ndrl    : 12        # Steps to update the rewards (t^+=0.6)
+    znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
+    target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
+    retau : 207.0 
+    y_sensing : 15.0 
+    nzs       : 1   # Clustering nodes 
+    nxs       : 1   # Clustering nodes on z dir 
+    gll_unique : 1
+    #--- Body-Force Damping config, it will be used only if BDFD is on ----
+    ys_bdf  : 0.0 # Volume for Body-Force
+    amp_bdf : 0.0 # Amplitude for Body-Force
+    ret_bdf : 0.0 # Scale for Body-Force, it depends on the uncontrolled channel, but the drl sensing plane depends on the body-force channel
+ 
+    #------------------------------------------
+
+    # slurm specific 
+    out_log : 'logfile'
+    #------------------------
+    # SIZE
+    #------------------------
+    lx1       :  8               # Polynomial Order 
+    Lx        :  6.28
+    Ly        :  1.0
+    Lz        :  3.14   # Size of domain 
+    Nx        :  8
+    Ny        :  8
+    Nz        :  8         # No. Spectral Elements    
+    #--------------------------
+    # .par file 
+    #--------------------------
+    ### General 
+    stopAt : "numSteps"
+    numSteps : 500000       # Make it a bit longer so that the simulation not stops
+    dt       : -4.0e-03
+    tmax     : 100000.0
+    timeStepper : "bdf3"
+    variableDt : "no"
+    writeControl : 'timeStep' #runTime
+    writeInterval : 200_000_000
+    dealiasing : "yes"
+    filtering : "none"
+    filterWeight : 0.01
+    filterCutoffRatio : 0.9
+    #[PROBLEMTYPE]
+    stressFormulation  :  "no"
+    variableProperties  :  "no"
+    #[PRESSURE]
+    p_residualTol   :  1e-8
+    p_residualProj  :  "no"
+    #[VELOCITY]
+    v_residualTol   :  1e-8
+    v_residualProj  :  "no"
+    density         :  1.0
+    viscosity       :  -3300
+    advection       :  "yes"
+    
+    #[_RUNPAR]               # Runtime parameter section for rprm module
+    PARFWRITE :  "no"          # Do we write runtime parameter file
+    PARFNAME  :  "outparfile"  # Runtime parameter file name for output (without .par)
+    
+    #[_MONITOR]              # Runtime parameter section for monitor module
+    LOGLEVEL  :  1             # Logging threshold for toolboxes
+    WALLTIME  :  "23:45"       # Simulation wall time
+    
+    #[_CHKPOINT]             # Runtime paramere section for checkpoint module
+    READCHKPT     :  "yes"     # Restat from checkpoint
+    CHKPFNUMBER   :  1         # Restart file number
+    CHKPINTERVAL  :  10000000      # Checkpiont saving frequency (number of time steps)
+
+    #[_STAT]             # Runtime paramere section for statistics module
+    AVSTEP     :  10
+    IOSTEP     :  100_000_000
+
+    #[_TSRS]
+    SMPSTEP : 100_000_000   # How many steps to sample the time series? 
+
