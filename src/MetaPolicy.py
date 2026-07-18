@@ -8,7 +8,7 @@ import argparse
 from copy import deepcopy
 from pathlib import Path
 from typing import List
-import os, shutil
+import os, shutil, filecmp
 import supersuit as ss
 
 
@@ -389,15 +389,40 @@ class MetaPolicyRunner():
                         f"logs/{case_dict['agent_run_name']}-" + \
                         f"{case_dict['policy']}.zip"
 
+      # [MOD] If the identical policy file already exists in the current
+      # agent_run_name logs folder (from a previous copy), load it from there
+      # instead of the external policy_folder. This avoids depending on / re-
+      # copying the source (and the SameFileError if source == target).
+      # Verify the local copy matches the source; warn on any discrepancy
+      # (source differs from the local copy, or source is missing).
+      local_policy_file = os.path.join(log_path, os.path.basename(policy_file))
+      if os.path.exists(local_policy_file):
+        load_path = local_policy_file
+        already_local = True
+        if not os.path.exists(policy_file):
+          print(f"[SB3][WARN] Source policy NOT found: {policy_file}; "
+                f"loading local copy (unverified): {local_policy_file}",flush=True)
+        elif not filecmp.cmp(local_policy_file, policy_file, shallow=False):
+          print(f"[SB3][WARN] Local policy DIFFERS from source!\n"
+                f"           local : {local_policy_file}\n"
+                f"           source: {policy_file}\n"
+                f"           Loading the local copy anyway.",flush=True)
+        else:
+          print(f"[SB3] Local policy matches source, loading from {load_path}",flush=True)
+      else:
+        load_path = policy_file
+        already_local = False
+
       try:
-        loaded_model = RL_algorithm.load(policy_file,
+        loaded_model = RL_algorithm.load(load_path,
                                        # custom_objects is required because the action_space
                                        custom_objects={'action_space':self.act_space,
                                         "observation_space": self.obs_space,}
                                        )
-        # Now make a copy to the current logs: 
-        shutil.copy(src=policy_file,dst=log_path)
-        print(f"[SB3] Copy Policy to {log_path}",flush=True)
+        # Now make a copy to the current logs (only when loaded externally):
+        if not already_local:
+          shutil.copy(src=policy_file,dst=log_path)
+          print(f"[SB3] Copy Policy to {log_path}",flush=True)
 
       except:
         raise FileNotFoundError("[SB3] ERROR: Target Model NOT Found!")

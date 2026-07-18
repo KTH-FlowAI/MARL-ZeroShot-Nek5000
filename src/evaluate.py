@@ -94,9 +94,13 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
     #--------------------------------
     
     #--------------------------------
-    # Initialize the ENV 
+    # Initialize the ENV
     #--------------------------------
-    env = nek_marl.parallel_env(conf=conf, rank_folder=run_folder,sub_comm=sub_comm)
+    #[MOD] Evaluation artefacts (history/reward logs, current_conf, NODE_INFO)
+    #[MOD] live under the eval/ subfolder, alongside the eval env_XXX folders.
+    eval_folder = run_folder + '/eval'
+    os.makedirs(eval_folder, exist_ok=True)
+    env = nek_marl.parallel_env(conf=conf, rank_folder=eval_folder,sub_comm=sub_comm)
     nAgents = env.nAgents
     agents_list = env.possible_agents  
     ## Create a dictionary for collecting the data. 
@@ -139,6 +143,10 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
                             },
             print_system_info=False,)
 
+        # Keep a run-named snapshot of the evaluated checkpoint
+        if comm_world.Get_rank() == 0:
+            archive_eval_checkpoint(conf, ckpt_path)
+
     ## Classical AFC 
     else:
         if conf.runner.RL_algorithm == 'OC':
@@ -172,7 +180,8 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
     # Vectorizing the environment
 
     ## Update the run folder
-    run_folder = conf.logging.save_dir+f'/{conf.logging.run_name}'+f'/env_{conf.runner.rank:03d}'
+    #[MOD] vars_record is written inside the eval env folder (eval/env_XXX)
+    run_folder = conf.logging.save_dir+f'/{conf.logging.run_name}'+f'/eval/env_{conf.runner.rank:03d}'
 
     ### Start Main Evaluations ###
     show_title()

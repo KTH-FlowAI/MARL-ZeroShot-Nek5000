@@ -19,6 +19,7 @@ except ModuleNotFoundError:
     SelectiveReplayBuffer = None
 import yaml
 import os
+import shutil
 import pickle
 import numpy as np
 import nek_marl_cluster
@@ -71,6 +72,50 @@ def io_path(conf):
         os.mkdir(run_folder)
         print(f"[IO] MAKE RUN FOLDER:\n{run_folder}",flush=True)
     return run_folder
+
+
+def archive_eval_checkpoint(conf, ckpt_path, dst_dir=None):
+    """
+    Make a copy of the evaluated checkpoint and rename it as
+    ``eval_model_{agent_run_name}`` whenever an evaluation job is launched.
+
+    This keeps a stable, run-named snapshot of exactly which checkpoint was
+    evaluated, next to the original logs so it is not lost when new
+    checkpoints overwrite the generic policy file names.
+
+    Parameters
+    ----------
+    conf : OmegaConf
+        Parsed configuration; ``conf.runner.agent_run_name`` names the copy.
+    ckpt_path : str
+        Path to the evaluated checkpoint as passed to ``RL_algorithm.load``.
+        SB3 stores checkpoints as ``.zip``; the extension is optional here.
+    dst_dir : str, optional
+        Directory where the copy is written. Defaults to the directory of
+        ``ckpt_path``.
+
+    Returns
+    -------
+    str or None
+        Path to the copied checkpoint, or ``None`` if the source is missing.
+    """
+    # SB3 checkpoints are stored as .zip; normalise the source path
+    src = ckpt_path if ckpt_path.endswith('.zip') else ckpt_path + '.zip'
+    if not os.path.exists(src):
+        print(f"[EVAL] WARN: checkpoint not found, skip copy:\n{src}",
+              flush=True)
+        return None
+
+    if dst_dir is None:
+        dst_dir = os.path.dirname(src)
+    if not os.path.exists(dst_dir):
+        os.makedirs(dst_dir, exist_ok=True)
+
+    dst = os.path.join(dst_dir,
+                       f"eval_model_{conf.runner.agent_run_name}.zip")
+    shutil.copy2(src, dst)
+    print(f"[EVAL] COPIED EVALUATED CHECKPOINT:\n{src}\n-> {dst}", flush=True)
+    return dst
 
 
 def init_env(conf, run_folder, sub_comm):

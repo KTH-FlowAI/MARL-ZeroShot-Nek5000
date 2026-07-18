@@ -8,16 +8,16 @@
 #SBATCH -t 24:00:00
 #SBATCH -p batch
 #SBATCH --exclusive
-#SBATCH -N 1
+#SBATCH -N 11
 #SBATCH --ntasks-per-node=48
 #SBATCH --cpus-per-task=1
 
 #-------- Outputs and notification ------
-#SBATCH -J Eval-Enegry
+#SBATCH -J Eval-LC-Enegry
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=yuninw@umich.edu
-#SBATCH --output=./log-files/log-eval-td3-reth856-h169
-#SBATCH --error=./log-files/log-eval-td3-reth856-h169
+#SBATCH --output=./log-files/eval-%j
+#SBATCH --error=./log-files/eval-%j
 #SBATCH --begin=2025-09-21T10:45:00
 
 # Environment 
@@ -26,7 +26,7 @@
 export UCX_WARN_UNUSED_ENV_VARS=n
 source ~/.bashrc.miniforge
 source ~/.bashrc.openmpi_ucx
-#[MOD] Submit from the main path:  sbatch execs/sjob-eval.sh
+#[MOD] Submit from the main path:  sbatch execs/sjob-eval-n7.sh
 #[MOD] SLURM_SUBMIT_DIR is where you ran `sbatch` (the repo root); fall
 #[MOD] back to the script location for a non-SLURM run.
 ROOT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)}"
@@ -49,7 +49,7 @@ CONFIG_NAME="conf/eval-LCReth310-H172-TD3-1utau.yml"   #[MOD] default is a confi
 RUN_MODE="run"
 IOSTEP=10000
 writeInterval=10000
-SMPSTEP=10
+SMPSTEP=12
 reward_alpha=1.0
 reward_beta=1.0
 reward_gamma=1.0
@@ -72,16 +72,17 @@ while [[ $# -gt 1 ]]; do
             ;;
     esac
 done
-#[MOD] Resolve the config to an ABSOLUTE path (accepts a relative or absolute
-#[MOD] path); fail early if it does not exist. Downstream uses ${CONFIG_NAME}.
+#[MOD] Resolve the config to an ABSOLUTE path (accepts a path relative to the
+#[MOD] repo root, or an absolute path); fail early if it does not exist.
 _cfg_in="${CONFIG_NAME}"
 CONFIG_NAME="$(realpath -e "${_cfg_in}" 2>/dev/null)" || {
     echo "[ERR] Config file not found: ${_cfg_in}" >&2; exit 1; }
 CONFIG_TAG="$(basename "${CONFIG_NAME}")"   #[MOD] short tag for log filenames
 echo "DRL CONFIG: ${CONFIG_NAME}, RUN MODE: ${RUN_MODE}"
 NTOT=$(grep -ri 'nproc' ${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+echo "NTOT ${NTOT}" 
 
-for ienv in {1..6}
+for ienv in {2..6}
 do
        echo "Count: $ienv"
        mpirun -n 1 python -m nek_MARL initial $CONFIG_NAME \
@@ -93,7 +94,8 @@ do
 	simulation.writeInterval=${writeInterval} \
 	simulation.SMPSTEP=${SMPSTEP} 
        
-       var=$(grep -ri 'agent_run_name' ${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+       var=$(grep -ri 'agent_run_name' ${CONFIG_NAME} | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//")
+
        
        RUN_PATH=$(head -n 1 ${CACHE_DIR}/RUN_PATH_${var}.txt)
        

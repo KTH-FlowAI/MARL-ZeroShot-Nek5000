@@ -46,6 +46,74 @@ def parse_omegaconf(conf_file: str, overrides: List[str]):
     return conf
 
 
+def preserve_and_clean_train(run_folder):
+    #[MOD] Preserve the training history, then wipe the bulky, throw-away
+    #[MOD] simulation data in ./train/ before a (re)start of training.
+    """
+    Consolidate every history artefact under ``runs/<agent_run_name>/history/``
+    so it survives the cleanup of ``./train/``:
+
+        history/current_history   <- the previous run's ./train/history
+        history/roundXXX          <- archived rounds (migrated + accumulated)
+
+    Steps (all guarded so a fresh run with no ./train/ is a no-op):
+      1. Migrate any legacy ``./train/roundXXX`` -> ``history/roundXXX``.
+      2. Promote an existing ``history/current_history`` to the next
+         ``history/roundXXX`` (so it is never overwritten), then move
+         ``./train/history`` -> ``history/current_history``.
+      3. Delete everything left in ``./train/`` (large, unused sim output).
+
+    Parameters
+    ----------
+    run_folder : str
+        The run directory ``runs/<agent_run_name>``.
+    """
+    import shutil, re
+
+    train_folder = os.path.join(run_folder, "train")
+    history_root = os.path.join(run_folder, "history")
+    os.makedirs(history_root, exist_ok=True)
+
+    def _next_round_name():
+        # Next round index = max existing round in history/ + 1 (zero-padded)
+        idx = 0
+        for f in os.listdir(history_root):
+            m = re.fullmatch(r'round(\d+)', f)
+            if m:
+                idx = max(idx, int(m.group(1)))
+        return f"round{idx + 1:03d}"
+
+    if not os.path.isdir(train_folder):
+        print(f"[IO] NO ./train TO CLEAN: {train_folder}", flush=True)
+        return
+
+    # 1) Migrate legacy rounds that were archived inside ./train/
+    for f in sorted(os.listdir(train_folder)):
+        if re.fullmatch(r'round\d+', f):
+            src = os.path.join(train_folder, f)
+            dst = os.path.join(history_root, f)
+            if not os.path.exists(dst):
+                shutil.move(src, dst)
+                print(f"[IO] MIGRATE ROUND: train/{f} -> history/{f}", flush=True)
+
+    # 2) Archive the previous live history as history/current_history
+    prev_hist = os.path.join(train_folder, "history")
+    if os.path.isdir(prev_hist):
+        cur = os.path.join(history_root, "current_history")
+        if os.path.exists(cur):
+            promoted = os.path.join(history_root, _next_round_name())
+            shutil.move(cur, promoted)
+            print(f"[IO] PROMOTE current_history -> history/"
+                  f"{os.path.basename(promoted)}", flush=True)
+        shutil.move(prev_hist, cur)
+        print(f"[IO] ARCHIVE train/history -> history/current_history",
+              flush=True)
+
+    # 3) Remove the bulky simulation data that is not used after the fact
+    shutil.rmtree(train_folder)
+    print(f"[IO] CLEAN UP ./train: {train_folder}", flush=True)
+
+
 def initial(conf_file,overrides,**ignored_kwargs):
     """
     Initialization of the program
@@ -132,14 +200,22 @@ def initial(conf_file,overrides,**ignored_kwargs):
     if not os.path.exists(run_folder):
         os.mkdir(run_folder)
         print(f"[IO] MAKE RUN FOLDER:\n{run_folder}",flush=True)
-    
+
+    #[MOD] Before a training (re)start, preserve the history under
+    #[MOD] runs/<agent_run_name>/history/ and wipe the unused ./train/ data.
+    #[MOD] Skipped in evaluation mode (env_XXX folders are handled below).
+    if not conf.runner.evaluation:
+        preserve_and_clean_train(run_folder)
+
     if not conf.runner.evaluation:
         rank_folder = run_folder + "/train" # Folder for training
     else:
-        rank_folder = run_folder+f'/env_{conf.runner.rank:03d}'
+        #[MOD] Evaluation runs live under a dedicated eval/ subfolder:
+        #[MOD] runs/<agent_run_name>/eval/env_XXX
+        rank_folder = run_folder+f'/eval/env_{conf.runner.rank:03d}'
         # make the env folder and copy all the necessary files
     if not os.path.exists(rank_folder):
-            os.mkdir(rank_folder)
+            os.makedirs(rank_folder)  #[MOD] makedirs so the eval/ parent is created too
     
     print(f"[IO] Folder: {rank_folder}",flush=True)            
     
@@ -166,8 +242,15 @@ def initial(conf_file,overrides,**ignored_kwargs):
     else:
         last_agent = ""
 
-    # Re-redict the running path 
-    with open(f"RUN_PATH_{conf.runner.agent_run_name}.txt","w") as f:
+    # Re-redict the running path
+    #[MOD] RUN_PATH_*.txt now live in <repo_root>/.caches (derived from this
+    #[MOD] file's location, so it is independent of the current working dir).
+    cache_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".caches")
+    os.makedirs(cache_dir, exist_ok=True)
+    run_path_file = os.path.join(
+        cache_dir, f"RUN_PATH_{conf.runner.agent_run_name}.txt")
+    with open(run_path_file, "w") as f:
         f.write(rank_folder + "\n")
         f.write(last_agent)
     f.close()

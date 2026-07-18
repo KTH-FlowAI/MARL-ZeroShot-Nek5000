@@ -87,7 +87,14 @@ def initial(conf_file, overrides, **ignored_kwargs):
     initializer.main()
 
     # Re-direct the running path
-    with open(f'RUN_PATH_{conf.runner.case_name}.txt', "w") as f:
+    #[MOD] RUN_PATH_*.txt now live in <repo_root>/.caches (derived from this
+    #[MOD] file's location, so it is independent of the current working dir).
+    cache_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".caches")
+    os.makedirs(cache_dir, exist_ok=True)
+    run_path_file = os.path.join(
+        cache_dir, f'RUN_PATH_{conf.runner.case_name}.txt')
+    with open(run_path_file, "w") as f:
         f.write(rank_folder + "\n")
 
     print("="*30, flush=True)

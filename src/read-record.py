@@ -32,8 +32,11 @@ fig_kw = {'dpi':300,'bbox_inches':'tight'}
 CASE_NUM=arguments.id
 REC_NUM=arguments.var
 env_num=arguments.env
-history_path = f'runs/{CASE_NUM}/env_{env_num:03d}/'
-fig_path = f'runs/{CASE_NUM}/env_{env_num:03d}/figs/'
+#[MOD] Evaluation results live under runs/<case>/eval/: per-env records in
+#[MOD] eval/env_XXX, and the shared NODE_INFO in eval/history (see below).
+eval_root = f'runs/{CASE_NUM}/eval'
+history_path = f'{eval_root}/env_{env_num:03d}/'
+fig_path = f'{eval_root}/env_{env_num:03d}/figs/'
 if not os.path.exists(fig_path): os.makedirs(fig_path)
 d = np.load(history_path+f"vars_record_{REC_NUM}.npz")
 
@@ -49,7 +52,9 @@ tstar = mu/utau**2
 TSTART = 0.1089995999988E+04
 
 
-agent_info = pd.read_csv(history_path+'history/'+"NODE_INFO.csv").to_dict()
+#[MOD] NODE_INFO now lives in the shared eval/history (not per-env), because the
+#[MOD] evaluation env writes its history under runs/<case>/eval/history.
+agent_info = pd.read_csv(f'{eval_root}/history/'+"NODE_INFO.csv").to_dict()
 agent_info['NAME']=[]
 print(agent_info.keys())
 num_agent=len(agent_info['NID'])

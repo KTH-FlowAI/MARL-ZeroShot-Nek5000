@@ -187,7 +187,7 @@ class Logging:
     run_name: str = str(int(time.time()))  # str so it can hold a string agent_run_name
     group: Optional[str] = None
     notes: Optional[str] = None
-    save_dir: str = '../runs'
+    save_dir: str = 'runs'
 
 
 @dataclass

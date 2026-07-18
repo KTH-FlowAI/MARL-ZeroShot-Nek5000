@@ -3,20 +3,20 @@
 #SBATCH -t 24:00:00
 #SBATCH -p batch
 #SBATCH --exclusive
-#SBATCH -N 1
-#SBATCH --ntasks-per-node=41
+#SBATCH -N 22
+#SBATCH --ntasks-per-node=48
 #SBATCH --cpus-per-task=1
-#SBATCH -J ng-111
+#SBATCH -J LC-NP-OM4
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=yuninw@umich.edu
-#SBATCH --output=log-files/ng-111-%j.out
-#SBATCH --error=log-files/ng-111-%j.err
+#SBATCH --output=log-files/train-%j
+#SBATCH --error=log-files/train-%j
 
 source ~/.bashrc.openmpi_ucx
 source ~/.bashrc.miniforge
 export UCX_WARN_UNUSED_ENV_VARS=n
 export HWLOC_HIDE_ERRORS=1
-#[MOD] Submit from the main path:  sbatch execs/sjob-train.sh
+#[MOD] Submit from the main path:  sbatch execs/sjob-train-n11.sh
 #[MOD] SLURM_SUBMIT_DIR is where you ran `sbatch` (the repo root); fall
 #[MOD] back to the script location for a non-SLURM run.
 ROOT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")"/.. && pwd)}"
@@ -40,18 +40,14 @@ while [[ $# -gt 1 ]]; do
             CONFIG_NAME="$2"
             shift 2
             ;;
-        --run-mode)
-            RUN_MODE="$2"
-            shift 2
-            ;;
         *)
             echo "Unknown argument: $1"
             exit 1
             ;;
     esac
 done
-#[MOD] Resolve the config to an ABSOLUTE path (accepts a relative or absolute
-#[MOD] path); fail early if it does not exist. Downstream uses ${CONFIG_NAME}.
+#[MOD] Resolve the config to an ABSOLUTE path (accepts a path relative to the
+#[MOD] repo root, or an absolute path); fail early if it does not exist.
 _cfg_in="${CONFIG_NAME}"
 CONFIG_NAME="$(realpath -e "${_cfg_in}" 2>/dev/null)" || {
     echo "[ERR] Config file not found: ${_cfg_in}" >&2; exit 1; }
@@ -61,7 +57,7 @@ echo "DRL CONFIG: ${CONFIG_NAME}, RUN MODE: ${RUN_MODE}"
 mpirun -n 1 python -m nek_MARL initial ${CONFIG_NAME} \
     > ${LOG_DIR}/log.initial.${CONFIG_TAG} 2>&1
 
-AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
+AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ${CONFIG_NAME} | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//")
 NTOT=$(grep -ri 'nproc' ${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
 RUN_PATH=$(head -n 1 ${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt)
 AGENT=$(tail -n 1 ${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt)
