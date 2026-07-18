@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+runner: 
+
+    nb_interactions : 10_000_000
+    random_init     : -2 
+    rank            : 1
+    case_name       : 406002 
+    agent_ctrl_area : [[0.23,0.40],[0.4,0.5],[0.5,0.72],] # Tricks: use a smaller lower bound and larger upper bound, as the code will adopt the actual minimal.
+    ## A list of integer to indicate agent case
+    agent_run_name : ["archived_lc_omega1_SS_BASE_dr","archived_lc_omega2_SS_BASE_dr","archived_lc_omega3_SS_BASE_dr",]
+    ## A list of string to indicate which policy to read
+    policy : ["eval_model_lc_omega1_SS_BASE_dr", "eval_model_lc_omega2_SS_BASE_dr","eval_model_lc_omega3_SS_BASE_dr",]
+    ## A list of string to indicate the RL algorithm
+    RL_algorithm : ["TD3","TD3","TD3"]
+    ## A list of float indicating the local u_tau 
+    #u_tau :  [0.0678, 0.0613, 0.0521, 0.037]
+    u_tau :  [1.0,1.0,1.0] # We use local scale from NEK 
+    ## A list of float indicating the local dU/dy 
+    dUdy : [920.54, 749.91, 543.64]
+    ## Action bounds in tuple
+    action_bounds : [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
+
+    ## The drl update interval 
+    #drl_steps : [44, 54, 72, 148]
+    #drl_steps : [40, 56, 72, 152] # this is approx, thus gcd ==8--> ndrl, the difference are tiny! 
+    #drl_steps : [5, 7, 9] # make ndrl=4 therefore mpi time will be reduced!
+    drl_steps : [5, 6, 8] # make ndrl=4 therefore mpi time will be reduced!
+
+    ## Some IO Management 
+    vars_record      : True
+    ###NOTE: The steps are based on the nb_interactions, not simulation!! 
+    vars_record_freq : 1 
+    vars_io_freq     : 100  ## Freq the save the data
+
+
+
+simulation: 
+    #I/O
+    CASENAME: 'naca_wing' 
+    exeName : 'nek5000'
+    compile_path   : "src/src_naca_wing200k_td3_2570_blw_7086_2u"
+    restart_folder : "rs8/rs8_naca_wing200k_N11"
+    #------------------------------------------
+    # Generally VERY IMPORTANT
+    TOTCTRL : 2500        # Be consistent with SIZE
+    nproc   : 4096         # ranks for running
+    ndrl    : 9          # Steps to update the rewards (t^+=0.6)
+    znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
+    target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
+    #------------------------------------------
+#--------------------------
+    # .rea file 
+    #--------------------------
+    ### General 
+    ## numSteps >= n_episodes * ndrl 
+    numSteps            : 5_000_000 # p011 --- T_FO = 10 
+    dt                  : -1.5e-05   # p012
+    
+    ## Write Interval of La2 and Reg
+    writeInterval       : 5000      # p015
+    writeLA2            : 5000     # p070
+    #[PRESSURE]
+    p_residualTol       : 1.0e-6      # p021 ## Less constrain on the solution, same setup as OC
+    v_residualTol       : 1.0e-8      # p022
+    density             : 1.0       # p001
+    viscosity           : -2.0E5   # p002
+    
+    #[_CHKPOINT]   # Runtime paramere section for checkpoint module
+    READCHKPT           : 1         # p076 # Restat from checkpoint
+    CHKPFNUMBER         : 6         # p067 # Restart file number
+    CHKPINTERVAL        : 2500      # p075 # Checkpiont saving frequency (number of time steps)
+
+    #[_STAT]             # Runtime paramere section for statistics module
+    AVSTEP              : 10        # p087
+    IOSTEP              : 2500     # p088
