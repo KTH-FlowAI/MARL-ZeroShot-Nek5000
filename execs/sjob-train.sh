@@ -31,6 +31,7 @@ echo "Running on $SLURM_NNODES nodes, $SLURM_NPROCS processors."
 
 CONFIG_NAME="conf/MC16-TD3-ng-111.yml"   #[MOD] default is a config PATH relative to the repo root
 RUN_MODE="run"
+LOAD_AGENT=""   #[MOD] override runner.load_agent (True/False) from CLI; empty = use the config value
 # Parse command line arguments
 # Usage: ./unified-script --config [CONFIG_NAME] --run-mode [RUN_MODE] --rank [RANK]
 # Parse command-line arguments after `--`
@@ -42,6 +43,10 @@ while [[ $# -gt 1 ]]; do
             ;;
         --run-mode)
             RUN_MODE="$2"
+            shift 2
+            ;;
+        --load-agent)
+            LOAD_AGENT="$2"
             shift 2
             ;;
         *)
@@ -56,6 +61,15 @@ _cfg_in="${CONFIG_NAME}"
 CONFIG_NAME="$(realpath -e "${_cfg_in}" 2>/dev/null)" || {
     echo "[ERR] Config file not found: ${_cfg_in}" >&2; exit 1; }
 CONFIG_TAG="$(basename "${CONFIG_NAME}")"   #[MOD] short tag for log filenames
+#[MOD] Optional runner.load_agent override (switch policy loading on/off);
+#[MOD] empty keeps the config value. Validate to catch typos early.
+LOAD_AGENT_ARG=""
+if [ -n "${LOAD_AGENT}" ]; then
+    if [ "${LOAD_AGENT}" != "True" ] && [ "${LOAD_AGENT}" != "False" ]; then
+        echo "[ERR] --load-agent must be True or False, got: ${LOAD_AGENT}" >&2; exit 1
+    fi
+    LOAD_AGENT_ARG="runner.load_agent=${LOAD_AGENT}"
+fi
 echo "DRL CONFIG: ${CONFIG_NAME}, RUN MODE: ${RUN_MODE}"
 
 mpirun -n 1 python -m nek_MARL initial ${CONFIG_NAME} \
@@ -72,7 +86,7 @@ echo "RUN_PATH: ${RUN_PATH}, NTOT: ${NTOT}"
 #[MOD] (src/initial.py:preserve_and_clean_train); no shell-side archiving.
 
 mpirun --mca io ompio \
-    -n 1 python -m nek_MARL ${RUN_MODE} ${CONFIG_NAME} runner.policy=${AGENT} :\
+    -n 1 python -m nek_MARL ${RUN_MODE} ${CONFIG_NAME} runner.policy=${AGENT} ${LOAD_AGENT_ARG} :\
     -n ${NTOT} bash -c "cd ${RUN_PATH} && ./nek5000" \
     > ${LOG_DIR}/log.run.${CONFIG_TAG} 2>&1
 

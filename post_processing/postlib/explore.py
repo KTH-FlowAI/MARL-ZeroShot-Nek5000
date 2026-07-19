@@ -27,36 +27,52 @@ def initalize_case(run_path,case_list):
         #--- Initialize Case ---
         case_dict[case] = {}
         case_path = os.path.join(run_path, str(case))
-        #[MOD] History now lives under runs/<case>/history/ instead of
-        #[MOD] runs/<case>/train/ (see src/initial.py:preserve_and_clean_train).
-        #[MOD] It holds roundXXX folders plus current_history (the latest run).
+        #[MOD] History segments, oldest -> newest (see
+        #[MOD] src/initial.py:preserve_and_clean_train):
+        #[MOD]   history/round001..N     : archived completed runs
+        #[MOD]   history/current_history : the previous completed run
+        #[MOD]   train/history           : the LIVE, on-the-fly run (newest)
+        #[MOD] The live train/history is included so reward-on-the-fly shows up
+        #[MOD] while a job is still running (and so first runs, which have no
+        #[MOD] history/ yet, still work).
         history_root = os.path.join(case_path, "history")
+        current_hist = os.path.join(history_root, "current_history")
+        live_hist    = os.path.join(case_path, "train", "history")
+
+        # roundXXX (archived), oldest first
+        round_list = []
         if os.path.exists(history_root):
-            case_dict[case]['path'] = history_root
-        else:
-            print(f"Case {case} not found")
-            raise FileNotFoundError(f"Case {case} not found")
+            round_list = sorted(
+                os.path.join(history_root, f)
+                for f in os.listdir(history_root) if "round" in f
+            )
+        # then the previous completed run, then the live run (newest last)
+        if os.path.exists(current_hist):
+            round_list.append(current_hist)
+        if os.path.exists(live_hist):
+            round_list.append(live_hist)
 
-        #[MOD] current_history is the newest run; older runs are roundXXX.
-        history_path = os.path.join(history_root, "current_history")
-
-        #[MOD] Config is saved inside the live history, now current_history.
-        with open(os.path.join(history_path, "current_conf.yml"), "r") as f:
-            conf = yaml.load(f, Loader=yaml.FullLoader)
-            case_dict[case]['conf'] = conf
-
-        #[MOD] List all roundXXX folders; current_history is appended as latest.
-        round_list = os.listdir(history_root)
-        round_list = [os.path.join(history_root, f) for f in round_list if "round" in f]
-        round_list.sort()
-
-        # Add the history path to the case dictionary
-        if os.path.exists(history_path):
-            case_dict[case]['history'] = history_path
-            round_list.append(history_path)
-        else:
+        if not round_list:
             print(f"History for case {case} not found")
             raise FileNotFoundError(f"History for case {case} not found")
+
+        # Newest segment is the last one; expose it as the case 'history'
+        history_path = round_list[-1]
+        case_dict[case]['path']    = history_root if os.path.exists(history_root) else case_path
+        case_dict[case]['history'] = history_path
+
+        #[MOD] Read the config from the newest segment that has current_conf.yml
+        #[MOD] (prefer the live run, then current_history, then any round).
+        conf = None
+        for seg in reversed(round_list):
+            cfg = os.path.join(seg, "current_conf.yml")
+            if os.path.exists(cfg):
+                with open(cfg, "r") as f:
+                    conf = yaml.load(f, Loader=yaml.FullLoader)
+                break
+        if conf is None:
+            raise FileNotFoundError(f"current_conf.yml not found for case {case}")
+        case_dict[case]['conf'] = conf
 
         # Load the reward history
         reward_list = []

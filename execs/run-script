@@ -32,6 +32,7 @@ export OMPI_MCA_btl=self,vader,tcp
 # Default values
 CONFIG_NAME="conf/MC16-TD3.yml"   #[MOD] default is now a config PATH, not a name
 RUN_MODE="run"
+LOAD_AGENT=""   #[MOD] override runner.load_agent (True/False) from CLI; empty = use the config value
 IOSTEP=5000
 writeInterval=5000
 SMPSTEP=6
@@ -51,6 +52,10 @@ while [[ $# -gt 1 ]]; do
             RUN_MODE="$2"
             shift 2
             ;;
+        --load-agent)
+            LOAD_AGENT="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown argument: $1"
             exit 1
@@ -65,6 +70,15 @@ _cfg_in="${CONFIG_NAME}"
 CONFIG_NAME="$(realpath -e "${_cfg_in}" 2>/dev/null)" || {
     echo "[ERR] Config file not found: ${_cfg_in}" >&2; exit 1; }
 CONFIG_TAG="$(basename "${CONFIG_NAME}")"   #[MOD] short tag for log filenames
+#[MOD] Optional runner.load_agent override (switch policy loading on/off);
+#[MOD] empty keeps the config value. Validate to catch typos early.
+LOAD_AGENT_ARG=""
+if [ -n "${LOAD_AGENT}" ]; then
+    if [ "${LOAD_AGENT}" != "True" ] && [ "${LOAD_AGENT}" != "False" ]; then
+        echo "[ERR] --load-agent must be True or False, got: ${LOAD_AGENT}" >&2; exit 1
+    fi
+    LOAD_AGENT_ARG="runner.load_agent=${LOAD_AGENT}"
+fi
 #--------------------------------------------
 
 #--------------------------------------------
@@ -129,7 +143,7 @@ else
     # Run mode execution
     mpirun -n $((1 + ${NTOT})) bash -c "
     if [ \$OMPI_COMM_WORLD_RANK -eq 0 ]; then
-        python -m nek_MARL ${RUN_MODE} ${CONFIG_NAME} runner.policy=$AGENT 
+        python -m nek_MARL ${RUN_MODE} ${CONFIG_NAME} runner.policy=$AGENT ${LOAD_AGENT_ARG}
     else
         cd ${RUN_PATH} && ./nek5000
     fi

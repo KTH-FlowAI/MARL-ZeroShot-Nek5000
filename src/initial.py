@@ -140,7 +140,11 @@ def initial(conf_file,overrides,**ignored_kwargs):
 
         # re.escape: agent_run_name is now a string and may contain regex metachars
         esc = re.escape(str(agent_run_name))
-        pattern = re.compile(rf'{esc}-(rl_model_(\d+)_steps)\.zip')
+        # [MOD] group(1) now includes the agent_run_name prefix, so the returned
+        # name is the FULL checkpoint stem (e.g. "<run>-rl_model_<N>_steps").
+        # The loader no longer prepends the prefix (see sb3_utils / evaluate /
+        # MetaPolicy), so RUN_PATH must carry the complete file name.
+        pattern = re.compile(rf'({esc}-rl_model_(\d+)_steps)\.zip')
         # Replay buffers saved alongside DDPG/TD3 checkpoints (see sb3_utils.py)
         buffer_pattern = re.compile(rf'{esc}-rl_model_replay_buffer_(\d+)_steps\.pkl')
         latest_step = -1
