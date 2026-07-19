@@ -229,7 +229,18 @@ class NEK_INIT():
             fpar.write('userParam%02d = %s \n' % (userp, self.nek.ret_bdf)) # Scale for Body-Force
             userp += 1
             fpar.write('userParam%02d = %s \n' % (userp, self.nek.gll_unique)) # Unique GLL points for DRL (0==No, 1==Yes)
-            # userp+ = 1
+            userp += 1
+            # [MOD] Reward mode selector (UPARAM(9) in Fortran).
+            # Derived from Runner.reward_fn so the Fortran reward path and the
+            # Python MPI-Recv path share ONE source of truth (avoids deadlock).
+            # 0 = dudy (drag reduction), 1 = net_gain (net energy saving).
+            reward_fn = getattr(self.drl, 'reward_fn', 'dudy')
+            if reward_fn not in ('dudy', 'net_gain'):
+                raise ValueError(
+                    f"[IO] Unknown reward_fn '{reward_fn}'; "
+                    "expected 'dudy' or 'net_gain'")
+            reward_mode = 1 if reward_fn == 'net_gain' else 0
+            fpar.write('userParam%02d = %s \n' % (userp, reward_mode)) # Reward mode: 0=dudy, 1=net_gain
             fpar.write('#---------------------\n')
             fpar.write("\n")
             # ------------------------
