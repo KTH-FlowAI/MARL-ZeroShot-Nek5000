@@ -23,6 +23,7 @@ c=============================================
         include "INPUT"
         include 'PARALLEL'
         integer i_evolv
+        integer reward_mode !#[MOD] runtime reward-mode selector
 c=============================================
 c       Function
 c=============================================
@@ -38,11 +39,13 @@ c=============================================
         ! YW: OCT15 I got a issue regarding the MEMORY
         ! I comment this and will test it on cluster in the future.
         !-----------------
-#ifdef NETGAIN
+!#[MOD] was: #ifdef NETGAIN / <netgain> / #else / compute_dudy / #endif
+        reward_mode = nint(UPARAM(9))
+        if (reward_mode.eq.1) then
         call compute_netGain(i_evolv)
-#else
+        else
         call compute_dudy(i_evolv)
-#endif
+        endif
         !-----------------
         call drl_reward_out(i_evolv)
         

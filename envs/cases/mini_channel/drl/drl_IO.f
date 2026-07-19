@@ -22,6 +22,7 @@ c=============================================
             include 'mpif.h'
 !     arguments
             integer i_evolv,drl_step
+            integer reward_mode       !#[MOD] runtime reward-mode selector
             integer npts              ! local number of points
             integer ierr
       !     local variables
@@ -36,7 +37,10 @@ c=============================================
 c       Function
 c=============================================
             drl_step = UPARAM(1)
-            
+!#[MOD] Runtime reward-mode selector; MUST match the switch in drl_reward().
+!#[MOD] UPARAM(9): 0 = dudy (1 buffer), 1 = net_gain (3 buffers: tau/pw/v3).
+            reward_mode = nint(UPARAM(9))
+
             c_cfl = abs(COURNO)
             if (NID.eq.0) then 
                   call MPI_SEND(c_cfl,1,MPI_DOUBLE,
@@ -50,27 +54,30 @@ c=============================================
             
             if (i_evolv.eq.drl_step) then
             if(NUMCTRL.ne.0) then
-#ifdef NETGAIN
+!#[MOD] was: #ifdef NETGAIN (3 buffers) / #else (1 buffer) / #endif
+            if (reward_mode.eq.1) then
+            ! net_gain: send 3 components (tau_w, |p'v|, 0.5|v^3|)
             ! Transfer the original tauw
             call copy(send_buff(1),rwd_tau(1),TOTCTRL)
             call MPI_SEND(send_buff, TOTCTRL, MPI_DOUBLE,
      $                  0, NID+80000, DRL_COMM, ierr)
-            
+
             ! Transfer the original pressure fluctuation
             call copy(send_buff(1),rwd_pw(1),TOTCTRL)
             call MPI_SEND(send_buff, TOTCTRL, MPI_DOUBLE,
      $                  0, NID+81000, DRL_COMM, ierr)
-            
+
             ! Transfer the cubic energy term
             call copy(send_buff(1),rwd_v3(1),TOTCTRL)
             call MPI_SEND(send_buff, TOTCTRL, MPI_DOUBLE,
      $                  0, NID+82000, DRL_COMM, ierr)
-#else
+            else
+            ! dudy: single wall-shear buffer
             call copy(send_buff(1),rwd_agt(1),TOTCTRL)
             call MPI_SEND(send_buff, TOTCTRL, MPI_DOUBLE,
      $                  0, NID+80000,
      $                  DRL_COMM, ierr)
-#endif
+            endif
             else !
             call copy(send_buff(1),rwd_agt(1),TOTCTRL)
             endif ! if(NUMCTRL.ne.0)

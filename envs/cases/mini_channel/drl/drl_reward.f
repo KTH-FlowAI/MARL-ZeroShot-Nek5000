@@ -23,26 +23,34 @@ c=============================================
         include "INPUT"
         include 'PARALLEL'
         integer i_evolv
+        integer reward_mode !#[MOD] runtime reward-mode selector
 c=============================================
 c       Function
 c=============================================
-        
+
         ! if (ISTEP.ne.0) then
-        
+
+!#[MOD] Runtime reward-mode switch (replaces the compile-time NETGAIN flag).
+!#[MOD] UPARAM(9): 0 = dudy (drag reduction), 1 = net_gain (net energy saving).
+!#[MOD] Value is written to <case>.par from Python's Runner.reward_fn, so the
+!#[MOD] Fortran path and the Python MPI-Recv path can never desync (no deadlock).
+        reward_mode = nint(UPARAM(9))
+
         if (NID.eq.0) then
                 print *,"--------------------------------"
-                print *, "[REWARD] INQURY"
+                print *, "[REWARD] INQURY  MODE=",reward_mode
                 print *,"--------------------------------"
         endif
 
         ! YW: OCT15 I got a issue regarding the MEMORY
         ! I comment this and will test it on cluster in the future.
         !-----------------
-#ifdef NETGAIN
-        call compute_netGain(i_evolv)
-#else
-        call compute_dudy(i_evolv)
-#endif
+!#[MOD] was: #ifdef NETGAIN / compute_netGain / #else / compute_dudy / #endif
+        if (reward_mode.eq.1) then
+                call compute_netGain(i_evolv)
+        else
+                call compute_dudy(i_evolv)
+        endif
         !-----------------
         call drl_reward_out(i_evolv)
         

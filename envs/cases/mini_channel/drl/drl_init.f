@@ -113,6 +113,8 @@ cc YW: FOR DRL, we only find the face mid points
         ! instead of custom agent_own array. This leverages NEK5000's proven ownership system.
         gll_unique = UPARAM(8)
         if (NID.eq.0) print *, "YW: GLL UNIQUE=",gll_unique
+!#[MOD] Echo runtime reward mode (UPARAM(9): 0=dudy, 1=net_gain)
+        if (NID.eq.0) print *, "YW: REWARD MODE=",nint(UPARAM(9))
 
 
         NUMCTRL = 0 

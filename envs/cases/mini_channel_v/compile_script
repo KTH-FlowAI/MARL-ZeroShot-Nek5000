@@ -26,7 +26,9 @@ export CC="mpicc"
 # export PPLIST="MPIIO DRL YWDEBUG TSRS"
 # Add NETGAIN to use the actuator-cost reward (tau_w + |p'v| + |v^3|) instead of plain dUdy:
 # Add GAINMONITOR to use the gain monitoring as the time-series 
-export PPLIST="MPIIO DRL TSRS NETGAIN GAINMONITOR" 
+#[MOD] NETGAIN removed: reward fn (dudy/net_gain) is now a runtime
+#[MOD] UPARAM(9) switch written from Python Runner.reward_fn (no recompile).
+export PPLIST="MPIIO DRL TSRS GAINMONITOR" 
 # export PPLIST="MPIIO DRL"
 # export PPLIST="MPIIO"
 export USR="frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o"

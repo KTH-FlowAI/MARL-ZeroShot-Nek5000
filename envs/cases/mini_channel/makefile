@@ -1,4 +1,4 @@
-### makefile automatically created by makenek 06/04/2026 10:34:49 ###
+### makefile automatically created by makenek 07/19/2026 12:06:10 ###
 BINNAME=nek5000
 LIBNAME=libnek5000.a
 CASENAME:=phill
@@ -15,7 +15,7 @@ CFLAGS+=
 LDFLAGS+= -Wl,--allow-multiple-definition
 
 PPPO=
-PPS=MPIIO DRL TSRS NETGAIN GAINMONITOR MPI UNDERSCORE GLOBAL_LONG_LONG TIMER
+PPS=MPIIO DRL TSRS GAINMONITOR MPI UNDERSCORE GLOBAL_LONG_LONG TIMER
 
 USR=frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o chkpoint.o chkpt_mstp.o map2D.o stat.o stat_IO.o math_tools.o misc.o drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o tsrs.o tsrs_IO.o pts_redistribute.o
 USR_LFLAGS= -L/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/blasLapack -lblasLapack -L/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/gslib/lib -lgs
