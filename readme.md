@@ -38,10 +38,20 @@
         ./utils/compile_case.sh --m naca0012_200k --version v17 --case_name_v17 naca_wing
 
 
-### Running a minimal-channel drl 
-+ Run the minimal channel via: 
+### Running a minimal-channel drl
+Scripts are launched **from the repo root** (not from `execs/`), and `--config`
+takes a **path** to the YAML (relative to the root, or absolute):
 
-        cd execs && .run-script --config MC16-TD3.yml --run-mode run
+        ./execs/run-script --config conf/MC16-TD3.yml --run-mode run
+
+Switch policy loading on/off with `--load-agent` (default: use the config's value):
+
+        ./execs/run-script --config conf/MC16-TD3.yml --load-agent False   # train from scratch
+        ./execs/run-script --config conf/MC16-TD3.yml --load-agent True    # continue from the latest checkpoint
+
+On SLURM, submit from the repo root:
+
+        sbatch execs/sjob-train.sh --config conf/MC16-TD3.yml
 
 ### Meta-MARL usage
 + Initialize a meta-evaluation case (wing):
@@ -102,7 +112,10 @@ Use command like follows to accumlate the results based on your configuration
 
 Training logs are automatically saved and can be viewed with TensorBoard:
 ```bash
-tensorboard --logdir runs/your_run_name/history/tensorboard
+# live (on-the-fly) run
+tensorboard --logdir runs/your_run_name/train/history/tensorboard
+# most-recent completed run (after it is archived)
+tensorboard --logdir runs/your_run_name/history/current_history/tensorboard
 ``` 
 
 ## **IMPORTANT MODIFICATION - AUTOMATED**
@@ -145,6 +158,40 @@ def vec_env_args(env, num_envs):
 
     return [env_fn] * num_envs, env.observation_space, env.action_space
 
+
+## Run directory layout & workflow updates
+
+Recent I/O and workflow changes (full index in
+[temp/docs/session_2026-07_changes.md](temp/docs/session_2026-07_changes.md)):
+
+- **Launch from the repo root** — run `./execs/<script>` / `sbatch execs/<script>`
+  from the project root, not from `execs/`. Run logs go to `./log-files/`, and the
+  `RUN_PATH_*.txt` handoff files to `./.caches/`.
+- **`--config` is a path** — pass `conf/<name>.yml` (root-relative) or an absolute
+  path. Path fields inside the YAMLs (`compile_path`, `restart_folder`,
+  `policy_file`) are root-relative too.
+- **`policy` is the FULL checkpoint name** — no `agent_run_name-` prefix is added
+  automatically anymore; give the complete file stem (e.g.
+  `mc_nes_nek-rl_model_500_steps`, or `best_model`).
+- **`--load-agent True|False`** — switch between continuing from a checkpoint and
+  training fresh, without editing the config.
+
+A run folder `runs/<agent_run_name>/` is organised as:
+
+    runs/<agent_run_name>/
+      logs/                     # SB3 checkpoints (best_model*, <run>-rl_model_*_steps, eval_model_*)
+      train/                    # live training run (wiped & rebuilt each start)
+        history/                #   on-the-fly reward logs + tensorboard of the CURRENT run
+      history/                  # PERSISTENT training history (survives train/ cleanup)
+        current_history/        #   the most-recent completed run
+        round001/ round002/ …   #   older runs
+      eval/                     # evaluation runs
+        env_XXX/                #   solver output + vars_record_*.mat
+        history/                #   eval reward logs
+
+The reward-on-the-fly post-processing (`post_processing/postlib/explore.py`)
+reads all of `history/round*`, `history/current_history`, and the live
+`train/history`, so an in-progress run shows up in the notebook.
 
 ## The strcutures of the framework
     nek-drl/
