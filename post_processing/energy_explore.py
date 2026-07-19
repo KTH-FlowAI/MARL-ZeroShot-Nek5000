@@ -36,20 +36,16 @@ color_list = [
     cc.black,
 ]
 plt_setUp()
-run_path = "/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/runs"
+run_path = "../runs/"
 fig_path = "Figs"
-SAVE_IMG = False
+SAVE_IMG = True
 if not os.path.exists(fig_path):
     os.makedirs(fig_path)
 
 
 # Case list
 case_tuple = [
-    (2003, "ng-100: α=1 β=0 γ=0"),  # drag reduction only
-    (2004, "ng-110: α=1 β=1 γ=0"),  # drag + pressure-vel cost
-    (2005, "ng-111: α=1 β=1 γ=1"),  # full net-gain
-    (2006, "ng-011: α=0 β=1 γ=1"),  # actuator costs only
-    (2007, "ng-101: α=1 β=0 γ=1"),  # drag + kinetic energy cost
+    ('mc_nes_v_nek', "mc-nes-vonly"),  # drag reduction only
 ]
 case_list = [case_tuple[i][0] for i in range(len(case_tuple))]
 case_name = [case_tuple[i][1] for i in range(len(case_tuple))]
