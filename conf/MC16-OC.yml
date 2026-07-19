@@ -5,7 +5,7 @@ runner:
     ctrl_min_amp    :  -1.0
     npl_state       :  2
     ckpt_int        :  5
-    nb_interactions :  10000
+    nb_interactions :  1000
     RL_algorithm    : "OC"
     rescale_actions : False
     load_agent      :  False
@@ -13,21 +13,21 @@ runner:
     
     random_init     : -1
     rank            : 1          # Which initial contion to use
-    agent_run_name  : "oc-mc"
+    agent_run_name  : "oc-mc-dr"
     
     evaluation      : True
     learnt_policy   : False # Since AFC doesn't need to train, so here is False
 
     u_tau           : 0.065
     dUdy            : 11.91
-    reward_fn  : "net_gain" # PowerSaving, DragReduction, AFC
+    reward_fn  : dudy # PowerSaving, DragReduction, AFC
 
 
 simulation: 
     CASENAME : "phill"
     #I/O
     exeName : 'nek5000'
-    compile_path   : "envs/cases/mini_channel_uv_invest"
+    compile_path   : "envs/cases/mini_channel"
     restart_folder : "data/restarts/rs6_mini_Channel"
     #------------------------------------------
     # Generally VERY IMPORTANT
