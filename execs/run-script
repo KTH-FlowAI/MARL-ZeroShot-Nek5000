@@ -110,28 +110,39 @@ echo "CONFIG: ${CONFIG_NAME}, MODE: ${RUN_MODE}, NTOT: ${NTOT}"
 #--------------------------------------------
 # Main execution
 if [ "$RUN_MODE" = "evaluate" ]; then
-    #for ienv in {1..6}
-    for ienv in {2..3}
+    for ienv in {1..6}
     do
         echo "Count: $ienv"
+        #[MOD] Evaluation intentionally forces reward_fn=net_gain so the eval
+        #[MOD] logs all three reward components (tau/pw/v3), even for a policy
+        #[MOD] trained on plain dudy. Because reward_fn drives userParam09 (the
+        #[MOD] Fortran 1-vs-3 MPI buffer count), it MUST be forced HERE in the
+        #[MOD] `initial` step too (this is what writes the .par), so Fortran and
+        #[MOD] the Python `evaluate` call below agree. Forcing only one side
+        #[MOD] desyncs the buffer count and deadlocks MPI.
         mpirun -n 1 python -m nek_MARL initial $CONFIG_NAME \
         runner.random_init=-1 \
         runner.rank=${ienv} \
+        runner.reward_fn=net_gain \
+        runner.reward_alpha=${reward_alpha} runner.reward_beta=${reward_beta} runner.reward_gamma=${reward_gamma} \
         runner.evaluation=True runner.learnt_policy=True \
         runner.load_agent=True \
         simulation.IOSTEP=${IOSTEP} \
         simulation.writeInterval=${writeInterval} \
-	    simulation.SMPSTEP=${SMPSTEP} 
+	    simulation.SMPSTEP=${SMPSTEP}
        
        var=$(grep -ri 'agent_run_name' ${CONFIG_NAME} | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//")
        
        RUN_PATH=$(head -n 1 ${CACHE_DIR}/RUN_PATH_${var}.txt)
        
-       # To use mpi_split, one should launch two programs at once. Therefore 
+       # To use mpi_split, one should launch two programs at once. Therefore
+       #[MOD] net_gain forced on the Python side too — MUST match the `initial`
+       #[MOD] step above (same reward_fn => same userParam09 => same MPI buffer
+       #[MOD] count on both Fortran and Python). Keep these two in lockstep.
        mpirun -n 1 python -m nek_MARL evaluate $CONFIG_NAME \
               runner.rank=${ienv}  runner.random_init=-1\
 	          runner.reward_fn=net_gain \
-	          runner.reward_alpha=1.0 runner.reward_beta=1.0 runner.reward_gamma=1.0 \
+	          runner.reward_alpha=${reward_alpha} runner.reward_beta=${reward_beta} runner.reward_gamma=${reward_gamma} \
               runner.evaluation=True  \
               runner.load_agent=True \
 	          simulation.IOSTEP=${IOSTEP} \
