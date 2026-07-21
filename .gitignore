@@ -9,6 +9,8 @@
 /data/restarts/**
 !/data/restarts/rs6_mini_Channel/
 !/data/restarts/rs6_mini_Channel/**
+!/data/policie_meta_wing_dr/
+!/data/policie_meta_wing_dr/** */
 *mask*
 !runs/readme.md
 !data/readme.md
