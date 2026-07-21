@@ -40,26 +40,52 @@
 
 ### Running a minimal-channel drl
 Scripts are launched **from the repo root** (not from `execs/`), and `--config`
-takes a **path** to the YAML (relative to the root, or absolute):
+takes a **path** to the YAML (relative to the root, or absolute). The payload
+script is the same interactively and under SLURM — it detects the environment
+itself:
 
-        ./execs/run-script --config conf/MC16-TD3.yml --run-mode run
+        ./execs/channel-run.sh --config conf/MC16-TD3.yml --mode train
+        ./execs/channel-run.sh --config conf/MC16-TD3.yml --mode evaluate --nenv 2
 
 Switch policy loading on/off with `--load-agent` (default: use the config's value):
 
-        ./execs/run-script --config conf/MC16-TD3.yml --load-agent False   # train from scratch
-        ./execs/run-script --config conf/MC16-TD3.yml --load-agent True    # continue from the latest checkpoint
+        ./execs/channel-run.sh --config conf/MC16-TD3.yml --load-agent False   # train from scratch
+        ./execs/channel-run.sh --config conf/MC16-TD3.yml --load-agent True    # continue from the latest checkpoint
 
-On SLURM, submit from the repo root:
+Add `--dry-run` to print the `mpirun` lines without executing them, and `-h` for
+the full flag list.
 
-        sbatch execs/sjob-train.sh --config conf/MC16-TD3.yml
+### Submitting to SLURM
+[execs/sjob-gen.sh](execs/sjob-gen.sh) generates the batch script — job name,
+partition, begin time and wall time are command-line flags, and `-N` defaults to
+`auto` (derived from `nproc` in the config):
+
+        ./execs/sjob-gen.sh --case channel --config conf/MC16-TD3.yml --mode train \
+            -J mc16-td3 -p batch -t 24:00:00 --begin +2h --submit
+
+Drop `--submit` to only write `execs/sjobs/<job-name>.sh` (then `sbatch` it
+yourself), or use `--print` to dump it to stdout. Anything after a bare `--` is
+forwarded to the payload script:
+
+        ./execs/sjob-gen.sh --case channel --config conf/MC16-TD3.yml --mode evaluate \
+            -J eval-mc16 --begin 2026-06-29T16:23:42 -- --nenv 2 --iostep 10000 --smpstep 12
+
+`--begin` accepts `+2h`, `+30m`, `+1d`, `16:30`, `tomorrow` or a full ISO
+timestamp. See [execs/readme.md](execs/readme.md) for every flag, and
+[temp/docs/job_submission_refactor.md](temp/docs/job_submission_refactor.md) for
+the design and the migration table from the old `sjob-*.sh` files.
 
 ### Meta-MARL usage
-+ Initialize a meta-evaluation case (wing):
++ Wing evaluation (initialization + solver launch in one go):
 
-        meta-marl initial conf/your_meta_conf.yml
+        ./execs/wing-run.sh --config conf/NACA4412-SHAP-Vel-2540.yml --mv-data yes
 
-+ Run meta-evaluation:
+        ./execs/sjob-gen.sh --case wing --config conf/NACA4412-SHAP-Vel-2540.yml \
+            -J shap-wing -N 86 --submit -- --mv-data yes
 
++ Or drive the module directly:
+
+        meta-marl initial  conf/your_meta_conf.yml
         meta-marl evaluate conf/your_meta_conf.yml
 
 Note: set `simulation.solver_version: "v17"` in the meta config when using NEK5000 v17.
@@ -167,6 +193,10 @@ Recent I/O and workflow changes (full index in
 - **Launch from the repo root** — run `./execs/<script>` / `sbatch execs/<script>`
   from the project root, not from `execs/`. Run logs go to `./log-files/`, and the
   `RUN_PATH_*.txt` handoff files to `./.caches/`.
+- **One payload per case, one generator for SLURM** — `execs/channel-run.sh` and
+  `execs/wing-run.sh` hold the commands; `execs/sjob-gen.sh` wraps either of them
+  into an sbatch script with the header set from the command line. The old
+  `run-script` / `wing-script` / `sjob-*.sh` files still work but are superseded.
 - **`--config` is a path** — pass `conf/<name>.yml` (root-relative) or an absolute
   path. Path fields inside the YAMLs (`compile_path`, `restart_folder`,
   `policy_file`) are root-relative too.

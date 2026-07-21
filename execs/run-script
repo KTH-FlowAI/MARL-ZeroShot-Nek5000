@@ -110,7 +110,7 @@ echo "CONFIG: ${CONFIG_NAME}, MODE: ${RUN_MODE}, NTOT: ${NTOT}"
 #--------------------------------------------
 # Main execution
 if [ "$RUN_MODE" = "evaluate" ]; then
-    for ienv in {1..6}
+    for ienv in {1..2}
     do
         echo "Count: $ienv"
         #[MOD] Evaluation intentionally forces reward_fn=net_gain so the eval

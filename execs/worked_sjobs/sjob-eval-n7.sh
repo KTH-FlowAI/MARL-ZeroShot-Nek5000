@@ -82,7 +82,7 @@ echo "DRL CONFIG: ${CONFIG_NAME}, RUN MODE: ${RUN_MODE}"
 NTOT=$(grep -ri 'nproc' ${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
 echo "NTOT ${NTOT}" 
 
-for ienv in {2..6}
+for ienv in {1..2}
 do
        echo "Count: $ienv"
        mpirun -n 1 python -m nek_MARL initial $CONFIG_NAME \

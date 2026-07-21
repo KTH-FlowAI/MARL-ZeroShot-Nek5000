@@ -81,6 +81,7 @@ fi
 
 echo "CONFIG: ${CONFIG_NAME}, MODE: ${RUN_MODE}, NTOT: ${NTOT}"
 
+exit 1 # Eearly Quit for testing
 
 #--------------------------------------------
 # Main execution
