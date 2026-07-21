@@ -5,10 +5,10 @@ Configuration of runner and NEK
 from dataclasses import dataclass 
 import argparse
 from omegaconf import OmegaConf
-from typing import Optional, List
+from typing import Optional, List, Any
 import time
 
-@dataclass 
+@dataclass
 class Runner: 
     RL_algorithm:str    =   "DDPG"      # Policy to use
     
@@ -102,6 +102,13 @@ class Simulation:
     hostfile: str           = ''
     compile_path:str        = '01_compile'
     restart_folder:str      = 'restart-files'
+    #[MOD] Shared, case-independent dependencies (mesh, mask, ...) that are too
+    #[MOD] bulky to duplicate in every envs/cases/<case> folder. Files not found
+    #[MOD] in compile_path are looked up here, e.g. "data/simulations/naca4412_75k".
+    #[MOD] Accepts a single path or a list of paths ('' / [] disables it).
+    shared_data_path:Any    = ''
+    #[MOD] Symlink (instead of copy) the files resolved from shared_data_path.
+    shared_data_link:bool   = True
     # VERY IMPORTANT 
     #--------------------------------
     nproc:int               = 14  # ranks for running
@@ -110,6 +117,12 @@ class Simulation:
     znmf_avg:int            = 1 # 1==Open
     target_cfl:float        = 0.0
     y_sensing:float         = 15.0
+    #[MOD] y+ planes for the tsrs interpolation (diagnostic only -- the DRL
+    #[MOD] sensing plane stays y_sensing, passed to the solver as a UPARAM).
+    #[MOD] None keeps the historical two planes [0, y_sensing]; a list such as
+    #[MOD] [0, 15, 30, 50] samples several planes.  More planes means more
+    #[MOD] points, so check lhis in SIZE.
+    y_planes:Any            = None
     retau :float            = 180.0
     #---- Body-Force Damping config, it will be used only if BDFD is on ----
     ys_bdf:float            = 20.0 # Volume for Body-Force

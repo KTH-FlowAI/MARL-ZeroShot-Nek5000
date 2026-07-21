@@ -5,7 +5,7 @@ Configuration of runner and NEK for meta-evaluation (wing case)
 from dataclasses import dataclass, field
 import argparse
 from omegaconf import OmegaConf
-from typing import Optional, List
+from typing import Optional, List, Any
 import time
 
 
@@ -90,6 +90,13 @@ class Simulation:
     hostfile: str = ''
     compile_path: str = '01_compile'
     restart_folder: str = 'restart-files'
+    #[MOD] Shared, case-independent dependencies (mesh, mask, ...) that are too
+    #[MOD] bulky to duplicate in every envs/cases/<case> folder. Files not found
+    #[MOD] in compile_path are looked up here, e.g. "data/simulations/naca4412_75k".
+    #[MOD] Accepts a single path or a list of paths ('' / [] disables it).
+    shared_data_path: Any = ''
+    #[MOD] Symlink (instead of copy) the files resolved from shared_data_path.
+    shared_data_link: bool = True
     # VERY IMPORTANT
     # --------------------------------
     nproc: int = 14  # ranks for running

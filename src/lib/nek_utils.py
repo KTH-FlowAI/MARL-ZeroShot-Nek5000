@@ -60,11 +60,83 @@ class NEK_INIT():
         return "v17" in str(version).lower()
 
     # -----------------------------------------
+    #[MOD] Dependencies are now resolved from SEVERAL source folders instead of
+    #[MOD] compile_path only: the case folder (envs/cases/<case>) first, then the
+    #[MOD] shared data folder(s) (data/simulations/<case>). This way a new case
+    #[MOD] variant only has to carry what actually differs (source, SIZE, .par),
+    #[MOD] while the bulky mesh/mask files stay in ONE place.
+    def _source_dirs(self) -> list:
+        """Search order for the case dependencies: case folder, then shared data."""
+        dirs = [self.nek.compile_path]
+
+        shared = getattr(self.nek, "shared_data_path", "")
+        if isinstance(shared, str):
+            shared = [shared] if shared else []
+        for d in (shared or []):
+            if not d:
+                continue
+            if not os.path.isdir(d):
+                print(f"[IO] WARNING: shared data folder NOT EXIST: {d}", flush=True)
+                continue
+            dirs.append(d)
+        return dirs
+
+    # -----------------------------------------
+    def _locate(self, fname: str):
+        """
+        Find fname in the source folders.
+        Returns (path, is_shared) or (None, False) if it is nowhere to be found.
+        """
+        for i, d in enumerate(self._source_dirs()):
+            candidate = os.path.join(d, fname)
+            if os.path.exists(candidate):
+                return candidate, (i > 0)
+        return None, False
+
+    # -----------------------------------------
+    def _fetch(self, fname: str, overwrite: bool) -> bool:
+        """
+        Make fname available in the rank folder.
+
+        overwrite=True  (mandatory files) : always refreshed from the source.
+        overwrite=False (optional files)  : kept if it is already there.
+
+        Files coming from the shared folder are SYMLINKED rather than copied
+        (unless nek.shared_data_link is False), which is what keeps the mesh /
+        mask of a big case out of the per-case copy cost.
+        """
+        to_file = os.path.join(self.rank_folder, fname)
+
+        if os.path.exists(to_file) or os.path.islink(to_file):
+            if not overwrite:
+                print(f"[IO] {to_file} EXIST", flush=True)
+                return True
+            os.remove(to_file)
+            print(f'[IO] REMOVE EXIST: {to_file}', flush=True)
+
+        from_file, is_shared = self._locate(fname)
+        if from_file is None:
+            return False
+
+        os.makedirs(os.path.dirname(to_file), exist_ok=True)
+        if is_shared and getattr(self.nek, "shared_data_link", True):
+            os.symlink(os.path.abspath(from_file), to_file)
+            print(f"[IO] {to_file} LINKED <- {from_file}", flush=True)
+        else:
+            shutil.copy(from_file, to_file)
+            print(f"[IO] {to_file} COPIED <- {from_file}", flush=True)
+        return True
+
+    # -----------------------------------------
     def get_Case_Files(self):
         """
         Get required case files for running simulation
-        IF it is complusory, it will be rewritten no matter if the file exists 
+        IF it is complusory, it will be rewritten no matter if the file exists
         IF it is optional, it will NOT be covered if it Exist.
+
+        Each file is looked up in the case folder first and in the shared data
+        folder(s) afterwards; at the end all mandatory files MUST be present in
+        the run folder, no matter which source they came from.
         """
         if self._is_v17():
             checklist = {
@@ -103,30 +175,19 @@ class NEK_INIT():
                     #'int_pos',
                 ]
             }
+        print(f"[IO] SOURCE FOLDERS: {self._source_dirs()}", flush=True)
+
         for fname in checklist["must"]:
-            from_file = os.path.join(self.nek.compile_path, fname)
-            to_file = os.path.join(self.rank_folder, fname)
-            if not os.path.exists(from_file):
-                raise FileNotFoundError(f"[IO] {from_file} not EXIST!")
-            else:
-
-                # IF the file exist, we clean it to ensure everything works fine.
-                if os.path.exists(to_file):
-                    os.remove(to_file)
-                    print(f'[IO] REMOVE EXIST: {to_file}')
-
-                shutil.copy(from_file, to_file)
-                print(f"[IO] {to_file} COPIED", flush=True)
+            if not self._fetch(fname, overwrite=True):
+                raise FileNotFoundError(
+                    f"[IO] {fname} not FOUND in any of {self._source_dirs()}!")
 
         for fname in checklist["option"]:
-            from_file = os.path.join(self.nek.compile_path, fname)
-            to_file = os.path.join(self.rank_folder, fname)
-            if not os.path.exists(to_file):
-                print(f"[IO] WARNING: {to_file} not EXIST", flush=True)
-                shutil.copy(from_file, to_file)
-            else:
-                print(f"[IO] {to_file} EXIST", flush=True)
-                pass
+            #[MOD] A missing optional file is a warning, not a crash (it used to
+            #[MOD] raise inside shutil.copy).
+            if not self._fetch(fname, overwrite=False):
+                print(f"[IO] WARNING: optional {fname} not FOUND in "
+                      f"{self._source_dirs()}", flush=True)
 
         return True
 
@@ -155,7 +216,12 @@ class NEK_INIT():
         Re-Write parameter files for NEK version <= 17.
         For the controllable params, please see config.
         """
-        file_path = os.path.join(self.nek.compile_path, f"{self.nek.CASENAME}.rea")
+        #[MOD] The template .rea is also resolved through the shared folders.
+        file_path, _ = self._locate(f"{self.nek.CASENAME}.rea")
+        if file_path is None:
+            raise FileNotFoundError(
+                f"[IO] {self.nek.CASENAME}.rea not FOUND in any of "
+                f"{self._source_dirs()}!")
         output_path = os.path.join(self.rank_folder, f'{self.nek.CASENAME}.rea')
 
         with open(file_path, 'r') as f:
@@ -346,11 +412,15 @@ class NEK_INIT():
     # -----------------------------------------
     def write_timeSeries(self):
         """Write the int_pos file for the case file"""
+        #[MOD] y_planes (if set) selects the tsrs interpolation planes; it is a
+        #[MOD] diagnostic knob only and leaves the DRL sensing plane untouched.
+        y_planes = getattr(self.nek, 'y_planes', None)
+        yplus = self.nek.y_sensing if not y_planes else list(y_planes)
         is_done = write_channel(path=self.nek.compile_path,
-                                Ret=self.nek.retau, yplus=self.nek.y_sensing,
+                                Ret=self.nek.retau, yplus=yplus,
                                 Lx=self.nek.Lx, Lz=self.nek.Lz,
                                 Nx=self.nek.Nx, Nz=self.nek.Nz,
-                                lx1=self.nek.lx1)
+                                lx1=self.nek.lx1, nproc=self.nek.nproc)
         return is_done
     # -----------------------------------------
 
