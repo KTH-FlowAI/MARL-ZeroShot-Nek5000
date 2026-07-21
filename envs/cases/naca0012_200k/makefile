@@ -1,11 +1,11 @@
-### makefile automatically created by makenek 04/28/2026 22:02:24 ###
+### makefile automatically created by makenek 07/20/2026 13:19:03 ###
 BINNAME=nek5000
 LIBNAME=libnek5000.a
 CASENAME:=naca_wing
-CASEDIR:=/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/cases/naca0012_200k
-S:=/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/DEC_DRL_Nek5000/core
-S2:=/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/DEC_DRL_Nek5000/core/cmt
-J:=/p/project1/deepwing/polsm/11-MARL-ZeroShot-Nek5000/envs/solver/DEC_DRL_Nek5000/jl
+CASEDIR:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/cases/naca0012_200k
+S:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/DEC_DRL_Nek5000/core
+S2:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/DEC_DRL_Nek5000/core/cmt
+J:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/DEC_DRL_Nek5000/jl
 OPT_INCDIR:=./
 OBJDIR=obj
 IFMPI:=true
@@ -19,8 +19,8 @@ F77:=mpif77
 CC:=mpicc
 P:=-fdefault-real-8 -fdefault-double-8 -x f77-cpp-input
 PPPO=
-PPS=MPIIO DRL UTAU PTRSIZE8 MPI LONGINT8 UNDERSCORE TIMER MPITIMER GLOBAL_LONG_LONG
-G:=-I./inc_src -mcmodel=medium -std=legacy
+PPS=MPIIO DRL YWDEBUG UTAU NETGAIN PTRSIZE8 MPI LONGINT8 UNDERSCORE TIMER MPITIMER GLOBAL_LONG_LONG
+G:=-I./inc_src -mcmodel=large -std=legacy
 OPT_FLAGS_STD=
 USR:=IO_tools.o chkpoint.o uparam.o statistics_2D.o statistics_2DIO.o statistics_2D_usr.o statistics_2D_debug.o time_series.o time_seriesIO.o pts_redistribute.o err_est.o rt_filter.o tripf.o misc.o drl_main.o drl_action.o drl_init.o drl_reward.o drl_state.o drl_IO.o
 USR_LFLAGS:=
