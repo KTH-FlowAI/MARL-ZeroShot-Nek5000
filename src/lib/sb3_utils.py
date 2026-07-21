@@ -185,21 +185,56 @@ def init_model(conf, env, run_folder,nAgents,
                     )
             print('[IO] RESTART W&B LOADED'+ckpt_file,flush=True)
             
-    elif conf.runner.RL_algorithm=='DDPG' or conf.runner.RL_algorithm=='TD3':
+    #[MOD] SAC joins the off-policy family: it reuses the very same replay
+    #[MOD] buffer / train_freq / gradient_steps / checkpoint-restart machinery
+    #[MOD] as DDPG and TD3, and only differs by its entropy-related kwargs.
+    elif conf.runner.RL_algorithm in ('DDPG', 'TD3', 'SAC'):
         if conf.runner.RL_algorithm=='DDPG':
             from stable_baselines3 import DDPG as RLA
+        elif conf.runner.RL_algorithm=='SAC':   #[MOD]
+            from stable_baselines3 import SAC as RLA
         else:
             from stable_baselines3 import TD3 as RLA
         from stable_baselines3.common.noise import NormalActionNoise
-        
+
         # n_actions = env.action_space.shape[-1]
         n_actions = action_space_sample.shape[-1]
-        action_noise = NormalActionNoise(mean=np.zeros(n_actions), 
+        action_noise = NormalActionNoise(mean=np.zeros(n_actions),
                                         sigma=conf.runner.action_noise*np.ones(n_actions))
-        
+
+        #[MOD] SAC explores through its own tanh-squashed Gaussian policy, so the
+        #[MOD] external Gaussian noise used by DDPG/TD3 is disabled by default
+        #[MOD] (opt back in with runner.sac_action_noise=True).
+        if conf.runner.RL_algorithm == 'SAC' and not conf.runner.sac_action_noise:
+            action_noise = None
+            print("[STB3] SAC: NO EXTERNAL ACTION NOISE (entropy-driven exploration)",
+                  flush=True)
+
         if conf.runner.gradient_steps == 0:
             conf.runner.gradient_steps = nAgents*\
-                                        conf.runner.train_steps   
+                                        conf.runner.train_steps
+
+        #[MOD] Algorithm-specific kwargs, defined once so that the fresh-start
+        #[MOD] call and the restart (custom_objects) path can never drift apart.
+        #[MOD] Empty for DDPG/TD3 => their behaviour is bit-for-bit unchanged.
+        if conf.runner.RL_algorithm == 'SAC':
+            algo_kwargs = dict(
+                gamma=conf.runner.gamma,
+                ent_coef=conf.runner.sac_ent_coef,
+                target_entropy=conf.runner.sac_target_entropy,
+                target_update_interval=conf.runner.target_update_interval,
+                use_sde=conf.runner.use_sde,
+                sde_sample_freq=conf.runner.sde_sample_freq,
+            )
+            print(f"[STB3] SAC KWARGS: {algo_kwargs}", flush=True)
+        else:
+            algo_kwargs = {}
+
+        #[MOD] Subset that may be overridden when resuming from a checkpoint.
+        #[MOD] use_sde/sde_sample_freq are excluded on purpose: toggling gSDE
+        #[MOD] changes the actor architecture and would break parameter loading.
+        algo_reload_kwargs = {k: v for k, v in algo_kwargs.items()
+                              if k not in ('use_sde', 'sde_sample_freq')}
 
         if conf.runner.load_agent == False:
             model = RLA('MlpPolicy', env, 
@@ -215,6 +250,7 @@ def init_model(conf, env, run_folder,nAgents,
                                 gradient_steps=conf.runner.gradient_steps,
                                 seed=seed_,
                                 device=device,
+                                **algo_kwargs,   #[MOD] SAC-only extras (empty for DDPG/TD3)
                                 **({'replay_buffer_class': SelectiveReplayBuffer,
                                     'replay_buffer_kwargs': {'keep_frac':conf.runner.keep_frac,'mode':conf.runner.buffer_mode,}}
                                    if getattr(conf.runner, 'custom_buffer', True) else {}),
@@ -243,6 +279,12 @@ def init_model(conf, env, run_folder,nAgents,
                                     'train_freq':(conf.runner.train_steps, "step"),
                                     'action_noise':action_noise,
                                     'seed':seed_,
+                                    #[MOD] SAC-only extras (empty for DDPG/TD3).
+                                    #[MOD] NOTE: the saved log_ent_coef and its
+                                    #[MOD] optimizer are restored from the zip, so
+                                    #[MOD] 'auto' entropy tuning resumes where it
+                                    #[MOD] stopped instead of restarting from scratch.
+                                    **algo_reload_kwargs,
                     },
                     print_arguments=True,
                     )
@@ -282,12 +324,19 @@ def init_logger(run_folder,env,model):
 
 def callback_checkpoint(conf, run_folder):
     callbacks = []
+    #[MOD] Explicit membership test. The previous expression
+    #[MOD] `(True if conf.runner.RL_algorithm == 'DDPG' or 'TD3' else False)`
+    #[MOD] was ALWAYS True (the bare string 'TD3' is truthy), so on-policy runs
+    #[MOD] also requested a replay-buffer dump. SAC is off-policy: its buffer
+    #[MOD] must be checkpointed, otherwise a restart throws away every collected
+    #[MOD] transition -- expensive here, since each one costs a solver step.
+    is_off_policy = conf.runner.RL_algorithm in ('DDPG', 'TD3', 'SAC')
     checkpoint_callback = CheckpointCallback(
-                                save_freq=conf.runner.nb_interactions*conf.runner.ckpt_int, 
+                                save_freq=conf.runner.nb_interactions*conf.runner.ckpt_int,
                                 save_path=run_folder+'/logs/',
                                 name_prefix=f'{conf.logging.run_name}-rl_model',
-                                save_replay_buffer=(True if conf.runner.RL_algorithm == 'DDPG' or 'TD3' else False),
-                                save_vecnormalize=(True if conf.runner.RL_algorithm == 'DDPG' or 'TD3' else False),
+                                save_replay_buffer=is_off_policy,
+                                save_vecnormalize=is_off_policy,
                                 )
     callbacks.append(checkpoint_callback)
     return callbacks
@@ -425,9 +474,14 @@ def resume_eval_callback(callback, npz_path: str):
 def freeze_actor_critic(conf,model,net='actor'):
     """
     Freeze the model for warm-up
+
+    #[MOD] NOT valid for SAC: freezing the actor here leaves SAC's entropy
+    #[MOD] coefficient (log_ent_coef, its own optimizer) still being tuned
+    #[MOD] against a frozen policy. transfer_learning.transfer() rejects SAC
+    #[MOD] up front for that reason.
     """
 
-    if net == 'actor':  
+    if net == 'actor':
         # --- Freeze actor for warm-up ---
         for p in model.policy.actor.parameters():
             p.requires_grad = False

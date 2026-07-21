@@ -119,6 +119,10 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
             from stable_baselines3 import DDPG as RL_algorithm
         elif conf.runner.RL_algorithm=='TD3':
             from stable_baselines3 import TD3 as RL_algorithm
+        #[MOD] SAC: predict(deterministic=True) returns tanh(mu), i.e. the mode
+        #[MOD] of the squashed Gaussian, so evaluation stays deterministic.
+        elif conf.runner.RL_algorithm=='SAC':
+            from stable_baselines3 import SAC as RL_algorithm
 
         # Definition of the agent
         if conf.runner.custom_policy:

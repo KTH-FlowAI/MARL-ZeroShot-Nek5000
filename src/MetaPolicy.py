@@ -372,13 +372,17 @@ class MetaPolicyRunner():
     if os.path.exists(log_path) == False:
       os.makedirs(log_path,exist_ok=True)
 
-    if (case_dict["rL_algorithm"] == "PPO") or (case_dict["rL_algorithm"] == "DDPG" or case_dict["rL_algorithm"] == "TD3"):
+    #[MOD] "SAC" added to the SB3-backed policies, so a meta run (e.g. the wing)
+    #[MOD] can mix a SAC-trained region with TD3/DDPG/PPO ones.
+    if case_dict["rL_algorithm"] in ("PPO", "DDPG", "TD3", "SAC"):
       if case_dict["rL_algorithm"] == 'PPO':
         from stable_baselines3 import PPO as RL_algorithm
       elif case_dict["rL_algorithm"] == 'DDPG':
         from stable_baselines3 import DDPG as RL_algorithm
       elif case_dict["rL_algorithm"] == 'TD3':
         from stable_baselines3 import TD3 as RL_algorithm
+      elif case_dict["rL_algorithm"] == 'SAC':   #[MOD]
+        from stable_baselines3 import SAC as RL_algorithm
 
       # [MOD] Prefix Removed: 
       # Just specifying the policy file path, and let the load function handle the rest

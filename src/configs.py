@@ -44,11 +44,26 @@ class Runner:
     size_history:int    =   10
     tau:float           =   0.005
     learning_starts:int =   100
-    # for TD3, Note: This is default in SB3 
+    # for TD3, Note: This is default in SB3
     policy_delay:int    =   2
-    target_policy_noise:float =   0.2 
+    target_policy_noise:float =   0.2
     target_noise_clip:float =   0.5
-    
+
+    #[MOD] ---- only for SAC ----
+    #[MOD] SAC shares the whole off-policy machinery with DDPG/TD3
+    #[MOD] (learning_rate / batch_size / buffer_size / tau / gamma /
+    #[MOD] learning_starts / train_steps / gradient_steps / seed / policy_file),
+    #[MOD] so only the entropy-related knobs are new. Every default below is
+    #[MOD] "automatic" or "off": SAC can be switched on without tuning anything.
+    #[MOD] `Any` (not float/str) because 'auto' and a numeric value are both legal.
+    sac_ent_coef:Any        = 'auto'   # 'auto' | 'auto_0.1' (auto w/ init value) | float
+    sac_target_entropy:Any  = 'auto'   # 'auto' -> -dim(A); or an explicit float
+    target_update_interval:int = 1     # target-network update every N gradient steps
+    sac_action_noise:bool   = False    # add NormalActionNoise on top of the stochastic
+                                       # policy; normally NOT needed, SAC explores via entropy
+    use_sde:bool            = False    # generalized State-Dependent Exploration
+    sde_sample_freq:int     = -1       # -1 == resample the gSDE noise once per rollout
+
     # Random Seed 
     seed:int = -5000 # If -5000 -> None 
     

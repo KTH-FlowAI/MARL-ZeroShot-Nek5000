@@ -82,6 +82,18 @@ def transfer(conf_file, overrides, **ignored_kwargs):
     conf = parse_omegaconf(conf_file,overrides)
     print(f"[DEBUG] CONFIG: {conf}")
 
+    #[MOD] SAC is deliberately NOT supported for transfer learning yet.
+    #[MOD] The warm-up below freezes the actor while the critic catches up, but
+    #[MOD] SAC's entropy coefficient keeps being tuned against that frozen actor
+    #[MOD] (the log_ent_coef optimizer is independent of actor/critic), so the
+    #[MOD] temperature drifts and the unfrozen stage restarts from a badly scaled
+    #[MOD] entropy target. Fail early instead of training something meaningless.
+    if conf.runner.RL_algorithm == 'SAC':
+        raise NotImplementedError(
+            "[STB3] SAC is not supported for transfer learning: the actor-freeze "
+            "warm-up does not freeze the entropy coefficient. Use TD3/DDPG here, "
+            "or train SAC from scratch via `run` (src/run.py).")
+
     #--------------------------------
     # Create the run folder
     #--------------------------------
