@@ -19,6 +19,7 @@ import warnings
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import numpy as np
 import yaml
 
@@ -28,7 +29,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from postlib import tsrs, tsrs_spectra as sp      # noqa: E402
 
-ANALYSES = ('spectra', 'correlations', 'ycorr', 'frequency', 'convection')
+ANALYSES = ('spectra', 'map', 'correlations', 'ycorr', 'frequency', 'convection')
 
 
 def parse_args():
@@ -54,6 +55,14 @@ def parse_args():
                     help='Welch segment length (default: nt//4)')
     ap.add_argument('--what', default='all',
                     help=f'comma-separated subset of {",".join(ANALYSES)}')
+    ap.add_argument('--map-quantity', default='uu', choices=('uu', 'uv', 'both'),
+                    help='which premultiplied spectrum to map (default: %(default)s)')
+    ap.add_argument('--map-dir', default='z', choices=('z', 'x'),
+                    help='wavelength axis of the map (default: %(default)s)')
+    ap.add_argument('--map-levels', type=int, default=21,
+                    help='number of filled contour levels (default: %(default)s)')
+    ap.add_argument('--map-points', action='store_true',
+                    help='overlay the actual (lambda, y+) sample locations')
     ap.add_argument('--outdir', default='Figs')
     ap.add_argument('--save', default=None,
                     help='also write the computed curves to this .npz')
@@ -186,6 +195,123 @@ def do_spectra(cases, args, store):
     return fig, 'spectra'
 
 
+def _map_rows(case, args, quantity):
+    """
+    Premultiplied spectrum on every usable plane, as a (n_planes, n_lambda) map.
+
+    Returns (lam_plus, yplus, M) with lam ascending, ready for contourf.
+    """
+    d, retau, u2 = case['data'], case['retau'], _norm(case)
+    axis = 1 if args.map_dir == 'z' else 0
+    L = case['Lz'] if args.map_dir == 'z' else case['Lx']
+
+    idx = plane_indices(d, args.planes)
+    yp_all = np.asarray(d['yplus'], dtype=float)
+    # y+ = 0 cannot go on a log axis, and at the wall u == 0 identically
+    usable = [k for k in idx if yp_all[k] > 0]
+    dropped = [k for k in idx if yp_all[k] <= 0]
+    if dropped:
+        print(f'  [{case["id"]}] dropping y+ = '
+              f'{[f"{yp_all[k]:g}" for k in dropped]} (not representable on a '
+              f'log axis)')
+    if len(usable) < 2:
+        raise SystemExit(f'case {case["id"]}: need at least 2 planes with y+ > 0 '
+                         f'to draw a map, have {len(usable)}')
+
+    rows, lam = [], None
+    for k in usable:
+        f = sp.fluctuation(d, args.field, k)
+        if quantity == 'uv':
+            if 'v' not in d['names']:
+                raise SystemExit(f'case {case["id"]} has no v; cannot map uv')
+            s = sp.cospectrum_1d(f, sp.fluctuation(d, 'v', k), axis, L)
+        else:
+            s = sp.spectrum_1d(f, axis, L)
+        rows.append(s['kPhi'][1:] / u2)          # drop k=0 (lambda = infinity)
+        lam = s['lam'][1:] * retau
+
+    # the FFT gives lambda descending; contourf wants an ascending axis
+    order = np.argsort(lam)
+    return lam[order], np.asarray([yp_all[k] for k in usable]), \
+        np.asarray(rows)[:, order]
+
+
+def do_map(cases, args, store):
+    """
+    Premultiplied spectrum as a contour map over (lambda+, y+), both log.
+
+    The standard wall-turbulence presentation: the ridge of the map traces the
+    energetic scale at each height, so a controller's effect on the near-wall
+    cycle shows up as a shift or a weakening of that ridge.
+    """
+    quantities = ('uu', 'uv') if args.map_quantity == 'both' else (args.map_quantity,)
+    ncol, nrow = len(quantities), len(cases)
+    fig, axs = plt.subplots(nrow, ncol, squeeze=False,
+                            figsize=(5.8 * ncol, 4.4 * nrow))
+
+    for j, q in enumerate(quantities):
+        # one colour scale per quantity across all cases, so rows compare
+        mats = [_map_rows(case, args, q) for case in cases]
+        vmax = max(np.abs(M).max() for _, _, M in mats)
+        if q == 'uv':                      # co-spectrum is negative: diverging
+            levels = np.linspace(-vmax, vmax, args.map_levels)
+            cmap, extend = 'RdBu_r', 'both'
+        else:                              # energy is positive: sequential,
+            levels = np.linspace(0, vmax, args.map_levels)   # and never < 0, so
+            cmap, extend = 'jet', 'max'                  # no lower arrow
+
+        # rows are meant to be compared, so give them identical axes: different
+        # plane sets would otherwise stretch each row differently and a shift
+        # of the energy peak would be hard to read off
+        ylim = (min(yp.min() for _, yp, _ in mats),
+                max(yp.max() for _, yp, _ in mats))
+        xlim = (min(lam.min() for lam, _, _ in mats),
+                max(lam.max() for lam, _, _ in mats))
+
+        for i, (case, (lam, yp, M)) in enumerate(zip(cases, mats)):
+            ax = axs[i, j]
+            cf = ax.contourf(lam, yp, M, levels=levels, cmap=cmap, extend=extend)
+            ax.contour(lam, yp, M, levels=levels[::4], colors='k',
+                       linewidths=0.4, alpha=0.5)
+
+            # mark the peak: the most energetic (lambda, y+) pair
+            pk = np.unravel_index(np.argmax(np.abs(M)), M.shape)
+            ax.plot(lam[pk[1]], yp[pk[0]], 'w*', ms=13, mec='k', mew=0.8,
+                    label=f'peak $\\lambda^+$={lam[pk[1]]:.0f}, $y^+$={yp[pk[0]]:g}')
+            if args.map_points:
+                Lm, Ym = np.meshgrid(lam, yp)
+                ax.plot(Lm.ravel(), Ym.ravel(), 'k.', ms=1.5, alpha=0.35)
+
+            ax.set_xscale('log')
+            # ax.set_yscale('log') # we do not log the y+
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
+            # both ranges span barely a decade, where matplotlib labels the
+            # minor ticks too and they collide ("3x10^1 4x10^1"); place plain
+            # 1/2/5 decade ticks instead
+            for axis_ in (ax.xaxis, ax.yaxis):
+                axis_.set_major_locator(mticker.LogLocator(base=10.0,
+                                                           subs=(1.0, 2.0, 5.0),
+                                                           numticks=12))
+                axis_.set_major_formatter(mticker.ScalarFormatter())
+                axis_.set_minor_formatter(mticker.NullFormatter())
+            sub = args.map_dir
+            u = '$/u_\\tau^2$' if case['utau'] else ''
+            ax.set_xlabel(f'$\\lambda_{sub}^+$')
+            ax.set_ylabel('$y^+$')
+            ax.set_title(f'{case["id"]}: $k_{sub}\\Phi_{{{q}}}${u}', loc='left')
+            ax.legend(fontsize=7, loc='upper left')
+            fig.colorbar(cf, ax=ax, pad=0.02)
+
+            store[f'{case["id"]}/map_{q}_{sub}/lam+'] = lam
+            store[f'{case["id"]}/map_{q}_{sub}/yplus'] = yp
+            store[f'{case["id"]}/map_{q}_{sub}/kPhi'] = M
+            print(f'  [{case["id"]}] {q}: {M.shape[0]} planes x {M.shape[1]} '
+                  f'wavelengths, peak at lam_{sub}+={lam[pk[1]]:.0f}, '
+                  f'y+={yp[pk[0]]:g}')
+    return fig, f'map{args.map_dir}'
+
+
 def do_correlations(cases, args, store):
     """Two-point correlations along z and x."""
     fig, axs = plt.subplots(len(cases), 2, squeeze=False,
@@ -313,7 +439,8 @@ def main():
 
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
-    store, runners = {}, {'spectra': do_spectra, 'correlations': do_correlations,
+    store, runners = {}, {'spectra': do_spectra, 'map': do_map,
+                          'correlations': do_correlations,
                           'ycorr': do_ycorr, 'frequency': do_frequency,
                           'convection': do_convection}
 

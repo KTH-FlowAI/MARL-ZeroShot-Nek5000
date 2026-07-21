@@ -1,0 +1,16 @@
+#[MOD] Default network architecture for SAC.
+# Kept separate from default_ddpg_policy.yml because:
+#   - SAC's actor is stochastic, so the tiny pi: [8,] of the DDPG file is too
+#     small to also carry the state-dependent log_std head.
+#   - log_std_init / n_critics are accepted by SACPolicy but NOT by DDPG's.
+net_arch:
+    qf: [16,64,64]
+    pi: [16,16,8]
+
+# Initial log std of the (pre-squash) Gaussian. SB3 default is -3, i.e. an
+# almost deterministic start; -2.3 (std ~= 0.1 on the normalized [-1,1] action)
+# matches the PPO setup and keeps the policy away from bang-bang control early on.
+log_std_init : -2.3
+
+# Twin critics (clipped double-Q), as in the original SAC paper.
+n_critics : 2

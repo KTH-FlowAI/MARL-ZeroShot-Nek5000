@@ -175,18 +175,50 @@ comparison is the normal mode of use.
 | `--utau` | from config | Reference `u_τ` for wall units |
 | `--lag` | `1` | Time lag for the convection velocity |
 | `--nperseg` | `nt//4` | Welch segment length |
-| `--what` | `all` | `spectra,correlations,ycorr,frequency,convection` |
+| `--what` | `all` | `spectra,map,correlations,ycorr,frequency,convection` |
 | `--save` | — | Also write every computed curve to a `.npz` |
+| `--map-quantity` | `uu` | `uu`, `uv` or `both` for the contour map |
+| `--map-dir` | `z` | Wavelength axis of the map: `z` or `x` |
+| `--map-levels` | `21` | Filled contour levels |
+| `--map-points` | off | Overlay the actual `(λ, y⁺)` sample locations |
 
 ### What it computes
 
 | `--what` | Output |
 |---|---|
-| `spectra` | Premultiplied `k_zΦ` and `k_xΦ`, plus the `uv` co-spectrum (which scales carry the Reynolds shear stress) |
+| `spectra` | Premultiplied `k_zΦ` and `k_xΦ` as line plots, plus the `uv` co-spectrum (which scales carry the Reynolds shear stress) |
+| `map` | The same premultiplied spectrum as a **contour map over (λ⁺, y⁺)**, both log — see below |
 | `correlations` | `ρ(Δz⁺)` and `ρ(Δx⁺)`, by Wiener–Khinchin from the same spectra |
 | `ycorr` | Correlation matrix between wall-normal planes |
 | `frequency` | Temporal PSD (Welch) |
 | `convection` | Scale-dependent convection velocity `U_c(λ_x⁺)` |
+
+### The spectral map
+
+```bash
+# uu map, spanwise wavelength against wall distance
+python tsrs_spectra.py mc-noctrl --map-quantity uu --what map
+
+# controlled vs uncontrolled, uu and uv side by side
+python tsrs_spectra.py mc-noctrl oc-mc-dr --map-quantity both --what map
+```
+
+The standard wall-turbulence presentation: the ridge traces the energetic scale
+at each height, so a controller shows up as a shift or a weakening of that
+ridge. On the `mc-noctrl` baseline the `uu` peak sits at **y⁺ = 15** and the
+`uv` peak at **y⁺ = 30**, both textbook.
+
+Details that matter when reading it:
+
+- **`y⁺ = 0` is dropped**, with a printed note — it cannot go on a log axis, and
+  `u` is identically zero at the wall anyway.
+- **Rows share colour scale and axes.** Cases with different `y_planes` would
+  otherwise be stretched differently and the peak shift would be hard to read.
+  A blank band means that case has no planes there, not zero energy.
+- `uu` is positive-definite, so it uses a sequential map from 0; `uv` is
+  negative and uses a diverging map centred on 0.
+- The star marks the peak. With `--map-points` the actual samples are overlaid,
+  so the true (coarse) resolution behind the smooth contours is visible.
 
 ### Conventions
 
