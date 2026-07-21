@@ -46,6 +46,7 @@ simulation:
     CASENAME: 'small_wing' 
     exeName : 'nek5000'
     compile_path   : "envs/cases/naca4412_ref_PSSS_2586"
+    shared_data_path   : "data/simulations/naca4412_200k"
     restart_folder : "data/restarts/rs8_naca4412_200k_ref"
     solver_version : "v17"
     #------------------------------------------

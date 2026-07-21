@@ -58,6 +58,7 @@ simulation:
     #I/O
     exeName : 'nek5000'
     compile_path   : "envs/cases/lc_n7_onlyV"
+    shared_data_path   : "data/simulations/large_channel"
     restart_folder : "data/restarts/rs6_lc_noresize_new_reth515"
     #------------------------------------------
     # Generally VERY IMPORTANT

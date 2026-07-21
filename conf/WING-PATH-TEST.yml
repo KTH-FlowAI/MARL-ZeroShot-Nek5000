@@ -55,6 +55,7 @@ simulation:
     exeName : 'nek5000'
     compile_path   : "envs/cases/small_wing_nes"
     restart_folder : "data/restarts/rs8_small_wing"
+    shared_data_path : "data/simulations/naca4412_75k"
     solver_version : "v17"
     #------------------------------------------
     # Generally VERY IMPORTANT

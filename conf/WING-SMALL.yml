@@ -48,6 +48,11 @@ simulation:
     exeName : 'nek5000'
     compile_path   : "envs/cases/small_wing_nes"
     restart_folder : "data/restarts/rs8_small_wing"
+    # Shared, case-independent dependencies (mesh / mask). Files missing in
+    # compile_path are taken from here, so a new case variant does not have to
+    # duplicate them. A list of folders is also accepted.
+    shared_data_path : "data/simulations/naca4412_75k"
+    shared_data_link : true    # symlink the shared files instead of copying
     solver_version : "v17"
     #------------------------------------------
     # Generally VERY IMPORTANT
