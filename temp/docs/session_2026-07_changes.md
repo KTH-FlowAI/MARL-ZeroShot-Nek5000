@@ -75,15 +75,30 @@ re-copying and the `SameFileError` when source == target.
 newest history segment (after `history/current_history`), so an in-progress run's
 rewards appear in the notebook. Also fixes first-run inspection (no `history/` yet).
 
+## 9. Job submission: payload scripts + SLURM generator
+**Detail:** [job_submission_refactor.md](job_submission_refactor.md)
+
+`execs/channel-run.sh` (nek_MARL) and `execs/wing-run.sh` (meta_MARL) hold every
+run command and no `#SBATCH` directive — they pick the `local`/`hpc` environment
+from `$SLURM_JOB_ID`, so one code path serves interactive and batch runs.
+`execs/sjob-gen.sh` wraps either payload into an sbatch script whose job name,
+partition, begin time, wall time and node count are command-line flags (`-N auto`
+derives the node count from `nproc`, replacing the `-n7`/`-n11` variants).
+Supersedes `run-script`, `wing-script`, `sjob-*.sh` and `utils/sjob_gen/`, all of
+which are left in place.
+
 ---
 
 ## Quick reference
 
 ```bash
 # train (from the repo root)
-./execs/run-script  --config conf/MC16-TD3.yml --run-mode run
-./execs/run-script  --config conf/MC16-TD3.yml --load-agent False   # fresh
-sbatch execs/sjob-train.sh --config conf/MC16-TD3.yml
+./execs/channel-run.sh --config conf/MC16-TD3.yml --mode train
+./execs/channel-run.sh --config conf/MC16-TD3.yml --load-agent False   # fresh
+
+# submit to SLURM
+./execs/sjob-gen.sh --case channel --config conf/MC16-TD3.yml --mode train \
+    -J mc16-td3 -t 24:00:00 --begin +2h --submit
 
 # tensorboard (live vs archived)
 tensorboard --logdir runs/<run>/train/history/tensorboard
