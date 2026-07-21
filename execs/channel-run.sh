@@ -8,12 +8,12 @@
 #  mpirun invocations. It carries no SLURM directives, so the very same command
 #  runs interactively on a login/workstation node and inside a batch job:
 #
-#      ./execs/channel-run.sh --config conf/MC-ng-111.yml --mode train
-#      ./execs/channel-run.sh --config conf/MC-ng-111.yml --mode evaluate --nenv 2
+#      ./execs/channel-run.sh --config conf/mini_channel/MC-ng-111.yml --mode train
+#      ./execs/channel-run.sh --config conf/mini_channel/MC-ng-111.yml --mode evaluate --nenv 2
 #
 #  To submit it to SLURM, wrap it with the job generator:
 #
-#      ./execs/sjob-gen.sh --case channel --config conf/MC-ng-111.yml \
+#      ./execs/sjob-gen.sh --case channel --config conf/mini_channel/MC-ng-111.yml \
 #                          --mode train -J my-run --begin +2h --submit
 #
 #  The site (local vs. HPC) is auto-detected from $SLURM_JOB_ID; override with
@@ -30,6 +30,10 @@ set --
 source ~/.bashrc.openmpi_ucx
 source ~/.bashrc.miniforge
 set -- "${ORIG_ARGS[@]}"
+
+#[MOD] Set only after the profiles are sourced, so a failing pipeline inside
+#[MOD] them cannot abort the launcher.
+set -o pipefail
 
 # -----------------------------------------------------------------------------
 # Defaults
@@ -78,15 +82,15 @@ Usage: $(basename "$0") [OPTIONS]
 
 Examples:
   # training
-  $(basename "$0") --config conf/MC-ng-111.yml --mode train
+  $(basename "$0") --config conf/mini_channel/MC-ng-111.yml --mode train
 
   # evaluation of a trained policy over two environments
-  $(basename "$0") --config conf/MC-ng-111.yml --mode evaluate --nenv 2 \\
+  $(basename "$0") --config conf/mini_channel/MC-ng-111.yml --mode evaluate --nenv 2 \\
                    --iostep 10000 --write-interval 10000 --smpstep 12
 
   # long statistics run over a set of cases
   $(basename "$0") --mode evaluate --nenv 1 --nb-interactions 20000 \\
-                   --config conf/MC-shapcf.yml --config conf/MC-shapvel.yml
+                   --config conf/mini_channel/MC-shapcf.yml --config conf/mini_channel/MC-shapvel.yml
 EOF
 }
 
@@ -117,7 +121,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ ${#CONFIGS[@]} -eq 0 ]] && CONFIGS=("conf/MC16-TD3.yml")
+#[MOD] The old default (conf/MC16-TD3.yml) no longer exists in the repo.
+[[ ${#CONFIGS[@]} -eq 0 ]] && CONFIGS=("conf/mini_channel/MC-ng-111.yml")
 # Writing the fields more often than the checkpoints is never what is wanted,
 # so writeInterval tracks IOSTEP unless it is given explicitly.
 [[ -z "${WRITE_INTERVAL}" ]] && WRITE_INTERVAL="${IOSTEP}"
@@ -177,7 +182,50 @@ mkdir -p "${LOG_DIR}" "${CACHE_DIR}"
 # Helpers
 # -----------------------------------------------------------------------------
 # Pull a scalar out of a yml config (first match wins, quotes stripped).
-cfg_get() { grep -ri "$2" "$1" | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//" | head -n 1; }
+#[MOD] The key must start the line, comment lines are skipped and a trailing
+#[MOD] "# ..." is cut off. The previous unanchored `grep` returned the first
+#[MOD] line that merely MENTIONED the key -- e.g. the
+#[MOD] "## [REMINDER] ... the agent_run_name prefix is NOT auto-added ..."
+#[MOD] comment sitting above the key in some configs -- which produced a
+#[MOD] non-existent RUN_PATH_*.txt, an empty RUN_PATH and a bare `cd` (== $HOME)
+#[MOD] for every solver rank.
+cfg_get() {
+    awk -v k="$2" '
+        BEGIN { re = "^[[:space:]]*" k "[[:space:]]*:" }
+        /^[[:space:]]*#/ { next }
+        $0 ~ re {
+            sub(/^[^:]*:[[:space:]]*/, "")   # drop the key
+            sub(/[[:space:]]*#.*$/, "")      # drop a trailing comment
+            gsub(/["'"'"']/, "")             # drop quotes
+            sub(/[[:space:]]+$/, "")         # drop trailing blanks
+            print; exit
+        }' "$1"
+}
+
+# read_run_path <cache-file>  ->  sets RUN_PATH (line 1) and AGENT (line 2)
+#[MOD] `initial` writes the run folder on line 1 and the latest checkpoint stem
+#[MOD] on line 2 (empty on a fresh run). `tail -n 1` used to fall back to line 1
+#[MOD] when line 2 was absent, so `run` was handed the run folder as its policy
+#[MOD] and RLA.load() died on a nonsense path.
+read_run_path() {
+    local file="$1"
+    if [[ ! -f "${file}" ]]; then
+        if [[ "${DRY_RUN}" == "yes" ]]; then
+            RUN_PATH="<not written yet: ${file}>"; AGENT=""
+            echo "[DRY] cache file absent: ${file}"
+            return 0
+        fi
+        echo "[ERR] \`initial\` did not write the cache file: ${file}" >&2
+        return 1
+    fi
+    RUN_PATH="$(sed -n 1p "${file}")"
+    AGENT="$(sed -n 2p "${file}")"
+    if [[ -z "${RUN_PATH}" ]]; then
+        echo "[ERR] Empty run path in ${file}" >&2
+        return 1
+    fi
+    return 0
+}
 
 # run_cmd <logfile|-> <command ...>   ('-' keeps the output on the terminal)
 run_cmd() {
@@ -212,16 +260,45 @@ for _cfg_in in "${CONFIGS[@]}"; do
     echo "[CFG] ${CONFIG_NAME}"
     echo "[CFG] agent_run_name=${AGENT_RUN_NAME}  nproc=${NTOT}"
 
+    #[MOD] Both values index files/rank counts further down, so a missing or
+    #[MOD] non-numeric read must stop the job instead of producing `mpirun -n`
+    #[MOD] garbage or a RUN_PATH_.txt lookup.
+    [[ -n "${AGENT_RUN_NAME}" ]] || {
+        echo "[ERR] runner.agent_run_name not found in ${CONFIG_NAME}" >&2; exit 1; }
+    [[ "${NTOT}" =~ ^[0-9]+$ ]] || {
+        echo "[ERR] simulation.nproc is not a number in ${CONFIG_NAME}: '${NTOT}'" >&2; exit 1; }
+    #[MOD] The shell reads the yml directly while python reads yml+overrides, so
+    #[MOD] overriding either of these two in --extra would desync the launcher
+    #[MOD] from the solver (wrong cache file / wrong rank count -> MPI hang).
+    case "${EXTRA_OVERRIDES}" in
+        *runner.agent_run_name=*|*simulation.nproc=*|*logging.save_dir=*)
+            echo "[ERR] --extra must not override agent_run_name / nproc /" \
+                 "save_dir; edit the config instead: ${EXTRA_OVERRIDES}" >&2; exit 1 ;;
+    esac
+
     if [[ "${RUN_MODE}" == "run" ]]; then
         # -- Training -------------------------------------------------------
         # History archiving/cleanup happens inside `initial`
         # (src/initial.py:preserve_and_clean_train); nothing to move here.
+        #[MOD] A failed `initial` must abort: the cache file below would other-
+        #[MOD] wise still hold the PREVIOUS run's path and the solver would
+        #[MOD] happily start in the wrong folder.
         run_cmd "${LOG_DIR}/log.initial.${CONFIG_TAG}" \
-            "mpirun -n 1 python -m nek_MARL initial ${CONFIG_NAME} ${EXTRA_OVERRIDES}"
+            "mpirun -n 1 python -m nek_MARL initial ${CONFIG_NAME} ${EXTRA_OVERRIDES}" || {
+            echo "[ERR] initial failed, see ${LOG_DIR}/log.initial.${CONFIG_TAG}" >&2; exit 1; }
 
-        RUN_PATH="$(head -n 1 "${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt")"
-        AGENT="$(tail -n 1 "${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt")"
-        echo "[RUN] RUN_PATH=${RUN_PATH}  policy=${AGENT}"
+        read_run_path "${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt" || exit 1
+        echo "[RUN] RUN_PATH=${RUN_PATH}  policy=${AGENT:-<none, training from scratch>}"
+
+        #[MOD] No checkpoint found by `initial` => nothing to resume from. A
+        #[MOD] config that says load_agent: True would otherwise send SB3 into
+        #[MOD] RLA.load() with an empty policy name. An explicit --load-agent
+        #[MOD] still wins, so the failure stays visible when it is asked for.
+        RUN_LOAD_AGENT_ARG="${LOAD_AGENT_ARG}"
+        if [[ -z "${AGENT}" && -z "${LOAD_AGENT}" ]]; then
+            RUN_LOAD_AGENT_ARG="runner.load_agent=False"
+            echo "[RUN] no checkpoint yet -> runner.load_agent=False"
+        fi
 
         if [[ "${SITE}" == "local" ]]; then
             # One communicator, rank 0 drives the agent: what oversubscribed
@@ -229,7 +306,7 @@ for _cfg_in in "${CONFIGS[@]}"; do
             run_cmd "${LOG_DIR}/log.run.${CONFIG_TAG}" \
                 "mpirun -n \$((1 + ${NTOT})) bash -c '
                     if [ \$OMPI_COMM_WORLD_RANK -eq 0 ]; then
-                        python -m nek_MARL run ${CONFIG_NAME} runner.policy=${AGENT} ${LOAD_AGENT_ARG} ${EXTRA_OVERRIDES}
+                        python -m nek_MARL run ${CONFIG_NAME} runner.policy=${AGENT} ${RUN_LOAD_AGENT_ARG} ${EXTRA_OVERRIDES}
                     else
                         cd ${RUN_PATH} && ./nek5000
                     fi'"
@@ -237,7 +314,7 @@ for _cfg_in in "${CONFIGS[@]}"; do
             run_cmd "${LOG_DIR}/log.run.${CONFIG_TAG}" \
                 "mpirun ${MPI_RUN_OPTS} \
                     -n 1 python -m nek_MARL run ${CONFIG_NAME} \
-                        runner.policy=${AGENT} ${LOAD_AGENT_ARG} ${EXTRA_OVERRIDES} : \
+                        runner.policy=${AGENT} ${RUN_LOAD_AGENT_ARG} ${EXTRA_OVERRIDES} : \
                     -n ${NTOT} bash -c 'cd ${RUN_PATH} && ./nek5000'"
         fi
 
@@ -265,9 +342,10 @@ for _cfg_in in "${CONFIGS[@]}"; do
                     ${REWARD_ARGS} \
                     runner.evaluation=True runner.learnt_policy=True \
                     runner.load_agent=True \
-                    ${SIM_ARGS} ${EXTRA_OVERRIDES}"
+                    ${SIM_ARGS} ${EXTRA_OVERRIDES}" || {
+                echo "[ERR] initial failed, see ${LOG_DIR}/log.initial.${CONFIG_TAG}" >&2; exit 1; }
 
-            RUN_PATH="$(head -n 1 "${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt")"
+            read_run_path "${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt" || exit 1
             echo "[EVAL] RUN_PATH=${RUN_PATH}"
 
             run_cmd "${LOG_DIR}/log.eval.${CONFIG_TAG}" \

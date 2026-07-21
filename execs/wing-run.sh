@@ -28,6 +28,10 @@ source ~/.bashrc.openmpi_ucx
 source ~/.bashrc.miniforge
 set -- "${ORIG_ARGS[@]}"
 
+#[MOD] Set only after the profiles are sourced, so a failing pipeline inside
+#[MOD] them cannot abort the launcher.
+set -o pipefail
+
 # -----------------------------------------------------------------------------
 # Defaults
 # -----------------------------------------------------------------------------
@@ -125,7 +129,46 @@ mkdir -p "${LOG_DIR}" "${CACHE_DIR}"
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
-cfg_get() { grep -ri "$2" "$1" | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//" | head -n 1; }
+# Pull a scalar out of a yml config (first match wins, quotes stripped).
+#[MOD] The key must start the line, comment lines are skipped and a trailing
+#[MOD] "# ..." is cut off. The previous unanchored `grep` returned the first
+#[MOD] line that merely MENTIONED the key (e.g. a "## [REMINDER] ..." comment),
+#[MOD] which produced a non-existent RUN_PATH_*.txt, an empty RUN_PATH and a
+#[MOD] bare `cd` (== $HOME) for every solver rank.
+cfg_get() {
+    awk -v k="$2" '
+        BEGIN { re = "^[[:space:]]*" k "[[:space:]]*:" }
+        /^[[:space:]]*#/ { next }
+        $0 ~ re {
+            sub(/^[^:]*:[[:space:]]*/, "")   # drop the key
+            sub(/[[:space:]]*#.*$/, "")      # drop a trailing comment
+            gsub(/["'"'"']/, "")             # drop quotes
+            sub(/[[:space:]]+$/, "")         # drop trailing blanks
+            print; exit
+        }' "$1"
+}
+
+# read_run_path <cache-file>  ->  sets RUN_PATH (line 1 of the cache file)
+#[MOD] Guarded so a failed `initial` can no longer leave RUN_PATH empty, which
+#[MOD] turned the solver launch into a bare `cd` into $HOME.
+read_run_path() {
+    local file="$1"
+    if [[ ! -f "${file}" ]]; then
+        if [[ "${DRY_RUN}" == "yes" ]]; then
+            RUN_PATH="<not written yet: ${file}>"
+            echo "[DRY] cache file absent: ${file}"
+            return 0
+        fi
+        echo "[ERR] \`initial\` did not write the cache file: ${file}" >&2
+        return 1
+    fi
+    RUN_PATH="$(sed -n 1p "${file}")"
+    if [[ -z "${RUN_PATH}" ]]; then
+        echo "[ERR] Empty run path in ${file}" >&2
+        return 1
+    fi
+    return 0
+}
 
 # run_cmd <logfile|-> <command ...>   ('-' keeps the output on the terminal)
 run_cmd() {
@@ -154,13 +197,32 @@ for _cfg_in in "${CONFIGS[@]}"; do
     echo "------------------------------------------------------------"
     echo "[CFG] ${CONFIG_NAME}"
 
+    #[MOD] A failed `initial` must abort: the cache file below would otherwise
+    #[MOD] still hold the PREVIOUS run's path and the solver would happily start
+    #[MOD] in the wrong folder.
     run_cmd "${LOG_DIR}/log.initial.${CONFIG_TAG}" \
-        "mpirun ${MPI_INIT_OPTS} -n 1 python -m meta_MARL initial ${CONFIG_NAME} ${EXTRA_OVERRIDES}"
+        "mpirun ${MPI_INIT_OPTS} -n 1 python -m meta_MARL initial ${CONFIG_NAME} ${EXTRA_OVERRIDES}" || {
+        echo "[ERR] initial failed, see ${LOG_DIR}/log.initial.${CONFIG_TAG}" >&2; exit 1; }
 
     CASE_NAME="$(cfg_get "${CONFIG_NAME}" 'case_name')"
     NTOT="$(cfg_get "${CONFIG_NAME}" 'nproc')"
-    RUN_PATH="$(head -n 1 "${CACHE_DIR}/RUN_PATH_${CASE_NAME}.txt")"
     echo "[CFG] case_name=${CASE_NAME}  nproc=${NTOT}"
+
+    #[MOD] Both index files/rank counts below, so a bad read must stop the job.
+    [[ -n "${CASE_NAME}" ]] || {
+        echo "[ERR] runner.case_name not found in ${CONFIG_NAME}" >&2; exit 1; }
+    [[ "${NTOT}" =~ ^[0-9]+$ ]] || {
+        echo "[ERR] simulation.nproc is not a number in ${CONFIG_NAME}: '${NTOT}'" >&2; exit 1; }
+    #[MOD] The shell reads the yml directly while python reads yml+overrides, so
+    #[MOD] overriding either of these in --extra would desync the launcher from
+    #[MOD] the solver (wrong cache file / wrong rank count -> MPI hang).
+    case "${EXTRA_OVERRIDES}" in
+        *runner.case_name=*|*simulation.nproc=*|*logging.save_dir=*)
+            echo "[ERR] --extra must not override case_name / nproc / save_dir;" \
+                 "edit the config instead: ${EXTRA_OVERRIDES}" >&2; exit 1 ;;
+    esac
+
+    read_run_path "${CACHE_DIR}/RUN_PATH_${CASE_NAME}.txt" || exit 1
     echo "[RUN] RUN_PATH=${RUN_PATH}"
 
     # Archive whatever the previous run left in runs/<case>/env_<id> before the

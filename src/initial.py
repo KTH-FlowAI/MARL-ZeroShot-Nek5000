@@ -254,10 +254,13 @@ def initial(conf_file,overrides,**ignored_kwargs):
     os.makedirs(cache_dir, exist_ok=True)
     run_path_file = os.path.join(
         cache_dir, f"RUN_PATH_{conf.runner.agent_run_name}.txt")
+    #[MOD] Line 1 = run folder, line 2 = latest checkpoint stem (EMPTY on a
+    #[MOD] fresh run). The trailing newline is required: without it the file has
+    #[MOD] a single line when there is no checkpoint, and a `tail -n 1` reader
+    #[MOD] (execs/*.sh) silently gets the run folder back as the policy name.
     with open(run_path_file, "w") as f:
         f.write(rank_folder + "\n")
-        f.write(last_agent)
-    f.close()
+        f.write(last_agent + "\n")
     
     print("="*30,flush=True)
     print(f"[STB3] INITIALIZATION COMPLETE",flush=True)
