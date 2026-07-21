@@ -28,3 +28,7 @@ miniforge3/
 # RUN_PATH cache: keep the dir tracked, ignore its RUN_PATH_*.txt (via *RUN_PATH*)
 !/.caches/
 !/.caches/.gitkeep
+# archived policies live in */logs/ dirs, which the generic *log* rule above
+# excludes; re-include the dir first, then its contents
+!/data/policies_meta_wing_dr/**/logs/
+!/data/policies_meta_wing_dr/**/logs/**
