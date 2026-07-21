@@ -2,6 +2,9 @@
 # maintain the folder 
 /runs/**/
 /data/**
+# shared, de-duplicated case dependencies (mesh, .rea template, probes...)
+!/data/simulations/
+!/data/simulations/**
 !/data/restarts/
 /data/restarts/**
 !/data/restarts/rs6_mini_Channel/
