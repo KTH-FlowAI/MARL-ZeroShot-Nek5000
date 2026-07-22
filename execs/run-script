@@ -42,7 +42,9 @@ reward_gamma=1.0
 # Parse command line arguments
 # Usage: ./unified-script --config [CONFIG_NAME] --run-mode [RUN_MODE] --rank [RANK]
 # Parse command-line arguments after `--`
-while [[ $# -gt 1 ]]; do
+#[MOD] was `-gt 1`, which silently dropped a lone/last argument (e.g. a trailing
+#[MOD] flag or a typo); `-gt 0` processes every arg and lets `*)` reject unknowns.
+while [[ $# -gt 0 ]]; do
     case "$1" in
         --config)
             CONFIG_NAME="$2"
@@ -82,17 +84,60 @@ fi
 #--------------------------------------------
 
 #--------------------------------------------
-# I/O Initialization
-mpirun -n 1 python -m nek_MARL initial ${CONFIG_NAME} > ${LOG_DIR}/log.initial.${CONFIG_TAG} 2>&1
+#[MOD] Robust config reader: resolve a dotted key through OmegaConf + the
+#[MOD] structured defaults, instead of grep/sed on the raw YAML. This is immune
+#[MOD] to inline '#' comments, quoting, spacing and key order -- any of which
+#[MOD] used to corrupt the value. (A comment on the agent_run_name line silently
+#[MOD] emptied RUN_PATH and sent the workers to $HOME, i.e. the misleading
+#[MOD] "./nek5000: No such file or directory".)  configs.py imports nothing
+#[MOD] heavy, so this is fast.
+read_conf_key() {   # $1 = config path, $2 = dotted key ; echoes resolved value
+    python - "$1" "$2" <<'PY'
+import sys
+from omegaconf import OmegaConf
+from configs import Config
+conf = OmegaConf.merge(OmegaConf.structured(Config()), OmegaConf.load(sys.argv[1]))
+val = OmegaConf.select(conf, sys.argv[2])
+print("" if val is None else val)
+PY
+}
 
-#--- Get the agent name and the total number of processes
-# AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
-AGENT_RUN_NAME=$(grep -ri 'agent_run_name' ${CONFIG_NAME} | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//")
-NTOT=$(grep -ri 'nproc' ${CONFIG_NAME} | awk -F':' '{gsub(/ /,"",$2); print $2}')
-RUN_PATH=$(head -n 1 ${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt)
+#--------------------------------------------
+# I/O Initialization
+#[MOD] Fail fast: if `initial` errors, stop here instead of launching the solver
+#[MOD] against a half-prepared run folder (which is what turned an init failure
+#[MOD] into the cryptic downstream "./nek5000: No such file or directory").
+mpirun -n 1 python -m nek_MARL initial ${CONFIG_NAME} \
+    > ${LOG_DIR}/log.initial.${CONFIG_TAG} 2>&1 || {
+    echo "[ERR] initialization FAILED; see ${LOG_DIR}/log.initial.${CONFIG_TAG}" >&2
+    exit 1
+}
+
+#--- Get the agent name and the total number of processes (OmegaConf, not grep)
+AGENT_RUN_NAME=$(read_conf_key "${CONFIG_NAME}" runner.agent_run_name)
+NTOT=$(read_conf_key "${CONFIG_NAME}" simulation.nproc)
+#[MOD] Validate before use: an empty name or a non-numeric nproc would otherwise
+#[MOD] silently break the RUN_PATH lookup / the `$((1 + NTOT))` arithmetic.
+if [ -z "${AGENT_RUN_NAME}" ]; then
+    echo "[ERR] could not read runner.agent_run_name from ${CONFIG_NAME}" >&2; exit 1
+fi
+if ! [[ "${NTOT}" =~ ^[0-9]+$ ]]; then
+    echo "[ERR] simulation.nproc is not an integer: '${NTOT}'" >&2; exit 1
+fi
+
+#[MOD] Resolve RUN_PATH from the cache `initial` just wrote, and check it exists
+#[MOD] / is non-empty before anyone tries to `cd` into it.
+CACHE_FILE="${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt"
+if [ ! -f "${CACHE_FILE}" ]; then
+    echo "[ERR] RUN_PATH cache missing: ${CACHE_FILE}" >&2; exit 1
+fi
+RUN_PATH=$(head -n 1 "${CACHE_FILE}")
+if [ -z "${RUN_PATH}" ]; then
+    echo "[ERR] RUN_PATH empty in ${CACHE_FILE}" >&2; exit 1
+fi
 
 if [ "$RUN_MODE" = "run" ]; then
-    AGENT=$(tail -n 1 ${CACHE_DIR}/RUN_PATH_${AGENT_RUN_NAME}.txt)
+    AGENT=$(tail -n 1 "${CACHE_FILE}")
 else
     AGENT=""
 fi
@@ -129,12 +174,21 @@ if [ "$RUN_MODE" = "evaluate" ]; then
         runner.load_agent=True \
         simulation.IOSTEP=${IOSTEP} \
         simulation.writeInterval=${writeInterval} \
-	    simulation.SMPSTEP=${SMPSTEP}
-       
-       var=$(grep -ri 'agent_run_name' ${CONFIG_NAME} | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//")
-       
-       RUN_PATH=$(head -n 1 ${CACHE_DIR}/RUN_PATH_${var}.txt)
-       
+	    simulation.SMPSTEP=${SMPSTEP} || {
+           echo "[ERR] eval initialization FAILED for env ${ienv}" >&2; exit 1; }
+
+       #[MOD] Same OmegaConf-based read as the run branch (no grep/sed), then
+       #[MOD] guard the cache file and the solver binary before launching.
+       var=$(read_conf_key "${CONFIG_NAME}" runner.agent_run_name)
+       eval_cache="${CACHE_DIR}/RUN_PATH_${var}.txt"
+       if [ ! -f "${eval_cache}" ]; then
+           echo "[ERR] RUN_PATH cache missing: ${eval_cache}" >&2; exit 1
+       fi
+       RUN_PATH=$(head -n 1 "${eval_cache}")
+       if [ ! -x "${RUN_PATH}/nek5000" ]; then
+           echo "[ERR] solver not found/executable: ${RUN_PATH}/nek5000" >&2; exit 1
+       fi
+
        # To use mpi_split, one should launch two programs at once. Therefore
        #[MOD] net_gain forced on the Python side too — MUST match the `initial`
        #[MOD] step above (same reward_fn => same userParam09 => same MPI buffer
@@ -152,11 +206,16 @@ if [ "$RUN_MODE" = "evaluate" ]; then
     done
 else
     # Run mode execution
+    #[MOD] Guard the solver path up-front, so a bad/empty RUN_PATH is one clear
+    #[MOD] error here instead of N cryptic "./nek5000: No such file" from workers.
+    if [ ! -x "${RUN_PATH}/nek5000" ]; then
+        echo "[ERR] solver not found/executable: ${RUN_PATH}/nek5000" >&2; exit 1
+    fi
     mpirun -n $((1 + ${NTOT})) bash -c "
     if [ \$OMPI_COMM_WORLD_RANK -eq 0 ]; then
         python -m nek_MARL ${RUN_MODE} ${CONFIG_NAME} runner.policy=$AGENT ${LOAD_AGENT_ARG}
     else
         cd ${RUN_PATH} && ./nek5000
     fi
-    "  > ${LOG_DIR}/log.run.${CONFIG_TAG} 2>&1 
+    "  > ${LOG_DIR}/log.run.${CONFIG_TAG} 2>&1
 fi
