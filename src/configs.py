@@ -78,8 +78,12 @@ class Runner:
     load_agent: bool         = False
     rewrite_input_files:bool = False
     evaluation:bool          = False
-    rank:int                 = 0     # NAME of test case 
-    policy:str               = ""
+    rank:int                 = 0     # NAME of test case
+    #[MOD] Optional so that a bare `runner.policy=` override (which OmegaConf
+    #[MOD] parses to None, e.g. a from-scratch launch with no checkpoint) merges
+    #[MOD] cleanly instead of raising ValidationError and deadlocking the MPI
+    #[MOD] co-run. Empty/None both mean "no checkpoint"; only read when load_agent.
+    policy:Optional[str]     = ""
     learnt_policy:bool       = False
     vars_record:bool         = True
     vars_record_freq:int     = 1 

@@ -300,13 +300,23 @@ for _cfg_in in "${CONFIGS[@]}"; do
             echo "[RUN] no checkpoint yet -> runner.load_agent=False"
         fi
 
+        #[MOD] Only pass runner.policy when a checkpoint actually exists. With an
+        #[MOD] empty AGENT, `runner.policy=` parses to None in OmegaConf, and
+        #[MOD] merging None into the structured `policy: str` field raises a
+        #[MOD] ValidationError. That kills the python rank AFTER mpi4py has run
+        #[MOD] MPI_Init, leaving the nek5000 ranks blocked in a collective ->
+        #[MOD] the whole job deadlocks. The config default (policy: "") is a
+        #[MOD] valid str and is unused on the load_agent=False path anyway.
+        POLICY_ARG=""
+        [[ -n "${AGENT}" ]] && POLICY_ARG="runner.policy=${AGENT}"
+
         if [[ "${SITE}" == "local" ]]; then
             # One communicator, rank 0 drives the agent: what oversubscribed
             # workstation runs have been using.
             run_cmd "${LOG_DIR}/log.run.${CONFIG_TAG}" \
                 "mpirun -n \$((1 + ${NTOT})) bash -c '
                     if [ \$OMPI_COMM_WORLD_RANK -eq 0 ]; then
-                        python -m nek_MARL run ${CONFIG_NAME} runner.policy=${AGENT} ${RUN_LOAD_AGENT_ARG} ${EXTRA_OVERRIDES}
+                        python -m nek_MARL run ${CONFIG_NAME} ${POLICY_ARG} ${RUN_LOAD_AGENT_ARG} ${EXTRA_OVERRIDES}
                     else
                         cd ${RUN_PATH} && ./nek5000
                     fi'"
@@ -314,7 +324,7 @@ for _cfg_in in "${CONFIGS[@]}"; do
             run_cmd "${LOG_DIR}/log.run.${CONFIG_TAG}" \
                 "mpirun ${MPI_RUN_OPTS} \
                     -n 1 python -m nek_MARL run ${CONFIG_NAME} \
-                        runner.policy=${AGENT} ${RUN_LOAD_AGENT_ARG} ${EXTRA_OVERRIDES} : \
+                        ${POLICY_ARG} ${RUN_LOAD_AGENT_ARG} ${EXTRA_OVERRIDES} : \
                     -n ${NTOT} bash -c 'cd ${RUN_PATH} && ./nek5000'"
         fi
 

@@ -69,19 +69,29 @@ The knobs that used to require editing a template:
 | `--no-exclusive` | drops `--exclusive` |
 | `--slurm-out`, `--slurm-err` | `--output`, `--error` (default `log-files/<job>-%j.out/.err`) |
 
-Anything after a bare `--` is forwarded verbatim to the payload script:
+**Reminder — every payload flag is reachable, and it works with `--submit`.**
+Anything after a bare `--` is forwarded verbatim to the payload script, so you do
+**not** need to mirror payload flags in the generator or hand-edit the job file:
+the generator owns only the `#SBATCH` header, the payload owns the run
+parameters, and `--` bridges the two. Run `execs/channel-run.sh --help` /
+`execs/wing-run.sh --help` for the full list of what you can pass after `--`.
 
 ```bash
+# fully-parameterized channel evaluate, submitted directly
 ./execs/sjob-gen.sh --case channel --config conf/MC-ng-111.yml --mode evaluate \
-    -J eval-ng111 --begin 2026-06-29T16:23:42 -- \
-    --nenv 2 --iostep 10000 --write-interval 10000 --smpstep 12
+    -J eval-ng111 -N 2 --begin 2026-06-29T16:23:42 --submit -- \
+    --nenv 2 --iostep 10000 --write-interval 10000 --smpstep 12 \
+    --reward-fn net_gain --alpha 0.5 --nb-interactions 20000
 
+# wing evaluate with archiving, submitted directly
 ./execs/sjob-gen.sh --case wing --config conf/NACA4412-SHAP-Vel-2540.yml \
-    -J shap-wing -N 86 -t 24:00:00 --submit -- --mv-data yes
+    -J shap-wing -N 86 -t 24:00:00 --submit -- \
+    --mv-data yes --case-name naca_wing --id 002
 ```
 
-Generated scripts are ordinary sbatch files — edit them by hand when a one-off
-needs something the generator does not expose.
+Generated scripts are ordinary sbatch files, but hand-editing is only a last
+resort for something no flag exposes (e.g. an exotic `#SBATCH` directive) — the
+`--` passthrough already covers every payload argument.
 
 ## 3. Logs
 
