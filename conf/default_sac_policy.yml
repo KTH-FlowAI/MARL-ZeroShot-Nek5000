@@ -10,7 +10,7 @@ net_arch:
 # Initial log std of the (pre-squash) Gaussian. SB3 default is -3, i.e. an
 # almost deterministic start; -2.3 (std ~= 0.1 on the normalized [-1,1] action)
 # matches the PPO setup and keeps the policy away from bang-bang control early on.
-log_std_init : -2.3
+# log_std_init : -2.3
 
 # Twin critics (clipped double-Q), as in the original SAC paper.
 n_critics : 2

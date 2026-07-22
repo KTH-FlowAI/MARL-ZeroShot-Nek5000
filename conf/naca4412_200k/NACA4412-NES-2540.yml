@@ -1,40 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# A test case for the new Meta Functionality of WING
 runner: 
 
     nb_interactions : 10_000_000
     random_init     : -2  # -1==No Shuffle, use the No.init = RANK; -2==NOT Cover the current restart file
     rank            : 1 # ID of test case and restart file to use 
 
-    case_name       : "small_wing_nes" 
+    case_name       : "naca4412_ref_NES_2540" 
 
-    agent_ctrl_area : [[0.23,0.40],[0.4,0.5],[0.5,0.7],[0.7,0.88],] # Tricks: use a smaller lower bound and larger upper bound, as the code will adopt the actual minimal.
-    agent_ctrl_side : ["SS","SS","SS","SS",]
+    agent_ctrl_area : [[0.23,0.41],] # Tricks: use a smaller lower bound and larger upper bound, as the code will adopt the actual minimal.
+    agent_ctrl_side : ["SS",]
     ## A list of integer to indicate agent case
-    agent_run_name : ["archived_lc_omega1_SS_BASE_dr",
-                        "archived_lc_omega2_SS_BASE_dr",
-                        "archived_lc_omega3_SS_BASE_dr",
-                         "archived_lc_omega4_SS_BASE_dr"]
+    agent_run_name : ["lc_omega1_SS_nes",]
     ## A list of string to indicate which policy to read
     ## [REMINDER] policy = FULL policy file name (stem, no .zip); the agent_run_name prefix is NOT auto-added anymore (MetaPolicy._load_policy)
-    policy : ["eval_model_lc_omega1_SS_BASE_dr",
-             "eval_model_lc_omega2_SS_BASE_dr",
-             "eval_model_lc_omega3_SS_BASE_dr",
-             "eval_model_lc_omega4_SS_BASE_dr"]
+    policy : ["best_model", ]
     ## A list of string to indicate the RL algorithm
-    RL_algorithm : ["TD3","TD3","TD3","TD3","TD3"]
-    source_solvers : ["nek","nek","nek","nek","nek"]
-    #RL_algorithm : ["BL","BL","BL","BL","BL"]
+    RL_algorithm : ["TD3",]
+    source_solvers : ["nek",]
     ## A list of float indicating the local u_tau 
-    u_tau :  [1.0,1.0,1.0, 1.0, 1.0] # We use local scale from NEK 
+    u_tau :  [1.0,] # We use local scale from NEK 
     ## A list of float indicating the local dU/dy 
-    dUdy : [1135.83, 940.90, 759.46, 485.32, 417.136]
+    # dUdy : [920.54, 749.91, 543.64]
+    dUdy : [920.54,]
     ## Action bounds in tuple
-    action_bounds : [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
+    action_bounds : [[-1.0, 1.0],]
     ## The drl update interval 
     # 36, 44, 52, 80 -> 36, 45, 54, 81
-    drl_steps : [4, 5, 6, 9, 4] # make ndrl=4 therefore mpi time will be reduced!
+    drl_steps : [5,] # make ndrl=4 therefore mpi time will be reduced!
 
     ## Some IO Management 
     vars_record      : True
@@ -43,30 +36,27 @@ runner:
     vars_io_freq     : 100  ## Freq the save the data
     size_history     : 10 # Number of DRL steps to record the history
 
-    netgain_io_freq : 1
+    netgain_io_freq : 100
     reward_fn : "net_gain"
-
 
 
 
 simulation: 
     #I/O
-    CASENAME: 'small_wing' 
+    CASENAME: 'naca_wing' 
     exeName : 'nek5000'
-    compile_path   : "envs/cases/small_wing_nes"
-    restart_folder : "data/restarts/rs8_small_wing"
-    shared_data_path: "data/simulations/naca4412_200k"
+    compile_path   : "envs/cases/naca4412_ref_PSSS_2586"
+    restart_folder : "data/restarts/rs8_naca4412_200k_ref"
     solver_version : "v17"
     #------------------------------------------
     # Generally VERY IMPORTANT
-    TOTCTRL : 1000        # Be consistent with SIZE
+    TOTCTRL : 5000        # Be consistent with SIZE
     # Rank of the test case
-    nproc   : 12         
-    ndrl    : 3          # Steps to update the rewards (t^+=0.6)
+    nproc   : 4096         
+    ndrl    : 9          # Steps to update the rewards (t^+=0.6)
     znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
-    #------------------------------------------
-#--------------------------
+    #--------------------------
     # .rea file 
     #--------------------------
     ### General 
@@ -75,8 +65,8 @@ simulation:
     dt                  : -1.5e-05   # p012
     
     ## Write Interval of La2 and Reg
-    writeInterval       : 5      # p015
-    writeLA2            : 5     # p070
+    writeInterval       : 5000      # p015
+    writeLA2            : 5000     # p070
     #[PRESSURE]
     p_residualTol       : 1.0e-6      # p021 ## Less constrain on the solution, same setup as OC
     v_residualTol       : 1.0e-8      # p022
@@ -86,11 +76,8 @@ simulation:
     #[_CHKPOINT]   # Runtime paramere section for checkpoint module
     READCHKPT           : 1         # p076 # Restat from checkpoint
     CHKPFNUMBER         : 6         # p067 # Restart file number
-    CHKPINTERVAL        : 2500      # p075 # Checkpiont saving frequency (number of time steps)
+    CHKPINTERVAL        : 5000      # p075 # Checkpiont saving frequency (number of time steps)
 
     #[_STAT]             # Runtime paramere section for statistics module
     AVSTEP              : 10        # p087
-    IOSTEP              : 5     # p088
-
-logging:
-    policy_dir : "./temp/archived/policies_meta_wing_dr" # Default directory to save the policy and log files
+    IOSTEP              : 5000     # p088

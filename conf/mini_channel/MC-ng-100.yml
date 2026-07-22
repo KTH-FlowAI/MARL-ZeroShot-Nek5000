@@ -6,7 +6,7 @@ runner:
     ckpt_int        :  1
 
     if_eval          : True
-    eval_freq        : 5
+    eval_freq        : 2
 
     nb_episodes        : 100
     nb_warmup_episodes : 1
@@ -33,11 +33,11 @@ runner:
     keep_frac     : 0.25
     buffer_mode   : 'rotate'
 
-    seed            : 1998
+    seed            : 199810
 
     random_init     : 6
     rank            : 1
-    agent_run_name  : 2002
+    agent_run_name  : 20021
 
     evaluation      : False
     learnt_policy   : True
@@ -84,7 +84,7 @@ simulation:
     timeStepper : "bdf3"
     variableDt : "no"
     writeControl : 'timeStep'
-    writeInterval : 100_000
+    writeInterval : 100_000_000
     dealiasing : "yes"
     filtering : "none"
     filterWeight : 0.01
@@ -108,4 +108,4 @@ simulation:
     CHKPINTERVAL  :  10000000
     AVSTEP     :  10
     IOSTEP     :  300_000_000
-    SMPSTEP : 23
+    SMPSTEP : 100_000_000

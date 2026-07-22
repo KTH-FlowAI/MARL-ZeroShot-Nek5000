@@ -47,10 +47,10 @@ runner:
     dUdy            : 11.75 
 
     # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
-    reward_fn       : dudy # Options: dudy=0; net_gain=1
+    reward_fn       : net_gain
     reward_alpha    : 1.0
-    reward_beta     : 1.0
-    reward_gamma    : 1.0
+    reward_beta     : 0.0
+    reward_gamma    : 0.0
 
 
 simulation:

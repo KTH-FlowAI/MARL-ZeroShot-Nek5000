@@ -1,31 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# A test case for the new Meta Functionality of WING
 runner: 
 
     nb_interactions : 10_000_000
     random_init     : -2  # -1==No Shuffle, use the No.init = RANK; -2==NOT Cover the current restart file
     rank            : 1 # ID of test case and restart file to use 
 
-    case_name       : "small_wing_nes" 
+    case_name       : 601001 
 
-    agent_ctrl_area : [[0.23,0.40],[0.4,0.5],[0.5,0.7],[0.7,0.88],] # Tricks: use a smaller lower bound and larger upper bound, as the code will adopt the actual minimal.
-    agent_ctrl_side : ["SS","SS","SS","SS",]
+    agent_ctrl_area : [[0.23,0.40],[0.4,0.5],[0.5,0.7],[0.7,0.88],[0.23,0.88]] # Tricks: use a smaller lower bound and larger upper bound, as the code will adopt the actual minimal.
+    agent_ctrl_side : ["SS","SS","SS","SS","PS"]
     ## A list of integer to indicate agent case
-    agent_run_name : ["archived_lc_omega1_SS_BASE_dr",
-                        "archived_lc_omega2_SS_BASE_dr",
-                        "archived_lc_omega3_SS_BASE_dr",
-                         "archived_lc_omega4_SS_BASE_dr"]
+    agent_run_name : ["601031","602031","603031", "604031", "601031"]
     ## A list of string to indicate which policy to read
     ## [REMINDER] policy = FULL policy file name (stem, no .zip); the agent_run_name prefix is NOT auto-added anymore (MetaPolicy._load_policy)
-    policy : ["eval_model_lc_omega1_SS_BASE_dr",
-             "eval_model_lc_omega2_SS_BASE_dr",
-             "eval_model_lc_omega3_SS_BASE_dr",
-             "eval_model_lc_omega4_SS_BASE_dr"]
+    policy : ["601031-rl_model_749700000_steps", "602031-rl_model_716625000_steps","603031-rl_model_217800000_steps","604031-rl_model_2914890000_steps", "601031-rl_model_749700000_steps"]
     ## A list of string to indicate the RL algorithm
-    RL_algorithm : ["TD3","TD3","TD3","TD3","TD3"]
-    source_solvers : ["nek","nek","nek","nek","nek"]
-    #RL_algorithm : ["BL","BL","BL","BL","BL"]
+    # RL_algorithm : ["TD3","TD3","TD3","TD3","TD3"]
+    RL_algorithm : ["BL","BL","BL","BL","BL"]
     ## A list of float indicating the local u_tau 
     u_tau :  [1.0,1.0,1.0, 1.0, 1.0] # We use local scale from NEK 
     ## A list of float indicating the local dU/dy 
@@ -43,19 +35,14 @@ runner:
     vars_io_freq     : 100  ## Freq the save the data
     size_history     : 10 # Number of DRL steps to record the history
 
-    netgain_io_freq : 1
-    reward_fn : "net_gain"
-
-
 
 
 simulation: 
     #I/O
     CASENAME: 'small_wing' 
     exeName : 'nek5000'
-    compile_path   : "envs/cases/small_wing_nes"
+    compile_path   : "envs/cases/small_wing"
     restart_folder : "data/restarts/rs8_small_wing"
-    shared_data_path: "data/simulations/naca4412_200k"
     solver_version : "v17"
     #------------------------------------------
     # Generally VERY IMPORTANT
@@ -63,7 +50,7 @@ simulation:
     # Rank of the test case
     nproc   : 12         
     ndrl    : 3          # Steps to update the rewards (t^+=0.6)
-    znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
+    znmf_avg: 0           # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
     #------------------------------------------
 #--------------------------
@@ -91,6 +78,3 @@ simulation:
     #[_STAT]             # Runtime paramere section for statistics module
     AVSTEP              : 10        # p087
     IOSTEP              : 5     # p088
-
-logging:
-    policy_dir : "./temp/archived/policies_meta_wing_dr" # Default directory to save the policy and log files

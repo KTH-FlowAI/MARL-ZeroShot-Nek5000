@@ -1,7 +1,6 @@
 runner:
     ctrl_max_amp    :  0.064
     ctrl_min_amp    : -0.064
-    action_noise    :  0.1
     npl_state       :  2
     ckpt_int        :  1
 
@@ -12,21 +11,46 @@ runner:
     nb_warmup_episodes : 1
     nb_interactions : 2500
     train_steps     : 300
-    gradient_steps  : 64
+    #[TUNE] Replay ratio was 64 updates / 300 collected steps ~= 0.21 per
+    #[TUNE] vectorized step (far lower per transition, since each control step
+    #[TUNE] adds nAgents transitions). SAC wants ~1. The Nek solver dominates
+    #[TUNE] wall-clock, so more gradient steps are ~free. 300 -> ratio ~= 1:1.
+    #[TUNE] Push to ~512 for a more aggressive ~1.7:1; do NOT use -1 (= 300*nAgents).
+    gradient_steps  : 300
 
-    RL_algorithm    : "TD3"
+    # ---- SAC (max-entropy off-policy) ----
+    RL_algorithm    : "SAC"
     rescale_actions : True
-    learning_rate   : 1e-3
+    learning_rate   : 1e-3       # if the critic loss diverges with the higher
+                                 # gradient count, drop to 3e-4
     batch_size      : 256
     buffer_size     : 5_000_000
-    learning_starts : 100
+    learning_starts : 100        # NOT a bottleneck: training is gated by the
+                                 # 300-step rollout, so the first update already
+                                 # sees 300*nAgents diverse transitions.
     tau             : 0.005
-    policy_delay    : 2
+    gamma           : 0.99
 
+    # SAC entropy control.
+    #[TUNE] -0.5 (baseline) keeps more exploration to avoid bang-bang, but that
+    #[TUNE] SLOWS early convergence. -1.0 (= -dim(A), the SB3 heuristic) lets the
+    #[TUNE] policy commit sooner. Watch the action histogram for saturation at +/-1;
+    #[TUNE] if it goes bang-bang, move back toward -0.7/-0.5.
+    sac_ent_coef        : 'auto'
+    sac_target_entropy  : "auto"
+    target_update_interval : 1
+    #[TUNE] External Gaussian action noise ON TOP of SAC's entropy-driven
+    #[TUNE] exploration. `sac_action_noise: True` keeps a NormalActionNoise whose
+    #[TUNE] sigma is `action_noise`, applied in the rescaled [-1,1] action space
+    #[TUNE] (0.1 == the TD3 baseline; ~0.0064 physical after ctrl_max_amp scaling).
+    #[TUNE] Unusual for SAC and adds exploration that can slow convergence -- lower
+    #[TUNE] the sigma, or set the flag back to False, if the policy stays too noisy.
+    sac_action_noise    : True
+    action_noise        : 0.1
 
-    policy_file     : 'conf/default_ddpg_policy.yml'
+    policy_file     : 'conf/default_sac_policy.yml'
     policy          : 'best_model'
-    load_agent      :  True
+    load_agent      :  False
     normalize_input : 'utau'
 
     custom_buffer : False
@@ -37,13 +61,14 @@ runner:
 
     random_init     : 6
     rank            : 1
-    agent_run_name  : 20011
+    # tuned SAC variant (baseline run id was mc_nes_sac)
+    agent_run_name  : "mc_nes_sac_fast"
 
     evaluation      : False
     learnt_policy   : True
 
     u_tau           : 0.064
-    dUdy            : 11.75 
+    dUdy            : 11.75
 
     # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
     reward_fn       : net_gain
@@ -58,7 +83,7 @@ simulation:
     compile_path   : "envs/cases/mini_channel"
     restart_folder : "data/restarts/rs6_mini_Channel"
     TOTCTRL : 220
-    nproc   : 32
+    nproc   : 10
     ndrl    : 10
     znmf_avg: 1
     target_cfl: 2.0
@@ -106,6 +131,6 @@ simulation:
     READCHKPT     :  "yes"
     CHKPFNUMBER   :  1
     CHKPINTERVAL  :  10000000
-    AVSTEP     :  10
+    AVSTEP     :  100_000
     IOSTEP     :  300_000_000
     SMPSTEP : 100_000_000
