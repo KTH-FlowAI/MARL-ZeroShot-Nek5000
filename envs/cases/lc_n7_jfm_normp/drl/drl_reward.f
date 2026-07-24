@@ -671,7 +671,12 @@ c=============================================
       integer, parameter :: iunit = 52002
       integer, parameter :: MAX_MON_LINES = 10000
       integer, save      :: ifile = 0
-      integer :: nlines, ios
+c     [MOD] nrec: records already in the current file, carried in memory so
+c     [MOD] only the first record of a run has to touch the disk.
+c     [MOD] hdrdon: the header of the current file has been dealt with.
+      integer, save      :: nrec = -1
+      logical, save      :: hdrdon = .false.
+      integer :: nlines, ntot, ios
       character(len=200) :: cbuf
       character(len=40)  :: fname
 c=============================================
@@ -697,42 +702,83 @@ c=============================================
       endif
 
       if (NID.eq.0) then
-c        Build current filename
-        write(fname,'(A,I5.5,A)') 'reward_monitor', ifile, '.dat'
-
-         inquire(file=trim(fname), exist=fexist)
-         if (fexist) then
-c           Count existing data lines (skip header) before appending
-            nlines = 0
-            open(iunit, file=trim(fname), status='old')
-            read(iunit,'(A)',iostat=ios) cbuf
-            do
-               read(iunit,'(A)',iostat=ios) cbuf
-               if (ios.ne.0) exit
-               nlines = nlines + 1
-            end do
-            close(iunit)
-c           File full: roll over to a new numbered file
-            if (nlines.ge.MAX_MON_LINES) then
-               ifile = ifile + 1
+c        [MOD] Locate the file to append to. The old code probed only
+c        [MOD] reward_monitor<ifile>.dat, and on a full file bumped ifile once
+c        [MOD] and opened the result with status='new' -- a fatal runtime error
+c        [MOD] whenever that file already existed, which is exactly what a
+c        [MOD] halted evaluation leaves behind in eval/env_XXX. A partially
+c        [MOD] filled leftover was worse: it was appended to, splicing two
+c        [MOD] independent trajectories into one series with no error at all.
+         if (nrec.lt.0) then
+            do while (ifile.lt.99999 .and. nrec.lt.0)
                write(fname,'(A,I5.5,A)')
      $            'reward_monitor', ifile, '.dat'
-               open(iunit, file=trim(fname), status='new')
-               write(iunit,'(A)')
-     $            '# time          i_evolv'//
-     $            '  rwd_tau         rwd_pw          rwd_v3'
-            else
-               open(iunit, file=trim(fname), position='append')
+               inquire(file=trim(fname), exist=fexist)
+               if (.not.fexist) then
+                  nrec   = 0
+                  hdrdon = .false.
+               else
+                  nlines = 0
+                  ntot   = 0
+                  open(iunit, file=trim(fname), status='old',
+     $                 iostat=ios)
+                  if (ios.ne.0) then
+                     write(6,*) '[MONITOR] SKIP UNREADABLE ',
+     $                          trim(fname)
+                     ifile = ifile + 1
+                  else
+c                    [MOD] Count every non-comment line, instead of assuming
+c                    [MOD] exactly one header line sits at the top.
+                     do
+                        read(iunit,'(A)',iostat=ios) cbuf
+                        if (ios.ne.0) exit
+                        ntot = ntot + 1
+                        if (cbuf(1:1).ne.'#') nlines = nlines + 1
+                     end do
+                     close(iunit)
+                     if (nlines.lt.MAX_MON_LINES) then
+                        nrec   = nlines
+                        hdrdon = ntot.gt.0
+                     else
+                        ifile = ifile + 1
+                     end if
+                  end if
+               end if
+            end do
+            if (nrec.lt.0) then
+               write(6,*) '[MONITOR] NO WRITABLE FILE, RECORD DROPPED'
+               return
             end if
-         else
-            open(iunit, file=trim(fname), status='new')
+         end if
+c        [MOD] Roll over once the current file is full.
+         if (nrec.ge.MAX_MON_LINES) then
+            ifile  = ifile + 1
+            nrec   = 0
+            hdrdon = .false.
+         end if
+         write(fname,'(A,I5.5,A)') 'reward_monitor', ifile, '.dat'
+c        [MOD] Always append, never status='new'. A monitor record is a
+c        [MOD] diagnostic side-channel, so an I/O failure warns and drops the
+c        [MOD] record rather than aborting: killing rank 0 here would leave the
+c        [MOD] solver ranks in the next collective, i.e. a whole-job deadlock.
+c        [MOD] Returning is safe, the collectives above are already done.
+         open(iunit, file=trim(fname), position='append', iostat=ios)
+         if (ios.ne.0) then
+            write(6,*) '[MONITOR] CANNOT OPEN ', trim(fname),
+     $                 ' iostat=', ios, ' RECORD DROPPED'
+            nrec = -1
+            return
+         end if
+         if (.not.hdrdon) then
             write(iunit,'(A)')
      $         '# time          i_evolv'//
      $         '  rwd_tau         rwd_pw          rwd_v3'
-         endif
+            hdrdon = .true.
+         end if
          write(iunit,'(E16.8,1X,I6,3(1X,E16.8))')
      $      time, i_evolv, wrk(1), wrk(2), wrk(3)
          close(iunit)
+         nrec = nrec + 1
         print *, "[MONITOR] RECORD",time,i_evolv,wrk(1),wrk(2),wrk(3)
       endif
 
