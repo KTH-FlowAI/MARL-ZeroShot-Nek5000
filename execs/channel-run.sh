@@ -11,6 +11,12 @@
 #      ./execs/channel-run.sh --config conf/mini_channel/MC-ng-111.yml --mode train
 #      ./execs/channel-run.sh --config conf/mini_channel/MC-ng-111.yml --mode evaluate --nenv 2
 #
+#  An evaluation sweep runs runner.rank = --env-start .. --nenv, so a sweep that
+#  does not fit in one job can be picked up where the previous one stopped:
+#
+#      ./execs/channel-run.sh --config conf/mini_channel/MC-ng-111.yml \
+#                             --mode evaluate --env-start 5 --nenv 8
+#
 #  To submit it to SLURM, wrap it with the job generator:
 #
 #      ./execs/sjob-gen.sh --case channel --config conf/mini_channel/MC-ng-111.yml \
@@ -42,7 +48,8 @@ CONFIGS=()                 # --config may be repeated / comma-separated
 MODE="train"               # train|run|evaluate
 SITE=""                    # local|hpc   (empty => auto-detect)
 LOAD_AGENT=""              # ""|True|False  (empty keeps the config value)
-NENV=2                     # evaluate: loop over runner.rank = 1..NENV
+ENV_START=1                # evaluate: first runner.rank of the loop
+NENV=2                     # evaluate: loop over runner.rank = ENV_START..NENV
 IOSTEP=5000
 WRITE_INTERVAL=""          # empty => follow IOSTEP
 SMPSTEP=6
@@ -66,7 +73,10 @@ Usage: $(basename "$0") [OPTIONS]
   --site local|hpc     environment flavour; auto-detected from SLURM_JOB_ID
   --load-agent True|False
                        override runner.load_agent; empty keeps the config value
-  --nenv N             evaluate: run runner.rank = 1..N        [${NENV}]
+  --nenv N             evaluate: last runner.rank of the loop   [${NENV}]
+  --env-start N        evaluate: first runner.rank of the loop  [${ENV_START}]
+                       Use it to resume a sweep that did not fit in one job,
+                       e.g. --env-start 5 --nenv 8 runs ranks 5,6,7,8.
   --iostep N           simulation.IOSTEP                       [${IOSTEP}]
   --write-interval N   simulation.writeInterval          [follows --iostep]
   --smpstep N          simulation.SMPSTEP                      [${SMPSTEP}]
@@ -91,6 +101,10 @@ Examples:
   # long statistics run over a set of cases
   $(basename "$0") --mode evaluate --nenv 1 --nb-interactions 20000 \\
                    --config conf/mini_channel/MC-shapcf.yml --config conf/mini_channel/MC-shapvel.yml
+
+  # resume an evaluation sweep: the first job did ranks 1..4, this one does 5..8
+  $(basename "$0") --config conf/mini_channel/MC-ng-111.yml --mode evaluate \\
+                   --env-start 5 --nenv 8
 EOF
 }
 
@@ -104,6 +118,8 @@ while [[ $# -gt 0 ]]; do
         --site)             SITE="$2";            shift 2 ;;
         --load-agent)       LOAD_AGENT="$2";      shift 2 ;;
         --nenv)             NENV="$2";            shift 2 ;;
+        --env-start|--nenv-start|--ienv0)
+                            ENV_START="$2";       shift 2 ;;
         --iostep)           IOSTEP="$2";          shift 2 ;;
         --write-interval)   WRITE_INTERVAL="$2";  shift 2 ;;
         --smpstep)          SMPSTEP="$2";         shift 2 ;;
@@ -132,6 +148,18 @@ case "${MODE}" in
     evaluate)  RUN_MODE="evaluate" ;;
     *) echo "[ERR] --mode must be train|run|evaluate, got: ${MODE}" >&2; exit 1 ;;
 esac
+
+#[MOD] An evaluation sweep does not always fit in a single job, so the rank loop
+#[MOD] starts at --env-start instead of 1. Both bounds index runner.rank, hence
+#[MOD] the strict check: a typo here silently evaluates the wrong environments.
+if [[ "${RUN_MODE}" == "evaluate" ]]; then
+    [[ "${ENV_START}" =~ ^[0-9]+$ && "${ENV_START}" -ge 1 ]] || {
+        echo "[ERR] --env-start must be a positive integer, got: ${ENV_START}" >&2; exit 1; }
+    [[ "${NENV}" =~ ^[0-9]+$ && "${NENV}" -ge 1 ]] || {
+        echo "[ERR] --nenv must be a positive integer, got: ${NENV}" >&2; exit 1; }
+    [[ "${ENV_START}" -le "${NENV}" ]] || {
+        echo "[ERR] --env-start (${ENV_START}) must not exceed --nenv (${NENV})" >&2; exit 1; }
+fi
 
 if [[ -n "${LOAD_AGENT}" && "${LOAD_AGENT}" != "True" && "${LOAD_AGENT}" != "False" ]]; then
     echo "[ERR] --load-agent must be True or False, got: ${LOAD_AGENT}" >&2; exit 1
@@ -241,6 +269,7 @@ echo "============================================================"
 echo " channel-run  |  site: ${SITE}  |  mode: ${RUN_MODE}"
 echo " root        : ${ROOT_DIR}"
 echo " configs     : ${CONFIGS[*]}"
+[[ "${RUN_MODE}" == "evaluate" ]] && echo " env ranks   : ${ENV_START}..${NENV}"
 [[ -n "${SLURM_JOB_ID}" ]] && echo " slurm job   : ${SLURM_JOB_ID} on ${SLURM_NODELIST}"
 echo " started at  : $(date)"
 echo "============================================================"
@@ -342,8 +371,8 @@ for _cfg_in in "${CONFIGS[@]}"; do
             simulation.writeInterval=${WRITE_INTERVAL} \
             simulation.SMPSTEP=${SMPSTEP}"
 
-        for ienv in $(seq 1 "${NENV}"); do
-            echo "[EVAL] rank ${ienv}/${NENV}"
+        for ienv in $(seq "${ENV_START}" "${NENV}"); do
+            echo "[EVAL] rank ${ienv} of ${ENV_START}..${NENV}"
 
             run_cmd "${LOG_DIR}/log.initial.${CONFIG_TAG}" \
                 "mpirun -n 1 python -m nek_MARL initial ${CONFIG_NAME} \

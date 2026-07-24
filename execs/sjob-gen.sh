@@ -13,6 +13,11 @@
 #      ./execs/sjob-gen.sh --case channel --config conf/MC-ng-111.yml \
 #                          --mode evaluate --nenv 2 -J eval-ng111 --begin +3h
 #
+#  A channel evaluation covers runner.rank = --env-start .. --nenv, so a sweep
+#  that outlives one job is submitted as a chain of jobs over disjoint ranges:
+#      ... --mode evaluate --env-start 1 --nenv 4 -J eval-1-4
+#      ... --mode evaluate --env-start 5 --nenv 8 -J eval-5-8
+#
 #      ./execs/sjob-gen.sh --case wing --config conf/NACA4412-SHAP-Vel-2540.yml \
 #                          -J shap-wing -N 86 --begin 2026-06-29T16:23:42
 #
@@ -59,7 +64,11 @@ Case selection
   --case channel|wing    which payload script to wrap            [${CASE}]
   --config PATH          config file (repeatable / comma-separated)
   --mode MODE            train|run|evaluate (channel), evaluate (wing)
-  --nenv N               channel evaluate: number of environments
+  --nenv N               channel evaluate: last environment of the loop
+  --env-start N          channel evaluate: first environment of the loop    [1]
+                         The payload runs runner.rank = env-start..nenv, so a
+                         sweep too long for one job can be split over several:
+                         job 1 --env-start 1 --nenv 4, job 2 --env-start 5 --nenv 8
 
 SLURM header
   -J, --job-name NAME    #SBATCH -J                  [derived from the config]
@@ -94,6 +103,8 @@ while [[ $# -gt 0 ]]; do
         --config)            IFS=',' read -r -a _c <<< "$2"; CONFIGS+=("${_c[@]}"); shift 2 ;;
         --mode|--run-mode)   MODE="$2";            shift 2 ;;
         --nenv)              PAYLOAD_ARGS+=(--nenv "$2"); shift 2 ;;
+        --env-start|--nenv-start)
+                             PAYLOAD_ARGS+=(--env-start "$2"); shift 2 ;;
         -J|--job-name)       JOB_NAME="$2";        shift 2 ;;
         -p|--partition)      PARTITION="$2";       shift 2 ;;
         -b|--begin)          BEGIN="$2";           shift 2 ;;

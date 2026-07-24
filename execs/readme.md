@@ -26,6 +26,10 @@ inside a batch job. Run everything from the repo root.
 ./execs/channel-run.sh --config conf/MC-ng-111.yml --mode evaluate \
     --nenv 2 --iostep 10000 --smpstep 12
 
+# channel — resume a sweep: this run does ranks 5..8, a previous one did 1..4
+./execs/channel-run.sh --config conf/MC-ng-111.yml --mode evaluate \
+    --env-start 5 --nenv 8
+
 # channel — statistics sweep over several cases
 ./execs/channel-run.sh --mode evaluate --nenv 1 --nb-interactions 20000 \
     --config conf/MC-shapcf.yml --config conf/MC-shapvel.yml
@@ -41,6 +45,9 @@ every flag. Useful ones:
 - `--load-agent True|False` overrides `runner.load_agent` without editing the config.
 - `--extra "runner.seed=7 runner.nb_episodes=10"` appends arbitrary overrides.
 - `--site local|hpc` forces the environment flavour if the auto-detection is wrong.
+- Evaluation loops over `runner.rank = --env-start .. --nenv` (`--env-start`
+  defaults to 1), so a sweep that does not fit in one job is split into several
+  runs over disjoint ranges instead of restarting from rank 1.
 - Evaluation forces `reward_fn=net_gain` (change with `--reward-fn`) on **both**
   the `initial` and the `evaluate` call — they set `UPARAM(9)`, i.e. the Fortran
   MPI buffer count, and must agree or the run deadlocks.
