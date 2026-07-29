@@ -189,6 +189,8 @@ class Embedded:
     resume:bool          = False
     # Also write binary drlrec files when Python drives the coupled solver.
     coupled_recorder:bool = False
+    # Optional classical law written directly as a .pol (currently OC or BL).
+    analytic_policy:Optional[str] = None
 
     ctrl_areas:Any      = None    # [[xmin, xmax], ...]
     ctrl_sides:Any      = None    # ['ANY' | 'SS' | 'PS', ...]

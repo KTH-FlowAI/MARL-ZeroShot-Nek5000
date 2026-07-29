@@ -233,6 +233,9 @@ class Embedded:
     # Also write binary drlrec files when Python drives the coupled solver.
     # Kept off so existing training jobs retain their current I/O behaviour.
     coupled_recorder:bool = False
+    # Optional classical law written directly as a .pol (currently OC or BL),
+    # avoiding an SB3 checkpoint for an embedded evaluation.
+    analytic_policy:Optional[str] = None
 
     # Per-policy table. Any of these may stay None, in which case the
     # single-region defaults are taken from the Runner section.

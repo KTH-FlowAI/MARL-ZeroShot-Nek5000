@@ -108,6 +108,17 @@ parameters, and `--` bridges the two. Run `execs/channel-run.sh --help` /
 # equivalent short form for embedded-only submissions
 ./execs/sjob-solo --config conf/mini_channel/MC-nes.yml \
     -J solo-nes -t 24:00:00 --submit -- --nb-interactions 20000
+
+# large channel, Re_tau=207 / omega1 SS energy-gain controller.
+# First build lc_n7 once with --solver raw; auto sizing requests 512 Nek ranks.
+./execs/sjob-solo \
+    --config conf/omega1_BASE/lc-omega1-SS-eng-embedded-lc_n7.yml \
+    -J lc-omega1-solo -t 24:00:00 --submit
+
+# large-channel analytic opposition control; no SB3 checkpoint is required
+./execs/sjob-solo \
+    --config conf/omega1_BASE/lc-omega1-SS-oc-embedded-lc_n7.yml \
+    -J lc-omega1-oc-solo -t 24:00:00 --submit
 ```
 
 Generated scripts are ordinary sbatch files, but hand-editing is only a last

@@ -704,10 +704,23 @@ class NEK_INIT():
         the `.pol` files are referenced by bare file name.
         """
         from lib.pol_export import (export_checkpoint, side_code,
-                                    write_run_config)
+                                    write_analytic_pol, write_run_config)
 
         emb, drl = self.emb, self.drl
         table = self._policy_table()
+        analytic = getattr(emb, 'analytic_policy', None)
+        if analytic is not None:
+            analytic = str(analytic).strip().upper()
+            if analytic not in ('OC', 'BL'):
+                raise ValueError(
+                    f"[POLICY] unsupported analytic_policy '{analytic}'; "
+                    "expected OC or BL")
+            nstate = int(getattr(drl, 'npl_state', 2))
+            if nstate < 2 and analytic == 'OC':
+                raise ValueError(
+                    '[POLICY] analytic OC needs npl_state >= 2 for v\'')
+        else:
+            nstate = 0
 
         # Action-space bounds, mirroring how nek_marl builds them. The meta
         # Runner has no rescale_actions: MetaPolicy._rescale_actions always
@@ -719,23 +732,28 @@ class NEK_INIT():
 
         entries = []
         for il, p in enumerate(table):
-            ckpt = str(p['ckpt'])
-            if not ckpt.endswith('.zip'):
-                ckpt += '.zip'
-            if not os.path.isfile(ckpt):
-                print(f"[POLICY] checkpoint NOT FOUND: {ckpt}", flush=True)
-                return False
-
             fname = f"actor_{il:03d}.pol"
             out = os.path.join(self.rank_folder, fname)
-            algo, dims = export_checkpoint(ckpt, out, p['utau'], p['amp'],
-                                           alow, ahigh,
-                                           source_solver=p.get('src', 'nek'))
+            if analytic is not None:
+                dims = write_analytic_pol(out, analytic, p['utau'], p['amp'],
+                                          nin=nstate)
+                algo = f'analytic:{analytic}'
+            else:
+                ckpt = str(p['ckpt'])
+                if not ckpt.endswith('.zip'):
+                    ckpt += '.zip'
+                if not os.path.isfile(ckpt):
+                    print(f"[POLICY] checkpoint NOT FOUND: {ckpt}", flush=True)
+                    return False
+                algo, dims = export_checkpoint(ckpt, out, p['utau'], p['amp'],
+                                               alow, ahigh,
+                                               source_solver=p.get('src', 'nek'))
             print(f"[POLICY] region {il}: {algo} "
                   f"{' -> '.join(str(d) for d in dims)} "
                   f"utau={p['utau']} amp={p['amp']} nupd={p['nupd']} "
                   f"src={p.get('src','nek')}", flush=True)
-            print(f"[POLICY]            {ckpt}", flush=True)
+            if analytic is None:
+                print(f"[POLICY]            {ckpt}", flush=True)
 
             entries.append({'xmin': p['xmin'], 'xmax': p['xmax'],
                             'side': side_code(p['side']), 'utau': p['utau'],

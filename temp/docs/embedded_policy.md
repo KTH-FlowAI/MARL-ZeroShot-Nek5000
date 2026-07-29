@@ -348,6 +348,33 @@ and monitor agree to `1.16e-08` relative.
     -J solo-nes -t 24:00:00 --submit -- --nb-interactions 20000
 ```
 
+### Large-channel (lc_n7) deployment
+
+The Reτ=207 omega1 suction-side energy-gain evaluation is configured in
+`conf/omega1_BASE/lc-omega1-SS-eng-embedded-lc_n7.yml`. It uses the
+`envs/cases/lc_n7` source, links `data/simulations/large_channel/` for the
+mesh, and expects the source controller under `runs/300101/logs/best_model.zip`.
+On the HPC checkout, build the raw solver once, then generate and submit the
+512-rank job:
+
+```bash
+./utils/compile_case.sh --path envs/cases/lc_n7 --solver raw
+./execs/sjob-solo \
+  --config conf/omega1_BASE/lc-omega1-SS-eng-embedded-lc_n7.yml \
+  -J lc-omega1-solo -t 24:00:00 --submit
+```
+
+The config derives 30,000 steps from 2,500 interactions × `ndrl=12`, records
+every tenth control cycle to limit trajectory output, and writes a checkpoint
+every 6,000 steps for `--resume`.
+
+The matching analytic opposition-control deployment is
+`conf/omega1_BASE/lc-omega1-SS-oc-embedded-lc_n7.yml`. It writes a one-layer
+identity actor at preparation time and therefore needs no SB3 checkpoint. Its
+`embedded.u_tau: [1.0]` and `embedded.ctrl_max_amp: [1.0]` deliberately make
+the law `action = -v'`, exactly matching the legacy
+`lc-omega1-SS-oc.yml`/`lib.AFC.OppoCtrl` setup.
+
 Per env rank the launcher runs `python -m nek_MARL initial` for a channel or
 `python -m meta_MARL initial` for a wing, then stages the mode switch, `.pol`
 files, `drl_policy.in`, and `drlrec/`. It then runs

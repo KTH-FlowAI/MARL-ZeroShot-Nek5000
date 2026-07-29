@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+# Embedded, Python-free evaluation of the omega1 SS energy-gain controller.
+#
+# This is intentionally a standalone evaluation config, not a training config.
+# It retains the physical/control parameters from lc-omega1-SS-eng.yml while
+# using the lc_n7 source tree and the raw Nek build (nek5000_solo).
+#
+# HPC prerequisites:
+#   * runs/300101/logs/best_model.zip (or override runner.agent_run_name/policy)
+#   * data/restarts/rs6_lc_noresize_reth365/init_<rank>/
+#   * data/simulations/large_channel/tcf.re2 and tcf.ma2
+
+runner:
+    # Controller trained for this Re_tau=207 case.  Actions are normalized by
+    # u_tau, then scaled by ctrl_max_amp inside the exported actor.
+    RL_algorithm: "TD3"
+    policy_file: 'conf/default_ddpg_policy.yml'
+    policy: 'best_model'
+    agent_run_name: '300101'
+    load_agent: true
+    learnt_policy: true
+    evaluation: true
+    random_init: 6
+    rank: 1
+
+    npl_state: 2
+    normalize_input: 'utau'
+    u_tau: 0.0630
+    ctrl_min_amp: -0.0630
+    ctrl_max_amp: 0.0630
+
+    # Number of complete control cycles.  Preparation derives numSteps as
+    # nb_interactions * ndrl = 2500 * 12 = 30000 solver steps.
+    nb_interactions: 2500
+    dUdy: 13.10
+    reward_fn: net_gain
+    reward_alpha: 1.0
+    reward_beta: 1.0
+    reward_gamma: 1.0
+
+simulation:
+    solver_version: 'v19'
+    CASENAME: 'tcf'
+    exeName: 'nek5000_solo'
+    compile_path: 'envs/cases/lc_n7'
+    # The bulk mesh is linked into each eval environment, not copied.
+    shared_data_path: 'data/simulations/large_channel'
+    shared_data_link: true
+    restart_folder: 'data/restarts/rs6_lc_noresize_reth365'
+
+    # Large-channel geometry and discretization (omega1/Re_tau=207).
+    TOTCTRL: 128             # must match envs/cases/lc_n7/SIZE
+    nproc: 512
+    lx1: 8
+    Lx: 6.28
+    Ly: 1.0
+    Lz: 3.14
+    Nx: 8
+    Ny: 8
+    Nz: 8
+
+    # Control and sensing physics.  ndrl=12 gives Delta t+ = 0.6 here.
+    ndrl: 12
+    znmf_avg: 1
+    target_cfl: 2.0
+    retau: 207.0
+    y_sensing: 15.0
+    gll_unique: 1
+    nzs: 1
+    nxs: 1
+
+    # Body-force damping stays disabled; this evaluates the trained baseline.
+    ys_bdf: 0.0
+    amp_bdf: 0.0
+    ret_bdf: 0.0
+
+    # Nek time integration and Re_tau=207 viscosity.
+    stopAt: 'numSteps'
+    numSteps: 30000          # verified/overwritten from nb_interactions * ndrl
+    dt: -4.0e-03
+    tmax: 100000.0
+    timeStepper: 'bdf3'
+    variableDt: 'no'
+    writeControl: 'timeStep'
+    writeInterval: 200000000
+    dealiasing: 'yes'
+    filtering: 'none'
+    filterWeight: 0.01
+    filterCutoffRatio: 0.9
+    stressFormulation: 'no'
+    variableProperties: 'no'
+    p_residualTol: 1e-8
+    p_residualProj: 'no'
+    v_residualTol: 1e-8
+    v_residualProj: 'no'
+    density: 1.0
+    viscosity: -3300
+    advection: 'yes'
+
+    PARFWRITE: 'no'
+    PARFNAME: 'outparfile'
+    LOGLEVEL: 1
+    WALLTIME: '23:45'
+    READCHKPT: 'yes'
+    CHKPFNUMBER: 1
+    # 500 interactions per checkpoint; sufficient for --resume without
+    # changing the control trajectory between checkpoint writes.
+    CHKPINTERVAL: 6000
+    AVSTEP: 10
+    IOSTEP: 100000000
+    SMPSTEP: 100000000
+
+embedded:
+    enabled: true
+    net_precision: 8
+    # Writing every cycle would be about 8 GB for 2500 cycles at 512 ranks.
+    # Every tenth cycle retains a diagnostic trajectory at a manageable size.
+    rec_freq: 10
+    rec_bufsize: 100
+    resume: false
+    coupled_recorder: false

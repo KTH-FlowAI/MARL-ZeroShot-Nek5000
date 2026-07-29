@@ -15,6 +15,7 @@ c=============================================
         include "INPUT"
         include "TSTEP"
         include 'DRL'
+        include 'POLICY'
         include 'PARALLEL' ! Communications
         include 'mpif.h'
         logical, save :: evolving = .false.
@@ -25,10 +26,21 @@ c=============================================
         integer parent_comm,ierr,my_nid
         integer MASTER,ierror
         logical drl_check_d
+        integer ictrl_mode
 c=============================================
 c       Function
 c=============================================
-        
+
+!#[MOD] UPARAM(10): 0=coupled Python controller, 1=embedded actor.
+!#[MOD] The branch must precede MPI_INTERCOMM_CREATE: a solo run has no
+!#[MOD] Python rank on the other side of that communicator.
+        ictrl_mode = nint(UPARAM(10))
+        pol_ifsolo = ictrl_mode.eq.1
+        if (pol_ifsolo) then
+           call POL_main
+           return
+        endif
+
         ! Reset the restart state
         call drl_if_restart(drl_check_d,2) ! ==> False
 

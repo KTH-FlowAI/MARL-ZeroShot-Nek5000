@@ -1,24 +1,24 @@
-### makefile automatically created by makenek 05/28/2026 20:31:46 ###
+### makefile automatically created by makenek 07/28/2026 23:45:32 ###
 BINNAME=nek5000
 LIBNAME=libnek5000.a
 CASENAME:=tcf
 CASEDIR:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/cases/lc_n7
-S=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/core
-SCMT=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/core/cmt
+S=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Nek5000/core
+SCMT=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Nek5000/core/cmt
 OPT_INCDIR=./
 OBJDIR=obj
 
-FC=mpif77  -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/driver/comm -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/driver/frame -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/driver/frame/monitor -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/driver/frame/runparam -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/io/checkpoint -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/io/checkpoint/mstep -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/io/io_tools -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/tools/tstepper -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/tools/baseflow/sfd -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/tools/tstepper/powerit -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/conht -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/math -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/forcing/noise_box -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/forcing/sponge_box -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Toolbox/utility/grid/map2D
+FC=mpif77  -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/driver/comm -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/driver/frame -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/driver/frame/monitor -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/driver/frame/runparam -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/io/checkpoint -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/io/checkpoint/mstep -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/io/io_tools -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/tools/tstepper -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/tools/baseflow/sfd -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/tools/tstepper/powerit -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/utility/conht -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/utility/math -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/utility/forcing/noise_box -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/utility/forcing/sponge_box -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Toolbox/utility/grid/map2D
 CC=mpicc
 FFLAGS+=-cpp -fdefault-real-8 -fdefault-double-8 -std=legacy 
 CFLAGS+=
 LDFLAGS+= -Wl,--allow-multiple-definition
 
 PPPO=
-PPS=MPIIO DRL BDFD TSRS NETGAIN GAINMONITOR MPI UNDERSCORE GLOBAL_LONG_LONG TIMER
+PPS=MPIIO DRL BDFD TSRS GAINMONITOR MPI UNDERSCORE GLOBAL_LONG_LONG TIMER
 
-USR=frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o chkpoint.o chkpt_mstp.o map2D.o stat.o stat_IO.o math_tools.o drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o tsrs.o tsrs_IO.o pts_redistribute.o bdforce.o
-USR_LFLAGS= -L/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/blasLapack -lblasLapack -L/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/gslib/lib -lgs
+USR=frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o chkpoint.o chkpt_mstp.o map2D.o stat.o stat_IO.o math_tools.o drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o pol_core.o pol_net.o pol_main.o pol_IO.o tsrs.o tsrs_IO.o pts_redistribute.o bdforce.o
+USR_LFLAGS= -L/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Nek5000/3rd_party/blasLapack -lblasLapack -L/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Nek5000/3rd_party/gslib/lib -lgs
 
 MPI=1
 CMT=0
@@ -28,7 +28,7 @@ VISIT=0
 VISIT_IFLAGS=
 VISIT_LFLAGS=
 HYPRE_IFLAGS=
-GSLIB_IFLAGS:= -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_DRL_Framework/Nek5000/3rd_party/gslib/include
+GSLIB_IFLAGS:= -I/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/KTH_Framework/Nek5000/3rd_party/gslib/include
 PARRSB_IFLAGS=
 
 ################################################################################
