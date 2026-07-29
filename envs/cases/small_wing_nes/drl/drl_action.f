@@ -16,6 +16,7 @@ c=============================================
         include "TSTEP"
         include 'PARALLEL'
         include 'INPUT'
+        include 'POLICY'
 c=============================================
 c       Function
 c=============================================
@@ -33,6 +34,7 @@ c-----------------------------------------------
             ! call wall_aft_vel               ! TEST the actutation on the wall 
             call recv_Actions() 
             call nekgsync()
+            if (pol_ifrec) pol_icyc = pol_icyc + 1
       
       ! Zero-net-mass-flux 
       if (int(PARAM(90)).gt.0) then 
@@ -59,6 +61,7 @@ c=============================================
       include 'INPUT'
       include 'PARALLEL'
       include 'DRL'         
+      include 'POLICY'
       include 'mpif.h'
       integer k,il,jl        ! Iteration
       integer len,recctrl ! Flag for counting 
@@ -101,8 +104,45 @@ c=============================================
       ! print *,"[ACTION] UPDATE NID=",NID
       call nekgsync()
       endif
-! Update 
-!----------------------------------------
+
+!#[MOD] The scatter of act_buffer onto the ACTIONS field is split into
+!#[MOD] apply_actions() so the embedded (Python-free) mode can reuse it with
+!#[MOD] a locally evaluated buffer. recv_Actions keeps its behaviour exactly.
+      call apply_actions(act_buffer)
+      do il=1,NUMCTRL
+         pol_hold(il) = act_buffer(il)
+      enddo
+
+      end subroutine recv_Actions
+c------------------------------------------------------------------
+
+
+c------------------------------------------------------------------
+      subroutine apply_actions(act_buffer)
+c Scatter a per-agent action buffer onto the ACTIONS field and rebuild the
+c actuation mask. Shared by both control modes:
+c   coupled  -- act_buffer arrives by MPI from Python (recv_Actions)
+c   embedded -- act_buffer is produced locally by pol_actions()
+c=============================================
+c       Define variable
+c=============================================
+      implicit none
+      include 'SIZE'
+      include 'TSTEP'
+      include 'INPUT'
+      include 'PARALLEL'
+      include 'DRL'
+      include 'SOLN'
+      integer il, jl, ntot
+      integer glbid,fceid,lclid
+      integer ix,iy,iz
+      real    act_buffer(totctrl), act_i
+      real    act_buff(LX1,LY1,LZ1,LELT)
+      integer ilx,ily
+      character*4 str,str1
+c=============================================
+c       Function
+c=============================================
       ntot=LX1*LY1*LZ1*LELT
       ! INIT THE buffer with dumi value YW: NOT Needed!
       ! call cfill(ACTIONS(1,1,1,1),dumi,ntot)
@@ -160,7 +200,7 @@ c--------------------------
             print *, "-------------------------"
       endif
       
-      end subroutine recv_Actions 
+      end subroutine apply_actions
 c------------------------------------------------------------------
 
 c------------------------------------------------------------------
@@ -528,7 +568,6 @@ c=============================================
 
       end subroutine impose_ivalue
 c--------------------------------------------------
-
 
 
 

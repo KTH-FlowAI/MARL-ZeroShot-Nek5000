@@ -16,6 +16,7 @@ c=============================================
         include "TSTEP"
         include 'PARALLEL'
         include 'INPUT'
+        include 'POLICY'
         integer i_znmf
 c=============================================
 c       Function
@@ -34,6 +35,7 @@ c-----------------------------------------------
             ! call wall_aft_vel               ! TEST the actutation on the wall 
             call recv_Actions() 
             call nekgsync()
+            if (pol_ifrec) pol_icyc = pol_icyc + 1
 
             i_znmf =UPARAM(2) 
             ! YW Comment here,since we use the unique action, the Weighted average will explode
@@ -62,43 +64,19 @@ c=============================================
       include 'INPUT'
       include 'PARALLEL'
       include 'DRL'   
+      include 'POLICY'
       include "SOLN"      
       include 'mpif.h'
-      integer k,il,jl        ! Iteration
-      integer len,recctrl ! Flag for counting 
-      
-      !-----------------------
-      integer totLine,ntot
-      integer i_znmf
-      integer glbid,fceid,nidid,nididnek,lclid
-      integer ix,iy,iz,iel
-      real    jetval
-      !-----------------------
-      
       !--------------------------
-      ! MPI 
-      integer parent_comm, ierr
-      integer idx_buffer(totctrl)
-      integer fce_buffer(totctrl)
+      ! MPI
+      integer ierr, il
       real    act_buffer(totctrl)
-      integer sendLen 
-      integer request_send, request_recv, status(mpi_status_size)
       !--------------------------
-      logical ifexist
-      character*13 fNAME
-      integer ilx,ily,ilz
-      character*4 str,str1
-
-      ! wrking 
-      real wrk_buff(LX1,LY1,LZ1,LELT),act_i
-      ! Test 
-      real diff_buff(LX1,LY1,LZ1,LELT),sts_buff(LX1,LY1,LZ1,LELT)
 
 c=============================================
 c       Function
 c=============================================
-      i_znmf = UPARAM(2) 
-      if (NUMCTRL.ne.0) then 
+      if (NUMCTRL.ne.0) then
 
       call MPI_RECV(act_buffer,TOTCTRL,MPI_DOUBLE,
      &            0,NID+90000,DRL_COMM,
@@ -111,7 +89,55 @@ c=============================================
       ! print *,"[ACTION] UPDATE NID=",NID
       endif
       ! call nekgsync()
-! Update 
+
+!#[MOD] The scatter of act_buffer into the ACTIONS field is split out into
+!#[MOD] apply_actions() so the embedded (Python-free) mode can reuse it with
+!#[MOD] a locally evaluated buffer. recv_Actions keeps exactly the behaviour
+!#[MOD] it had: MPI_RECV, then the very same scatter.
+      call apply_actions(act_buffer)
+      do il=1,NUMCTRL
+         pol_hold(il) = act_buffer(il)
+      enddo
+
+      end subroutine recv_Actions
+c------------------------------------------------------------------
+
+
+c------------------------------------------------------------------
+      subroutine apply_actions(act_buffer)
+c Scatter a per-agent action buffer onto the ACTIONS field and rebuild
+c the actuation mask. Shared by both control modes:
+c   coupled  -- act_buffer arrives by MPI from Python (recv_Actions)
+c   embedded -- act_buffer is produced locally by pol_actions()
+c=============================================
+c       Define variable
+c=============================================
+      implicit none
+      include 'SIZE'
+      include 'TSTEP'
+      include 'INPUT'
+      include 'PARALLEL'
+      include 'DRL'
+      include "SOLN"
+      integer il                 ! Iteration
+      integer ntot
+      integer i_znmf
+      integer glbid,fceid,lclid
+      integer ix,iy,iz,iel
+      real    act_buffer(totctrl)
+      integer ilx,ily
+      character*4 str,str1
+
+      ! wrking
+      real wrk_buff(LX1,LY1,LZ1,LELT),act_i
+      ! Test
+      real diff_buff(LX1,LY1,LZ1,LELT),sts_buff(LX1,LY1,LZ1,LELT)
+
+c=============================================
+c       Function
+c=============================================
+      i_znmf = UPARAM(2)
+! Update
 !----------------------------------------
       ntot=LX1*LY1*LZ1*LELT
       ! INIT THE buffer with dumi value 
@@ -186,10 +212,10 @@ c--------------------------
       diff_buff(:,:,:,:)=sts_buff(:,:,:,:)+wrk_buff(:,:,:,:)
 
       call outpost(diff_buff,sts_buff,wrk_buff,vy,t,'dif')
-      endif ! if ISTEP.le.3 
-#endif 
+      endif ! if ISTEP.le.3
+#endif
 
-      end subroutine recv_Actions 
+      end subroutine apply_actions
 c------------------------------------------------------------------
 
 c------------------------------------------------------------------
@@ -629,4 +655,3 @@ c=============================================
       return
       end
 c--------------------------------------------------
-

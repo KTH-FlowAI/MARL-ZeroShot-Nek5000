@@ -13,12 +13,13 @@ cc YW: WRITE the Reward for agents
 c=============================================
 c       Define variable
 c=============================================
-            implicit none 
+            implicit none
             include 'SIZE'
             include 'INPUT'
-            include 'DRL'       
-            include 'TSTEP'  
-            include 'NEKUSE'  
+            include 'DRL'
+            include 'POLICY'
+            include 'TSTEP'
+            include 'NEKUSE'
             include 'mpif.h'
 !     arguments
             integer i_evolv,drl_step
@@ -36,6 +37,12 @@ c=============================================
 c=============================================
 c       Function
 c=============================================
+!#[MOD] In the embedded mode there is no Python rank to receive any of
+!#[MOD] this. compute_dudy / compute_netGain have already filled rwd_*,
+!#[MOD] which is all the local recorder needs, so the whole transfer --
+!#[MOD] including the per-step CFL hand-shake -- is simply skipped.
+            if (pol_ifsolo) return
+
             drl_step = UPARAM(1)
 !#[MOD] Runtime reward-mode selector; MUST match the switch in drl_reward().
 !#[MOD] UPARAM(9): 0 = dudy (1 buffer), 1 = net_gain (3 buffers: tau/pw/v3).

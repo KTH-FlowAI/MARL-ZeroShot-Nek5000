@@ -77,13 +77,7 @@ c=============================================
         include 'NEKUSE'
         include 'TSTEP'
         include 'DRL'
-        ! For calculating Derivative
-        real duidxj(LX1,LY1,LZ1,lelt,3)
-        ! real devU2(LX1*LY1*LZ1*lelt,1)
-        real devU1(LX1,LY1,LZ1,lelt)
-
-        ! Doing average
-        real velV(LX1,LY1,LZ1,LELT),avgV(LX1,LY1,LZ1,LELT)
+        include 'DRL_RWD_DUDY'
         real avgVZ(LX1,LY1,xnel,ynel)   
         real avgVX(LX1,LY1,ynel,znel)
         
@@ -223,19 +217,12 @@ c=============================================
          include 'SIZE'
          include 'TOTAL'
          include 'DRL'
-         real duidxj(LX1,LY1,LZ1,lelt,3)
-         real devU1(LX1,LY1,LZ1,lelt)
-
-         real velV(LX1,LY1,LZ1,LELT),avgV(LX1,LY1,LZ1,LELT)
+         include 'DRL_RWD_NETGAIN'
          real avgVZ(LX1,LY1,xnel,ynel)
          real avgVX(LX1,LY1,ynel,znel)
 
          real denu,rho
          real dudy_i, tau_w, pwvw_i, v3_i
-         real tauw(LX1,LY1,LZ1,LELT)
-         real pwvw(LX1,LY1,LZ1,LELT), v3(LX1,LY1,LZ1,LELT)
-         real buffer(LX1,LY1,LZ1,LELT), wrk_buff(LX1,LY1,LZ1,LELT)
-
          integer i_evolv, n_drl
          real    rwd_i, rwd_c
          integer im, jm, km, fmid(6)

@@ -4,22 +4,71 @@ function error_quit {
     echo -e "$@"
     echo
     echo -e 'Usage:'
-    echo -e './compile_script --clean'
+    echo -e './compile_script [--solver drl|raw] --clean'
     echo -e '   To clean build direcrtory. Makenek will ask for cleaning 3rd-party libraries.'
     echo
-    echo -e './compile_script --all'
+    echo -e './compile_script [--solver drl|raw] --all'
     echo -e '   To compile the code.'
+    echo
+    echo -e '--solver drl  (default) KTH_DRL_Framework -> ./nek5000'
+    echo -e '   Coupled mode: rank 0 is reserved for Python and nek_solve'
+    echo -e '   loops for episode restarts. Use for training and for the'
+    echo -e '   existing MPI evaluation.'
+    echo
+    echo -e '--solver raw  KTH_Framework -> ./nek5000_solo'
+    echo -e '   Embedded mode: stock core, every rank runs Nek and the time'
+    echo -e '   loop terminates normally. Use with UPARAM(10)=1.'
+    echo
+    echo -e 'The two share every source file; only the Nek core differs, so'
+    echo -e 'switching solvers forces a from-scratch rebuild. Both binaries'
+    echo -e 'survive it -- make clean only removes the one it was told to.'
     exit 1
 }
 
+#[MOD] Solver backend selection. Parsed before anything else because it
+#[MOD] decides NEK_SOURCE_ROOT, and makenek records that in .state.
+SOLVER="drl"
+POSARGS=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --solver)
+            SOLVER="$2"; shift 2 ;;
+        *)
+            POSARGS+=("$1"); shift ;;
+    esac
+done
+set -- "${POSARGS[@]}"
+
+case ${SOLVER} in
+    drl)
+        SOLVER_ROOT="KTH_DRL_Framework"
+        BINNAME="nek5000"
+        ;;
+    raw)
+        SOLVER_ROOT="KTH_Framework"
+        BINNAME="nek5000_solo"
+        ;;
+    *)
+        error_quit "Unknown --solver '${SOLVER}', expected drl or raw."
+        ;;
+esac
+
+#[MOD] makefile.template hardcodes BINNAME/LIBNAME and makenek does not
+#[MOD] substitute them, but GNU make treats assignments in MAKEFLAGS as
+#[MOD] command-line overrides -- which beat the ones in the makefile. That
+#[MOD] lets the two builds coexist without editing the solver tree, which
+#[MOD] matters because that tree is gitignored and regenerated from the
+#[MOD] tarballs by utils/initialize_solver.sh.
+export MAKEFLAGS="BINNAME=${BINNAME} LIBNAME=lib${BINNAME}.a"
+
 # Add Framework paths
 
-export TOOLBOX_SRC="../../solver/KTH_DRL_Framework/Toolbox"
+export TOOLBOX_SRC="../../solver/${SOLVER_ROOT}/Toolbox"
 source ${TOOLBOX_SRC}/toolbox_path.sh
 
 # Nek5000 parameters
 export CASE="phill"
-export NEK_SOURCE_ROOT="../../solver/KTH_DRL_Framework/Nek5000"
+export NEK_SOURCE_ROOT="../../solver/${SOLVER_ROOT}/Nek5000"
 export FC="mpif77 "${TOOLBOX_INC}
 export CC="mpicc"
 # export PPLIST="MPIIO CTRL YWDEBUG"
@@ -34,6 +83,13 @@ export PPLIST="MPIIO DRL TSRS GAINMONITOR"
 export USR="frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o"
 USR+=" chkpoint.o chkpt_mstp.o map2D.o stat.o stat_IO.o math_tools.o misc.o"
 USR+=" drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o"
+#[MOD] Embedded deterministic policy (Python-free evaluation mode).
+#[MOD] pol_core.o carries the include-free network arithmetic and is also
+#[MOD] what utils/pol_selftest.sh links on its own; pol_net.o binds it to
+#[MOD] the solver's common blocks; pol_main.o is the control scheduler.
+#[MOD] All three are always compiled: the mode is chosen at runtime via
+#[MOD] UPARAM(10), not here.
+USR+=" pol_core.o pol_net.o pol_main.o pol_IO.o"
 USR+=" tsrs.o tsrs_IO.o pts_redistribute.o"
 export USR_LFLAGS=""
 

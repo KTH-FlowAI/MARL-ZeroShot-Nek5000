@@ -15,20 +15,35 @@ c=============================================
         include "INPUT"
         include "TSTEP"
         include 'DRL'
+        include 'POLICY'
         include 'PARALLEL' ! Communications
         include 'mpif.h'
         logical, save :: evolving = .false.
         integer, save :: i_evolv
         integer, save :: drl_step
         integer ndrl,nst,it
-        character*5 request 
+        character*5 request
         integer parent_comm,ierr,my_nid
         integer MASTER,ierror
         logical drl_check_d
+        integer ictrl_mode        !#[MOD] control-mode selector
 c=============================================
 c       Function
 c=============================================
-        
+
+!#[MOD] UPARAM(10) selects the control mode at runtime:
+!#[MOD]   0 (or unset) = coupled  : Python drives us over MPI, as before
+!#[MOD]   1            = embedded : the actor is evaluated here in F77
+!#[MOD] The embedded path never touches DRL_COMM, so it must branch out
+!#[MOD] before MPI_INTERCOMM_CREATE below -- that call blocks forever if
+!#[MOD] there is no Python rank waiting on the other side.
+        ictrl_mode = nint(UPARAM(10))
+        pol_ifsolo = ictrl_mode.eq.1
+        if (pol_ifsolo) then
+           call POL_main
+           return
+        endif
+
         ! Reset the restart state
         call drl_if_restart(drl_check_d,2) ! ==> False
 
@@ -49,6 +64,7 @@ c=============================================
         ! SET-UP DRL Information (MUST)
         !----------------------
         call drl_init
+        call pol_rec_coupled_init
         
         else ! We will let Nek run 1 step without control 
         !----------------------
@@ -110,6 +126,7 @@ c=============================================
                   call stop_simulation
                   call nekgsync()
             case ('RSETS')
+                  call pol_rec_close
                   call drl_if_restart(drl_check_d,1) ! 1==> .TRUE.
                   call nekgsync()
                   if (NID.eq.0) print *, "[NEK] RESTART Time Evolution!"
@@ -140,6 +157,7 @@ c=============================================
         ! call drl_action
         
         call drl_reward(i_evolv)
+        if (i_evolv.eq.drl_step) call pol_rec_write
         
         ! call moving_smooth_action(i_evolv,drl_step)
 
@@ -164,6 +182,7 @@ c=============================================
         include "TSTEP"
         include 'PARALLEL'
         include 'DRL'
+        include 'POLICY'
         include 'mpif.h'
         character*5 termn, request
         integer parent_comm,ierr,my_nid
@@ -182,6 +201,7 @@ c=============================================
         
         ! THIS IS THE WAY TO Go! 
         if(NID.eq.0) print *, "[TERMN] DISCONNECT!"        
+        call pol_rec_close
         call exitt0        
         end subroutine stop_simulation
 c----------------------------------------------
@@ -194,6 +214,7 @@ c: Just Reset the checkpoints file and time steps when resuming the Simulation
       include 'TOTAL'
       include 'mpif.h'
       include 'DRL'
+      include 'POLICY'
 
       istep = 0
       drl_rwrt = .TRUE.
@@ -203,6 +224,7 @@ c: Just Reset the checkpoints file and time steps when resuming the Simulation
       print *, "============================"
       endif 
       call chkpt_main
+      call pol_rec_coupled_init
 
       return
       end

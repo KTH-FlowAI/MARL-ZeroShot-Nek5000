@@ -18,14 +18,42 @@ function error_quit {
 # Case name (hard-coded)
 export CASE="small_wing"
 # Source path
-SOURCE_ROOT="../../solver/DEC_DRL_Nek5000"
+#[MOD] Solver backend selection, mirroring the mini_channel script.
+#[MOD]   drl (default) -> DEC_DRL_Nek5000, ./nek5000       (coupled: rank 0
+#[MOD]                    is reserved for Python, nek_solve loops episodes)
+#[MOD]   raw           -> DEC_Nek5000,     ./nek5000_solo  (stock core, every
+#[MOD]                    rank runs Nek; use with PARAM(91)=1)
+SOLVER="drl"
+POSARGS=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --solver) SOLVER="$2"; shift 2 ;;
+        *) POSARGS+=("$1"); shift ;;
+    esac
+done
+set -- "${POSARGS[@]}"
+
+case ${SOLVER} in
+    drl) SOLVER_ROOT="DEC_DRL_Nek5000"; BINNAME="nek5000" ;;
+    raw) SOLVER_ROOT="DEC_Nek5000";     BINNAME="nek5000_solo" ;;
+    *)   error_quit "Unknown --solver '${SOLVER}', expected drl or raw." ;;
+esac
+
+#[MOD] makefile.template hardcodes BINNAME/LIBNAME and makenek does not
+#[MOD] substitute them; GNU make treats assignments in MAKEFLAGS as
+#[MOD] command-line overrides, which beat the in-file ones. That lets both
+#[MOD] binaries live in this folder without editing the solver tree.
+export MAKEFLAGS="BINNAME=${BINNAME} LIBNAME=lib${BINNAME}.a"
+
+SOURCE_ROOT="../../solver/${SOLVER_ROOT}"
 # Fortran / C compilers
 F77="mpif77"
 CC="mpicc"
 # generic compiler flags
 G="-I./inc_src -mcmodel=large -std=legacy"
-# pre-processor symbol list
-PPLIST="MPIIO DRL YWDEBUG UTAU NETGAIN"
+# pre-processor symbol list.  YWDEBUG is intentionally absent from the
+# production build; GAINMONITOR writes one compact rank-0 cross-check.
+PPLIST="MPIIO DRL UTAU NETGAIN GAINMONITOR"
 # disable/enable profiling (default true)
 IFPROFILING="true"
 # auxilliary files to compile (a makefile_usr.inc provides the build rules)
@@ -38,6 +66,8 @@ USR+=" time_series.o time_seriesIO.o pts_redistribute.o err_est.o"
 USR+=" rt_filter.o tripf.o misc.o"
 ## CTRL
 USR+=" drl_main.o drl_action.o drl_init.o drl_reward.o drl_state.o drl_IO.o"
+#[MOD] Embedded deterministic policy (Python-free evaluation mode).
+USR+=" pol_core.o pol_net.o pol_main.o pol_IO.o"
 ## ------------------------------------------------------------------------
 
 # assign version tag (required by makenek.inc)
@@ -63,7 +93,7 @@ case $il in
                 # makenek.inc reads $1 as the case name and generates ./makefile
                 set -- ${CASE}
                 source $SOURCE_ROOT_CORE/makenek.inc
-                make -j4 -f makefile 2>&1 | tee log_compile.out
+                make -j4 -f makefile ${MAKEFLAGS} 2>&1 | tee log_compile.out
                 exit 0
                 ;;
         *)
