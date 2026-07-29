@@ -21,6 +21,9 @@
 #      ./execs/sjob-gen.sh --case wing --config conf/NACA4412-SHAP-Vel-2540.yml \
 #                          -J shap-wing -N 86 --begin 2026-06-29T16:23:42
 #
+#      ./execs/sjob-gen.sh --case nek-solo --config conf/mini_channel/MC-nes.yml \
+#                          -J solo-nes -- --nb-interactions 20000
+#
 #  Anything after a bare `--` is forwarded verbatim to the payload script:
 #      ./execs/sjob-gen.sh --case channel --config conf/MC-ng-111.yml -- \
 #                          --smpstep 12 --extra "runner.seed=7"
@@ -61,9 +64,11 @@ usage() {
 Usage: $(basename "$0") [OPTIONS] [-- PAYLOAD_ARGS...]
 
 Case selection
-  --case channel|wing    which payload script to wrap            [${CASE}]
+  --case channel|wing|nek-solo
+                         which payload script to wrap            [${CASE}]
   --config PATH          config file (repeatable / comma-separated)
   --mode MODE            train|run|evaluate (channel), evaluate (wing)
+                         (not used by nek-solo)
   --nenv N               channel evaluate: last environment of the loop
   --env-start N          channel evaluate: first environment of the loop    [1]
                          The payload runs runner.rank = env-start..nenv, so a
@@ -128,10 +133,16 @@ while [[ $# -gt 0 ]]; do
 done
 
 # -- payload script -----------------------------------------------------------
+EXTRA_TASKS=1                 # coupled runs reserve one task for Python
 case "${CASE}" in
-    channel) PAYLOAD="execs/channel-run.sh" ;;
-    wing)    PAYLOAD="execs/wing-run.sh" ;;
-    *) echo "[ERR] --case must be channel or wing, got: ${CASE}" >&2; exit 1 ;;
+    channel)  PAYLOAD="execs/channel-run.sh" ;;
+    wing)     PAYLOAD="execs/wing-run.sh" ;;
+    nek-solo) PAYLOAD="execs/nek-solo-run.sh"; EXTRA_TASKS=0
+              [[ -z "${MODE}" ]] || {
+                  echo "[ERR] --mode is not valid for --case nek-solo" >&2
+                  exit 1
+              } ;;
+    *) echo "[ERR] --case must be channel, wing, or nek-solo; got: ${CASE}" >&2; exit 1 ;;
 esac
 [[ -x "${ROOT_DIR}/${PAYLOAD}" ]] || chmod +x "${ROOT_DIR}/${PAYLOAD}" 2>/dev/null
 
@@ -178,7 +189,8 @@ normalize_begin() {
 BEGIN_NORM="$(normalize_begin "${BEGIN}")"
 
 # -- node count ---------------------------------------------------------------
-# nproc in the config counts the Nek5000 ranks; the agent adds one more.
+# nproc counts Nek5000 ranks. Coupled payloads add one Python agent, while
+# nek-solo launches exactly the solver ranks from the config.
 cfg_get() { grep -ri "$2" "$1" | sed -E "s/^[^:]*:[[:space:]]*//; s/[\"']//g; s/[[:space:]]+\$//" | head -n 1; }
 NPROC="$(cfg_get "${ROOT_DIR}/${CONFIG_ABS[0]}" 'nproc')"
 if [[ "${NODES}" == "auto" ]]; then
@@ -186,11 +198,16 @@ if [[ "${NODES}" == "auto" ]]; then
         echo "[ERR] could not read 'nproc' from ${CONFIG_ABS[0]}; pass -N explicitly" >&2
         exit 1
     fi
-    TOTAL_TASKS=$(( NPROC + 1 ))
+    TOTAL_TASKS=$(( NPROC + EXTRA_TASKS ))
     NODES=$(( (TOTAL_TASKS + NTASKS_PER_NODE - 1) / NTASKS_PER_NODE ))
     # A single-node job only needs the tasks it actually launches.
     [[ ${NODES} -eq 1 ]] && NTASKS_PER_NODE=${TOTAL_TASKS}
-    echo "[GEN] nproc=${NPROC} (+1 agent) -> -N ${NODES} --ntasks-per-node=${NTASKS_PER_NODE}"
+    if [[ ${EXTRA_TASKS} -eq 1 ]]; then
+        TASK_DESC="nproc=${NPROC} (+1 agent)"
+    else
+        TASK_DESC="nproc=${NPROC} (embedded, no agent)"
+    fi
+    echo "[GEN] ${TASK_DESC} -> -N ${NODES} --ntasks-per-node=${NTASKS_PER_NODE}"
 fi
 
 # -----------------------------------------------------------------------------

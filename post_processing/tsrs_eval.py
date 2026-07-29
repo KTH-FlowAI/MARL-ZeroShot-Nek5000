@@ -56,7 +56,6 @@ def parse_args():
     ap.add_argument('--outdir', default='Figs')
     return ap.parse_args()
 
-
 def find_npz(runs_dir, case_id, env):
     base = Path(runs_dir) / str(case_id)
     data_path = base / 'eval' if (base / 'eval').is_dir() else base

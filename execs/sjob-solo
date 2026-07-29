@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# =============================================================================
+# sjob-solo — submit/generate a SLURM job for embedded (Python-free) Nek runs.
+#
+# This is the small convenience front-end for sjob-gen.sh: it pins
+# --case nek-solo and forwards every other generator flag unchanged.  By
+# default it writes execs/sjobs/<job-name>.sh; add --submit to queue it.
+#
+# Example:
+#   ./execs/sjob-solo --config conf/mini_channel/MC-nes.yml \
+#       -J solo-nes -t 24:00:00 --submit -- --nb-interactions 20000
+# =============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+GENERATOR="${SCRIPT_DIR}/sjob-gen.sh"
+
+[[ -x "${GENERATOR}" ]] || {
+    echo "[ERR] missing executable generator: ${GENERATOR}" >&2
+    exit 1
+}
+
+# A fixed case is the point of this wrapper.  Reject an accidental selector
+# rather than allowing a later --case argument to silently override it.
+for arg in "$@"; do
+    case "${arg}" in
+        --case|--case=*)
+            echo "[ERR] sjob-solo always uses --case nek-solo; omit ${arg}" >&2
+            exit 1
+            ;;
+    esac
+done
+
+exec "${GENERATOR}" --case nek-solo "$@"

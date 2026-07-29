@@ -8,7 +8,9 @@ control from the command line.
 | --- | --- |
 | [channel-run.sh](channel-run.sh) | all commands for the minimal-channel cases (`python -m nek_MARL`) |
 | [wing-run.sh](wing-run.sh) | all commands for the NACA4412 wing cases (`python -m meta_MARL`) |
+| [nek-solo-run.sh](nek-solo-run.sh) | embedded-policy evaluation (`nek5000_solo`, no Python MPI rank) |
 | [sjob-gen.sh](sjob-gen.sh) | writes (and optionally submits) a SLURM script wrapping either payload |
+| [sjob-solo](sjob-solo) | focused `nek-solo` front-end to `sjob-gen.sh` |
 
 The payload scripts carry **no** SLURM directives and detect their environment
 from `$SLURM_JOB_ID`, so the identical command line works on a workstation and
@@ -36,6 +38,10 @@ inside a batch job. Run everything from the repo root.
 
 # wing
 ./execs/wing-run.sh --config conf/NACA4412-SHAP-Vel-2540.yml --mv-data yes
+
+# embedded actor: every MPI rank runs Nek, no Python rank is spawned
+./execs/nek-solo-run.sh --config conf/mini_channel/MC-nes.yml \
+    --nb-interactions 20000
 ```
 
 `--dry-run` prints the mpirun lines instead of executing them, and `-h` lists
@@ -94,6 +100,14 @@ parameters, and `--` bridges the two. Run `execs/channel-run.sh --help` /
 ./execs/sjob-gen.sh --case wing --config conf/NACA4412-SHAP-Vel-2540.yml \
     -J shap-wing -N 86 -t 24:00:00 --submit -- \
     --mv-data yes --case-name naca_wing --id 002
+
+# embedded actor: auto sizing uses nproc exactly (there is no +1 agent rank)
+./execs/sjob-gen.sh --case nek-solo --config conf/mini_channel/MC-nes.yml \
+    -J solo-nes -t 24:00:00 --submit -- --nb-interactions 20000
+
+# equivalent short form for embedded-only submissions
+./execs/sjob-solo --config conf/mini_channel/MC-nes.yml \
+    -J solo-nes -t 24:00:00 --submit -- --nb-interactions 20000
 ```
 
 Generated scripts are ordinary sbatch files, but hand-editing is only a last
