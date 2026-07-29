@@ -162,7 +162,13 @@ def initial(conf_file, overrides, **ignored_kwargs):
 
     # Preparation for NEK
     remove_sch(rank_folder)
-    initializer = NEK_INIT(nek=conf.simulation, drl=conf.runner, rank_folder=rank_folder)
+    #[MOD] embedded + logging are passed so the prepare step can emit the
+    #[MOD] .pol networks and drl_policy.in; the meta stack resolves its
+    #[MOD] checkpoints through logging.policy_dir.
+    initializer = NEK_INIT(nek=conf.simulation, drl=conf.runner,
+                           rank_folder=rank_folder,
+                           emb=conf.get('embedded', None),
+                           log=conf.get('logging', None))
     initializer.main()
 
     # Re-direct the running path

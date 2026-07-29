@@ -215,6 +215,36 @@ class Simulation:
 
 
 @dataclass
+class Embedded:
+    """#[MOD] Python-free evaluation: Nek5000 evaluates the actor itself.
+
+    Selected at runtime by UPARAM(10)=1 and requires the `raw` solver
+    build (./nek5000_solo). The list-valued fields describe the control
+    regions and mirror MetaPolicy's per-region settings; leaving them
+    None gives a single policy covering the whole wall, which is what
+    the minimal channel needs.
+    """
+    enabled:bool        = False   # write drl_policy.in and the .pol files
+    net_precision:int   = 8       # accumulation precision: 8 (default) or 4
+    rec_freq:int        = 1       # record every N control cycles
+    rec_bufsize:int     = 100     # records buffered before a flush
+    # Opt-in: use the newest complete local solver checkpoint on preparation.
+    resume:bool          = False
+    # Also write binary drlrec files when Python drives the coupled solver.
+    # Kept off so existing training jobs retain their current I/O behaviour.
+    coupled_recorder:bool = False
+
+    # Per-policy table. Any of these may stay None, in which case the
+    # single-region defaults are taken from the Runner section.
+    ctrl_areas:Any      = None    # [[xmin, xmax], ...]
+    ctrl_sides:Any      = None    # ['ANY' | 'SS' | 'PS', ...]
+    policies:Any        = None    # [checkpoint path, ...]
+    nupd:Any            = None    # [interactions between updates, ...]
+    u_tau:Any           = None    # [per-region u_tau, ...]
+    ctrl_max_amp:Any    = None    # [per-region action amplitude, ...]
+
+
+@dataclass
 class Logging:
     run_name: str = str(int(time.time()))  # str so it can hold a string agent_run_name
     group: Optional[str] = None
@@ -227,6 +257,7 @@ class Config:
     simulation:Simulation   =   Simulation()
     runner: Runner          =   Runner()
     logging: Logging        =   Logging()
+    embedded: Embedded      =   Embedded()   #[MOD] Python-free evaluation
 
 
 def add_subparser(parser: argparse.ArgumentParser):

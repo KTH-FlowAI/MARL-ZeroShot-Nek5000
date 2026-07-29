@@ -321,7 +321,12 @@ def initial(conf_file,overrides,**ignored_kwargs):
     
     # Preparation for NEK
     #-----------------------------------
-    initializer = NEK_INIT(nek=conf.simulation,drl=conf.runner,rank_folder=rank_folder)
+    #[MOD] `embedded` is passed so the prepare step can emit the .pol
+    #[MOD] networks and drl_policy.in when the Python-free mode is on.
+    initializer = NEK_INIT(nek=conf.simulation,drl=conf.runner,
+                           rank_folder=rank_folder,
+                           emb=conf.get('embedded', None),
+                           log=conf.get('logging', None))
     initializer.main()
     #-----------------------------------
     

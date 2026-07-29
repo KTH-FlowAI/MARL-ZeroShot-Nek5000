@@ -55,7 +55,12 @@ simulation:
     exeName : 'nek5000'
     compile_path   : "envs/cases/small_wing_nes"
     restart_folder : "data/restarts/rs8_small_wing"
-    shared_data_path: "data/simulations/naca4412_200k"
+    # The mesh/restart data are 200k, while this case's mask is retained with
+    # the 75k data.  NEK_INIT searches this ordered list and symlinks only the
+    # file it finds, so staging cannot create the fatal empty mask placeholder.
+    shared_data_path:
+      - "data/simulations/naca4412_200k"
+      - "data/simulations/naca4412_75k"
     solver_version : "v17"
     #------------------------------------------
     # Generally VERY IMPORTANT

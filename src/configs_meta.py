@@ -172,6 +172,33 @@ param_mapping = {
 
 
 @dataclass
+class Embedded:
+    """#[MOD] Python-free evaluation for the meta (multi-region) stack.
+
+    The region table is taken from the Runner section that MetaPolicy
+    already uses -- agent_ctrl_area / agent_ctrl_side / u_tau /
+    action_bounds / drl_steps / source_solvers -- so a wing config needs
+    nothing beyond `enabled: True`. The fields here only exist to
+    override that on a per-region basis.
+    """
+    enabled:bool        = False
+    net_precision:int   = 8       # accumulation precision: 8 (default) or 4
+    rec_freq:int        = 1       # record every N control cycles
+    rec_bufsize:int     = 100     # records buffered before a flush
+    # Opt-in: use the newest complete local solver checkpoint on preparation.
+    resume:bool          = False
+    # Also write binary drlrec files when Python drives the coupled solver.
+    coupled_recorder:bool = False
+
+    ctrl_areas:Any      = None    # [[xmin, xmax], ...]
+    ctrl_sides:Any      = None    # ['ANY' | 'SS' | 'PS', ...]
+    policies:Any        = None    # explicit checkpoint paths
+    nupd:Any            = None    # interactions between updates
+    u_tau:Any           = None
+    ctrl_max_amp:Any    = None
+
+
+@dataclass
 class Logging:
     run_name: str = str(int(time.time()))  # str so it can hold a string agent_run_name
     group: Optional[str] = None
@@ -185,6 +212,7 @@ class Config:
     simulation: Simulation = Simulation()
     runner: Runner = Runner()
     logging: Logging = Logging()
+    embedded: Embedded = Embedded()      #[MOD] Python-free evaluation
 
 
 def add_subparser(parser: argparse.ArgumentParser):
