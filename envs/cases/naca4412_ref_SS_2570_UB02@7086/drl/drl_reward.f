@@ -56,15 +56,7 @@ c=============================================
         include 'NEKUSE'
         include 'TSTEP'
         include 'DRL'
-        ! For calculating Derivative
-        real duidxj(LX1,LY1,LZ1,lelt,3)
-        ! real devU2(LX1*LY1*LZ1*lelt,1)
-        real devU1(LX1,LY1,LZ1,lelt)
-
-        ! Doing average
-        real dUdx(LX1,LY1,LZ1,LELT),
-     $       dUdy(LX1,LY1,LZ1,LELT),
-     $       avgV(LX1,LY1,LZ1,LELT)   
+        include 'DRL_RWD_DUDY'
 
         real avgVZ(LX1,LY1,xnel,ynel),avgVX(LX1,LY1,ynel,znel)
         
@@ -367,5 +359,4 @@ c=============================================
         
         end subroutine switch_BC_2Drichlet
 c------------------------------------------------------------------
-
 

@@ -17,6 +17,7 @@ c=============================================
             include 'SIZE'
             include 'INPUT'
             include 'DRL'       
+            include 'POLICY'
             include 'TSTEP'  
             include 'NEKUSE'  
             include 'mpif.h'
@@ -34,6 +35,9 @@ c=============================================
 c=============================================
 c       Function
 c=============================================
+!#[MOD] No Python rank in embedded mode: skip the whole transfer.
+            if (pol_ifsolo) return
+
             drl_step=int(PARAM(89))
             
             c_cfl = abs(COURNO)

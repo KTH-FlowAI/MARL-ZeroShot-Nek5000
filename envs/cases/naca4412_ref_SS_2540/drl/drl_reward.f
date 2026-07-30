@@ -60,16 +60,7 @@ c=============================================
         include 'NEKUSE'
         include 'TSTEP'
         include 'DRL'
-        ! For calculating Derivative
-        real duidxj(LX1,LY1,LZ1,lelt,3)
-        ! real devU2(LX1*LY1*LZ1*lelt,1)
-        real devU1(LX1,LY1,LZ1,lelt)
-
-        ! Doing average
-        real dUdx(LX1,LY1,LZ1,LELT),
-     $       dUdy(LX1,LY1,LZ1,LELT),
-     $       avgV(LX1,LY1,LZ1,LELT)   
-
+        include 'DRL_RWD_DUDY'
         real avgVZ(LX1,LY1,xnel,ynel),avgVX(LX1,LY1,ynel,znel)
         
         ! Incorporate the temporal evolution
@@ -229,23 +220,12 @@ c=============================================
          include 'TSTEP'
          include 'USERPAR'
          include 'DRL'
-         real duidxj(LX1,LY1,LZ1,lelt,3)
-         real devU1(LX1,LY1,LZ1,lelt)
-        
-         real dUdx(LX1,LY1,LZ1,LELT),
-     $       dUdy(LX1,LY1,LZ1,LELT)
-
-         real velV(LX1,LY1,LZ1,LELT),avgV(LX1,LY1,LZ1,LELT)
+         include 'DRL_RWD_NETGAIN'
          real avgVZ(LX1,LY1,xnel,ynel)
          real avgVX(LX1,LY1,ynel,znel)
 
          real denu,rho
          real dudy_i, tau_w, pwvw_i, v3_i
-         real vnorm(LX1,LY1,LZ1,LELT) ! The wall-normal component actuation
-         real tauw(LX1,LY1,LZ1,LELT)
-         real pwvw(LX1,LY1,LZ1,LELT), v3(LX1,LY1,LZ1,LELT)
-         real buffer(LX1,LY1,LZ1,LELT), wrk_buff(LX1,LY1,LZ1,LELT)
-
          integer i_evolv, n_drl
          real    rwd_i, rwd_c
          integer im, jm, km, fmid(6)
@@ -419,11 +399,11 @@ c------- Step 4: Assemble reward at each agent location
             endif
          enddo
 
-! #ifdef GAINMONITOR
-!         if (i_evolv.eq.n_drl) then
-!                 call write_reward_monitor(i_evolv)
-!         endif
-! #endif
+#ifdef GAINMONITOR
+         if (i_evolv.eq.n_drl) then
+                 call write_reward_monitor(i_evolv)
+         endif
+#endif
 
 #ifdef YWDEBUG
         if (NID.eq.0) print *, "[REWARD] NETGAIN ASSIGNED!"
@@ -634,13 +614,14 @@ c=============================================
       integer, parameter :: iunit = 52002
       integer, parameter :: MAX_MON_LINES = 10000
       integer, save      :: ifile = 0
-      integer :: nlines, ios
+      integer, save      :: nrec = -1
+      logical, save      :: hdrdon = .false.
+      integer :: nlines, ntot, ios
       character(len=200) :: cbuf
       character(len=40)  :: fname
 c=============================================
       ! Sum local agent values; divide by global count for the mean.
-      ! Since rwd_xavg=rwd_zavg=.TRUE., all agents hold the same value,
-      ! so mean == that value regardless of how agents are distributed.
+      ! This is an independent global mean over all local controller points.
       nc     = iglsum(NUMCTRL, 1)
       wrk(1) = 0.0
       wrk(2) = 0.0
@@ -660,44 +641,71 @@ c=============================================
       endif
 
       if (NID.eq.0) then
-c        Build current filename
-        write(fname,'(A,I5.5,A)') 'reward_monitor', ifile, '.dat'
-
-         inquire(file=trim(fname), exist=fexist)
-         if (fexist) then
-c           Count existing data lines (skip header) before appending
-            nlines = 0
-            open(iunit, file=trim(fname), status='old')
-            read(iunit,'(A)',iostat=ios) cbuf
-            do
-               read(iunit,'(A)',iostat=ios) cbuf
-               if (ios.ne.0) exit
-               nlines = nlines + 1
-            end do
-            close(iunit)
-c           File full: roll over to a new numbered file
-            if (nlines.ge.MAX_MON_LINES) then
-               ifile = ifile + 1
+c        Resolve a segment once.  Re-scanning on every control cycle would
+c        turn a long run into quadratic I/O, and status='new' would fail when
+c        an earlier segment already exists.
+         if (nrec.lt.0) then
+            do while (ifile.lt.99999 .and. nrec.lt.0)
                write(fname,'(A,I5.5,A)')
      $            'reward_monitor', ifile, '.dat'
-               open(iunit, file=trim(fname), status='new')
-               write(iunit,'(A)')
-     $            '# time          i_evolv'//
-     $            '  rwd_tau         rwd_pw          rwd_v3'
-            else
-               open(iunit, file=trim(fname), position='append')
+               inquire(file=trim(fname), exist=fexist)
+               if (.not.fexist) then
+                  nrec   = 0
+                  hdrdon = .false.
+               else
+                  nlines = 0
+                  ntot   = 0
+                  open(iunit,file=trim(fname),status='old',iostat=ios)
+                  if (ios.ne.0) then
+                     write(6,*) '[MONITOR] SKIP UNREADABLE ',
+     $                          trim(fname)
+                     ifile = ifile + 1
+                  else
+                     do
+                        read(iunit,'(A)',iostat=ios) cbuf
+                        if (ios.ne.0) exit
+                        ntot = ntot + 1
+                        if (cbuf(1:1).ne.'#') nlines = nlines + 1
+                     end do
+                     close(iunit)
+                     if (nlines.lt.MAX_MON_LINES) then
+                        nrec   = nlines
+                        hdrdon = ntot.gt.0
+                     else
+                        ifile = ifile + 1
+                     end if
+                  end if
+               end if
+            end do
+            if (nrec.lt.0) then
+               write(6,*) '[MONITOR] NO WRITABLE FILE, RECORD DROPPED'
+               return
             end if
-         else
-            open(iunit, file=trim(fname), status='new')
+         end if
+         if (nrec.ge.MAX_MON_LINES) then
+            ifile  = ifile + 1
+            nrec   = 0
+            hdrdon = .false.
+         end if
+         write(fname,'(A,I5.5,A)') 'reward_monitor', ifile, '.dat'
+         open(iunit,file=trim(fname),position='append',iostat=ios)
+         if (ios.ne.0) then
+            write(6,*) '[MONITOR] CANNOT OPEN ',trim(fname),
+     $                 ' iostat=',ios,' RECORD DROPPED'
+            nrec = -1
+            return
+         end if
+         if (.not.hdrdon) then
             write(iunit,'(A)')
      $         '# time          i_evolv'//
      $         '  rwd_tau         rwd_pw          rwd_v3'
-         endif
+            hdrdon = .true.
+         end if
          write(iunit,'(E16.8,1X,I6,3(1X,E16.8))')
      $      time, i_evolv, wrk(1), wrk(2), wrk(3)
          close(iunit)
-        print *, "[MONITOR] RECORD",time,i_evolv,wrk(1),wrk(2),wrk(3)
+         nrec = nrec + 1
+         print *, "[MONITOR] RECORD",time,i_evolv,wrk(1),wrk(2),wrk(3)
       endif
 
       end subroutine write_reward_monitor
-

@@ -19,6 +19,10 @@ $(OBJDIR)/tripf.o      :./tripf.f;          $(F77) -c $(FL2) -I$(INC_SRC)  $< -o
 $(OBJDIR)/misc.o       :./misc.f;            $(F77) -c $(FL2)  -I$(INC_SRC) $< -o $@
 
 $(OBJDIR)/drl_main.o          :$(DRL_SRC)/drl_main.f;      $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/pol_core.o          :$(DRL_SRC)/pol_core.f;      $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/pol_net.o          :$(DRL_SRC)/pol_net.f;      $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/pol_main.o          :$(DRL_SRC)/pol_main.f;      $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/pol_IO.o          :$(DRL_SRC)/pol_IO.f;      $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_init.o          :$(DRL_SRC)/drl_init.f;      $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_reward.o        :$(DRL_SRC)/drl_reward.f;    $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_state.o         :$(DRL_SRC)/drl_state.f;     $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
