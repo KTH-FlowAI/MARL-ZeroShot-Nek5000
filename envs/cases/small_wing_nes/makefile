@@ -1,11 +1,11 @@
-### makefile automatically created by makenek 07/28/2026 23:29:41 ###
+### makefile automatically created by makenek 07/30/2026 15:11:51 ###
 BINNAME=nek5000
 LIBNAME=libnek5000.a
 CASENAME:=small_wing
 CASEDIR:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/cases/small_wing_nes
-S:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/DEC_DRL_Nek5000/core
-S2:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/DEC_DRL_Nek5000/core/cmt
-J:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/DEC_DRL_Nek5000/jl
+S:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/DEC_Nek5000/core
+S2:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/DEC_Nek5000/core/cmt
+J:=/home/yuninw/codes/drl/1_Nek/nek_power_saving/envs/solver/DEC_Nek5000/jl
 OPT_INCDIR:=./
 OBJDIR=obj
 IFMPI:=true
