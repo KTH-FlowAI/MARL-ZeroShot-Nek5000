@@ -24,6 +24,9 @@ miniforge3/
 *DATA*
 /post_processing/stats/int_fld
 *.o
+# Python bytecode caches are interpreter/version-specific build artefacts.
+__pycache__/
+*.py[cod]
 *RUN_PATH*
 # RUN_PATH cache: keep the dir tracked, ignore its RUN_PATH_*.txt (via *RUN_PATH*)
 !/.caches/
