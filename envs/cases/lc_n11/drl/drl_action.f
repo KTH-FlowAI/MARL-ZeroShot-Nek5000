@@ -52,6 +52,33 @@ c------------------------------------------------------------------
 
 c------------------------------------------------------------------
       subroutine recv_Actions
+c Coupled path: receive Python's local action buffer, then use the same
+c scatter routine as the embedded actor.
+c------------------------------------------------------------------
+      implicit none
+      include 'SIZE'
+      include 'PARALLEL'
+      include 'DRL'
+      include 'mpif.h'
+      integer ierr
+      real act_buffer(totctrl)
+
+      if (NUMCTRL.ne.0) then
+         call MPI_RECV(act_buffer,TOTCTRL,MPI_DOUBLE,
+     &        0,NID+90000,DRL_COMM,MPI_STATUS_IGNORE,ierr)
+      endif
+      call nekgsync()
+      call apply_actions(act_buffer)
+
+      return
+      end subroutine recv_Actions
+c------------------------------------------------------------------
+
+
+c------------------------------------------------------------------
+      subroutine apply_actions(act_buffer)
+c Scatter a local action buffer onto ACTIONS. Shared by coupled
+c recv_Actions and the embedded pol_control path.
 c=============================================
 c       Define variable
 c=============================================
@@ -97,20 +124,7 @@ c=============================================
 c=============================================
 c       Function
 c=============================================
-      i_znmf = UPARAM(2) 
-      if (NUMCTRL.ne.0) then 
-
-      call MPI_RECV(act_buffer,TOTCTRL,MPI_DOUBLE,
-     &            0,NID+90000,DRL_COMM,
-     &            MPI_STATUS_IGNORE,ierr)
-
-      ! print *,"[ACTION] UPDATE NID=",NID
-      call nekgsync()
-      else
-      call nekgsync()
-      ! print *,"[ACTION] UPDATE NID=",NID
-      endif
-      ! call nekgsync()
+      i_znmf = UPARAM(2)
 ! Update 
 !----------------------------------------
       ntot=LX1*LY1*LZ1*LELT
@@ -189,7 +203,7 @@ c--------------------------
       endif ! if ISTEP.le.3 
 #endif 
 
-      end subroutine recv_Actions 
+      end subroutine apply_actions
 c------------------------------------------------------------------
 
 c------------------------------------------------------------------
@@ -629,4 +643,3 @@ c=============================================
       return
       end
 c--------------------------------------------------
-

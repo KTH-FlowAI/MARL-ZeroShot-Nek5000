@@ -1,0 +1,12 @@
+c------------------------------------------------------------------
+c Static work storage for compute_dudy.
+c
+c These arrays used to be local automatic arrays in drl_reward.f.  Keep
+c them in a named common block so reward evaluation never consumes the
+c process stack.  The names and dimensions intentionally match the old
+c declarations, making this a storage-only change.
+c------------------------------------------------------------------
+      real duidxj(LX1,LY1,LZ1,LELT,3)
+      real devU1(LX1,LY1,LZ1,LELT)
+      real velV(LX1,LY1,LZ1,LELT),avgV(LX1,LY1,LZ1,LELT)
+      common /drl_rwd_dudy/ duidxj,devU1,velV,avgV
