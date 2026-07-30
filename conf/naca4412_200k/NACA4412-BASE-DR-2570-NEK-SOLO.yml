@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Python-free, embedded evaluation of NACA4412-BASE-DR-2570.
+#
+# This mirrors NACA4412-BASE-DR-2570.yml's flow, restart and three-region
+# controller setup.  The only functional changes are the isolated run name,
+# the raw Nek executable, and the embedded-policy settings below.
+#
+# For a short bring-up run, override the budget at launch, for example:
+#   ./execs/nek-solo-run.sh --config \\
+#       conf/naca4412_200k/NACA4412-BASE-DR-2570-NEK-SOLO.yml \\
+#       --nb-interactions 2 --dry-run
+
+runner:
+    # Keep the production evaluation budget from the coupled configuration.
+    # Preparation derives simulation.numSteps = nb_interactions * ndrl.
+    nb_interactions: 10_000_000
+    random_init: -2
+    rank: 1
+
+    # Must differ from the coupled run so META's RUN_PATH cache and outputs
+    # cannot be overwritten by a solo test.
+    case_name: "naca4412_ref_DR_2570_nek_solo"
+    evaluation: true
+    learnt_policy: true
+
+    # The region table is consumed directly by the embedded exporter; do not
+    # duplicate it under embedded.*.
+    agent_ctrl_area: [[0.23, 0.40], [0.4, 0.5], [0.5, 0.72]]
+    agent_ctrl_side: ["SS", "SS", "SS"]
+    agent_run_name:
+        - "archived_lc_omega1_SS_BASE_dr"
+        - "archived_lc_omega2_SS_BASE_dr"
+        - "archived_lc_omega3_SS_BASE_dr"
+    policy:
+        - "eval_model_lc_omega1_SS_BASE_dr"
+        - "eval_model_lc_omega2_SS_BASE_dr"
+        - "eval_model_lc_omega3_SS_BASE_dr"
+    RL_algorithm: ["TD3", "TD3", "TD3"]
+    source_solvers: ["nek", "nek", "nek"]
+    u_tau: [1.0, 1.0, 1.0]
+    dUdy: [920.54, 749.91, 543.64]
+    action_bounds: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
+    drl_steps: [5, 7, 9]
+
+    vars_record: true
+    vars_record_freq: 1
+    vars_io_freq: 100
+    size_history: 10
+    reward_fn: dudy
+
+simulation:
+    CASENAME: 'naca_wing'
+    solver_version: 'v17'
+    # Built by: ./utils/compile_case.sh --path envs/cases/naca4412_ref_SS_2570 --solver raw
+    exeName: 'nek5000_solo'
+    compile_path: 'envs/cases/naca4412_ref_SS_2570'
+    restart_folder: 'data/restarts/rs8_naca4412_200k_ref'
+    shared_data_path: 'data/simulations/naca4412_200k'
+    shared_data_link: true
+
+    TOTCTRL: 5000
+    nproc: 4096
+    ndrl: 9
+    znmf_avg: 1
+    target_cfl: 2.0
+
+    # Preserve the coupled case's v17 physics and I/O parameters.
+    numSteps: 5_000_000   # overwritten from nb_interactions * ndrl at prepare time
+    dt: -1.5e-05
+    writeInterval: 5000
+    writeLA2: 5000
+    p_residualTol: 1.0e-6
+    v_residualTol: 1.0e-8
+    density: 1.0
+    viscosity: -2.0e5
+    READCHKPT: 1
+    CHKPFNUMBER: 6
+    CHKPINTERVAL: 5000
+    AVSTEP: 10
+    IOSTEP: 5000
+
+embedded:
+    enabled: true
+    net_precision: 8
+    # At 4,096 ranks, recording every cycle for this 10M-cycle production
+    # budget would be excessive.  Override to 1 for a short smoke test.
+    rec_freq: 1000
+    rec_bufsize: 100
+    resume: false
+    coupled_recorder: false
+
+logging:
+    policy_dir: './data/policies_meta_wing_dr/'
