@@ -1,100 +1,176 @@
-# !/bin/bash
+#!/usr/bin/env bash
+# Archive a completed channel or wing environment without deleting its restart
+# set.  The solo launcher calls this before embedded preparation so recorder
+# segments and exported actor provenance are preserved.
+
+set -euo pipefail
+shopt -s nullglob
 
 CASE_NAME="naca_wing"
-SOURCE_ROOT=$(pwd)
+SOURCE_ROOT="$(pwd)"
 RUN_NAME="301001"
 ID="001"
+LOGFILE="${LOGFILE:-}"
 
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS]
 
-# Parse arguments
+  --source_root PATH   repository root                         [${SOURCE_ROOT}]
+  --case_name NAME     solver case name (for example tcf)      [${CASE_NAME}]
+  --run_name NAME      runs/<NAME> folder                      [${RUN_NAME}]
+  --id NNN             environment id                          [${ID}]
+EOF
+}
+
 while [[ "$#" -gt 0 ]]; do
-    case $1 in
-        --source_root) SOURCE_ROOT="$2"; shift ;; # Set source root
-        --case_name) CASE_NAME="$2"; shift ;; # Set case name
-        --run_name) RUN_NAME="$2"; shift ;; # Set run name
-        --id) ID="$2"; shift ;; # Set id
-        *) echo "Unknown parameter: $1"; exit 1 ;;
+    case "$1" in
+        --source_root) SOURCE_ROOT="$2"; shift 2 ;;
+        --case_name)   CASE_NAME="$2"; shift 2 ;;
+        --run_name)    RUN_NAME="$2"; shift 2 ;;
+        --id)          ID="$2"; shift 2 ;;
+        -h|--help)     usage; exit 0 ;;
+        *) echo "[ERR] unknown parameter: $1" >&2; exit 1 ;;
     esac
-    shift
 done
 
-echo "-------------------------"
-echo "SOURCE_ROOT: ${SOURCE_ROOT}"
-echo "CASE_NAME: ${CASE_NAME}"
-echo "RUN_NAME: ${RUN_NAME}"
-echo "ID: ${ID}"
-echo "-------------------------"
+[[ -d "${SOURCE_ROOT}" ]] || {
+    echo "[ERR] source root does not exist: ${SOURCE_ROOT}" >&2; exit 1; }
+[[ -n "${CASE_NAME}" && -n "${RUN_NAME}" ]] || {
+    echo "[ERR] --case_name and --run_name must be non-empty" >&2; exit 1; }
+[[ "${ID}" =~ ^[0-9][0-9][0-9]$ ]] || {
+    echo "[ERR] --id must be a three-digit environment id, got: ${ID}" >&2; exit 1; }
 
-result_path="$SOURCE_ROOT/data/results"
-mkdir -p "$result_path"
-CASE_PATH="$SOURCE_ROOT/runs/${RUN_NAME}/"
-RUN_PATH="$SOURCE_ROOT/runs/${RUN_NAME}/env_${ID}"
+SOURCE_ROOT="$(cd "${SOURCE_ROOT}" && pwd)"
+CASE_PATH="${SOURCE_ROOT}/runs/${RUN_NAME}"
+RUN_PATH="${CASE_PATH}/env_${ID}"
 
-DATA_CASE_PATH="$result_path/${CASE_NAME}"
-mkdir -p "$DATA_CASE_PATH"
-DATA_RUN_PATH="$DATA_CASE_PATH/${RUN_NAME}"
-mkdir -p "$DATA_RUN_PATH"
-DATA_PATH="$DATA_RUN_PATH/env_${ID}"
-mkdir -p "$DATA_PATH"
-
-## check how many files are in the DATA_PATH named as res_*
-num_files=$(ls -1 "$DATA_PATH" | grep "res_*" | wc -l)
-if [ "$num_files" -ge 0 ]; then
-    let num_files=num_files+1
+# A first launch has nothing to archive.  Treat it as a successful no-op so
+# --mv-data yes is safe in batch templates shared by first and repeat runs.
+if [[ ! -d "${RUN_PATH}" ]]; then
+    echo "[DATA] no previous run at ${RUN_PATH}; nothing to archive"
+    exit 0
 fi
 
-DATA_PATH="$DATA_PATH/res_${num_files}"
-mkdir -p "$DATA_PATH"
+RESULT_ROOT="${SOURCE_ROOT}/data/results/${CASE_NAME}/${RUN_NAME}/env_${ID}"
+mkdir -p "${RESULT_ROOT}"
+last=0
+for prior in "${RESULT_ROOT}"/res_*; do
+    [[ -d "${prior}" ]] || continue
+    seq="${prior##*/res_}"
+    if [[ "${seq}" =~ ^[0-9]+$ ]] && (( 10#${seq} > last )); then
+        last=$((10#${seq}))
+    fi
+done
+DATA_PATH="${RESULT_ROOT}/res_$((last + 1))"
 
-mkdir "$DATA_PATH/la2_data"
-mkdir "$DATA_PATH/sts_data"
-mkdir "$DATA_PATH/pts_data"
-mkdir "$DATA_PATH/rs8_data"
-mkdir "$DATA_PATH/reg_data"
-mkdir "$DATA_PATH/txt_data"
-mkdir "$DATA_PATH/drl_data"
+LA2_DATA="${DATA_PATH}/la2_data"
+STS_DATA="${DATA_PATH}/sts_data"
+PTS_DATA="${DATA_PATH}/pts_data"
+RS_DATA="${DATA_PATH}/rs_data"
+REG_DATA="${DATA_PATH}/reg_data"
+TXT_DATA="${DATA_PATH}/txt_data"
+DRL_DATA="${DATA_PATH}/drl_data"
+REC_DATA="${DRL_DATA}/drlrec"
+POLICY_DATA="${DRL_DATA}/policy"
+MONITOR_DATA="${DRL_DATA}/monitor"
+CONFIG_DATA="${DATA_PATH}/config_data"
+mkdir -p "${LA2_DATA}" "${STS_DATA}" "${PTS_DATA}" "${RS_DATA}" \
+         "${REG_DATA}" "${TXT_DATA}" "${DRL_DATA}" "${REC_DATA}" \
+         "${POLICY_DATA}" "${MONITOR_DATA}" "${CONFIG_DATA}"
 
-cp "$LOGFILE" "$DATA_PATH"
-echo "[LOG] History Moved"
-cp "$RUN_PATH/${CASE_NAME}.par" "$DATA_PATH"
-echo "[LOG] PARAM GET"
+copy_if_exists() {
+    local src="$1" dest="$2" label="$3"
+    if [[ -f "${src}" ]]; then
+        cp -p "${src}" "${dest}/"
+        echo "[DATA] copied ${label}: ${src##*/}"
+    fi
+    return 0
+}
 
+archive_named_files() {
+    local root="$1" pattern="$2" dest="$3" action="$4" label="$5"
+    local src count=0
+    [[ -d "${root}" ]] || return 0
+    while IFS= read -r -d '' src; do
+        if [[ "${action}" == "copy" ]]; then
+            cp -p "${src}" "${dest}/"
+        else
+            mv "${src}" "${dest}/"
+        fi
+        count=$((count + 1))
+    done < <(find "${root}" -type f -name "${pattern}" -print0)
+    (( count > 0 )) && echo "[DATA] ${label}: ${count} file(s)"
+    return 0
+}
+
+move_paths() {
+    local dest="$1" src count=0
+    shift
+    for src in "$@"; do
+        [[ -e "${src}" || -L "${src}" ]] || continue
+        mv "${src}" "${dest}/"
+        count=$((count + 1))
+    done
+    (( count > 0 )) && echo "[DATA] moved ${count} file(s) to ${dest##*/}"
+    return 0
+}
+
+copy_paths() {
+    local dest="$1" src count=0
+    shift
+    for src in "$@"; do
+        [[ -f "${src}" ]] || continue
+        cp -p "${src}" "${dest}/"
+        count=$((count + 1))
+    done
+    (( count > 0 )) && echo "[DATA] copied ${count} file(s) to ${dest##*/}"
+    return 0
+}
+
+move_directory_contents() {
+    local root="$1" dest="$2" item count=0
+    [[ -d "${root}" ]] || return 0
+    while IFS= read -r -d '' item; do
+        mv "${item}" "${dest}/"
+        count=$((count + 1))
+    done < <(find "${root}" -mindepth 1 -maxdepth 1 -print0)
+    (( count > 0 )) && echo "[DATA] moved ${count} history item(s)"
+    return 0
+}
 
 echo "-------------------------"
-echo "       Copy Data         "
+echo "[DATA] archive ${RUN_PATH} -> ${DATA_PATH}"
 echo "-------------------------"
 
-find "$RUN_PATH" -type f -name "la2${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec mv {} "$DATA_PATH/la2_data/" \;
-echo "[DATA] LA2 Moved"
+# Preserve the solver input exactly as used for this archived run.  v17 wings
+# use .rea while v19 channels use .par.
+copy_if_exists "${RUN_PATH}/${CASE_NAME}.rea" "${CONFIG_DATA}" "REA"
+copy_if_exists "${RUN_PATH}/${CASE_NAME}.par" "${CONFIG_DATA}" "PAR"
+copy_if_exists "${LOGFILE}" "${CONFIG_DATA}" "solver log"
 
-find "$RUN_PATH" -type f -name "pts${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec mv {} "$DATA_PATH/pts_data/" \;
-echo "[DATA] PTS Moved"
+archive_named_files "${RUN_PATH}" "la2${CASE_NAME}0.f?????" "${LA2_DATA}" move "LA2"
+archive_named_files "${RUN_PATH}" "pts${CASE_NAME}0.f?????" "${PTS_DATA}" move "PTS"
+archive_named_files "${RUN_PATH}" "sts${CASE_NAME}0.f?????" "${STS_DATA}" move "STS"
+archive_named_files "${RUN_PATH}" "c2D${CASE_NAME}0.f?????" "${STS_DATA}" move "C2D"
+archive_named_files "${RUN_PATH}" "${CASE_NAME}0.f?????" "${REG_DATA}" move "regular fields"
+# Restart files are copied, not moved: the original run remains resumable.
+archive_named_files "${RUN_PATH}" "rs[0-9]${CASE_NAME}0.f?????" "${RS_DATA}" copy "restart fields"
 
-find "$RUN_PATH" -type f -name "sts${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec mv {} "$DATA_PATH/sts_data/" \;
-find "$RUN_PATH" -type f -name "c2D${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec mv {} "$DATA_PATH/sts_data/" \;
-echo "[DATA] STS Moved"
+move_paths "${TXT_DATA}" "${RUN_PATH}"/*txt*
+move_paths "${DRL_DATA}" "${RUN_PATH}"/*.npz \
+                       "${RUN_PATH}"/*vars_record*
+move_paths "${MONITOR_DATA}" "${RUN_PATH}"/reward_monitor*.dat
+archive_named_files "${RUN_PATH}/drlrec" "*.bin" "${REC_DATA}" move "embedded records"
+# Policy inputs are copied, not moved.  This keeps the existing wing-run
+# archive hook safe: it runs after `initial`, when those files may already be
+# needed by the solver.  In solo mode `initial` then replaces them anyway.
+copy_paths "${POLICY_DATA}" "${RUN_PATH}"/actor_*.pol \
+                          "${RUN_PATH}"/drl_policy.in \
+                          "${RUN_PATH}"/drl_record.in
 
-find "$RUN_PATH" -type f -name "${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"     -exec mv {} "$DATA_PATH/reg_data/" \;
-echo "[DATA] Regular Moved"
+# META's Python-side records live one level above env_<id>.
+move_directory_contents "${CASE_PATH}/history" "${DRL_DATA}"
+move_paths "${DRL_DATA}" "${CASE_PATH}"/*vars_record*
 
-find "$RUN_PATH" -type f -name "rs[0-9]${CASE_NAME}0.f[0-9][0-9][0-9][0-9][0-9]"  -exec cp {} "$DATA_PATH/rs8_data/" \;
-echo "[DATA] RS8 Moved"
-
-
-echo "-------------------------"
-echo "       DRL OUTPUTS       "
-echo "-------------------------"
-mv    ${RUN_PATH}/*txt*         ${DATA_PATH}/txt_data/
-echo "[DATA] TXT Moved"
-mv    ${CASE_PATH}/history/**    ${DATA_PATH}/drl_data/ 
-echo "[DATA] HISTORY Moved"
-mv    ${CASE_PATH}*vars_record*  ${DATA_PATH}/drl_data/
-echo "[DATA] VARS_RECORD Moved"
-mv    ${RUN_PATH}/*vars_record*  ${DATA_PATH}/drl_data/
-echo "[DATA] VARS_RECORD Moved"
-mv    ${RUN_PATH}/*.npz  ${DATA_PATH}/drl_data/
-echo "[DATA] DRL ELSE Moved"
-
-echo "########################"
-echo "  Copy File Finished       "
-echo "########################"
+echo "[DATA] archive complete: ${DATA_PATH}"

@@ -340,6 +340,10 @@ and monitor agree to `1.16e-08` relative.
 ./execs/nek-solo-run.sh --config conf/mini_channel/MC-nes.yml --nenv 4
 ./execs/nek-solo-run.sh --config conf/mini_channel/MC-nes.yml --dry-run
 
+# repeat an environment and archive its previous fields/records first.
+# With --nenv 4, the launcher archives env_001 through env_004 separately.
+./execs/nek-solo-run.sh --config conf/mini_channel/MC-nes.yml --nenv 4 --mv-data yes
+
 # continue an existing embedded environment from its latest complete restart
 ./execs/nek-solo-run.sh --config conf/mini_channel/MC-nes.yml --resume
 

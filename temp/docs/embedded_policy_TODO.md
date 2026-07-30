@@ -132,11 +132,47 @@ on MPI — a cost embedded mode removes. Worth re-deriving them on physical
 grounds. `pol_nupd` reproduces whatever is chosen either way.
 
 ### D2. `drl_reward` cost
-`compute_dudy`/`compute_netGain` run **every timestep**, each doing a `gradm1`
-plus two `planar_avg` calls (five plus a `mappr` for net_gain). On the wing
-this is very likely a larger overhead than the MPI ever was. Left bit-for-bit
-identical so the reward is unchanged, but it is the obvious next optimisation
-target — and embedded mode makes it easy to measure with the `mntrtmr` timers.
+`compute_netGain_posOnly` runs **every timestep**, doing a `gradm1`, a `mappr`
+and four `z_averaging` calls (the `x_averaging` calls beside them are dead:
+`rwd_xavg` is a `parameter(...=.FALSE.)`, folded away at compile time).
+
+**Partly addressed (2026-07-30): `w1` is now cached in `z_averaging`.** Each
+call used to `gop` twice — once for the field, once for a quadrature-weight
+array `w1` built from `dz2` (=1) and `wzm1`. That array depends only on the
+GLL weights and the `lglel -> (ex,ey)` map, so it is constant for the whole
+run, yet half of the reward's collective traffic went on re-reducing it. It
+is now built on the first call and reused. Both wing cases are patched.
+
+Measured with a standalone MPI replica of the routine at each case's real
+sizes on 12 ranks (4 calls per timestep):
+
+| | small wing (`lx1=4`, 0.43 MB/gop) | production (`lx1=12`, 5.2 MB/gop) |
+|---|---|---|
+| before | 3.82 ms/step | 125.0 ms/step |
+| `w1` cached | 1.33 ms/step | 60.2 ms/step |
+
+On the small wing that is ~0.8 % of a 0.44 s timestep — below run-to-run
+noise, and a 40-interaction run confirmed no measurable wall-clock change.
+It is worth having for the production case, where the message is 12× larger
+and the real run is ~3,840 ranks rather than 12.
+
+Validation: a 40-interaction, 12-rank `WING-PATH-TEST.yml` run (1,632 agents,
+four policies at `drl_steps` 4/5/6/9, 120 timesteps) reproduced all four
+`drlrec` segment files and `reward_monitor00000.dat` **bit-for-bit**.
+
+Still on the table, not done: the Step-3 kinetic-energy term is a function of
+`ACTIONS` alone, so it is constant within a control cycle and its
+`z_averaging` could be hoisted to `i_evolv.eq.1`. Measured at a further
+0.34 ms/step (small wing) / 15 ms/step (production) — a real but much smaller
+win than the `w1` cache, and unlike it, only equal to round-off rather than
+bit-exact.
+
+**Latent bug, unrelated to the above, left alone:** `drl_action.f:321` calls
+`z_averaging(velV,avgVX)` where `avgVX(LX1,LY1,ynel,znel)` holds 48 reals but
+`z_averaging` writes `LX1*LY1*xnel*ynel` (56,000 on the small wing). It is
+unreachable only because `rwd_xavg` is `.FALSE.` at compile time. Anyone who
+switches streamwise averaging on will corrupt memory. Present in both wing
+cases.
 
 ---
 

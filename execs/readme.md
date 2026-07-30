@@ -42,6 +42,10 @@ inside a batch job. Run everything from the repo root.
 # embedded actor: every MPI rank runs Nek, no Python rank is spawned
 ./execs/nek-solo-run.sh --config conf/mini_channel/MC-nes.yml \
     --nb-interactions 20000
+
+# repeat an embedded run while archiving the previous env_<rank> first
+# (field outputs, recorder segments, monitoring data, and policy provenance)
+./execs/nek-solo-run.sh --config conf/mini_channel/MC-nes.yml --mv-data yes
 ```
 
 `--dry-run` prints the mpirun lines instead of executing them, and `-h` lists

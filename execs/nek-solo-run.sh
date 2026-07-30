@@ -61,6 +61,9 @@ REC_FREQ=""
 PRECISION=""
 MPI_OPTS=""
 EXTRA_OVERRIDES=""
+MV_DATA="no"                 # archive a previous env before preparation
+CASE_TAG=""                   # archive directory; defaults to simulation.CASENAME
+DATA_ID=""                    # archive env id; defaults to the solo env rank
 DRY_RUN="no"
 SKIP_PREPARE="no"
 RESUME="no"
@@ -81,6 +84,9 @@ Usage: $(basename "$0") [OPTIONS]
   --resume              continue from the newest complete local checkpoint
   --site local|hpc     environment flavour; auto-detected from SLURM_JOB_ID
   --mpi-opts "FLAGS"   replace the site default mpirun flags
+  --mv-data yes|no     archive the previous environment first              [${MV_DATA}]
+  --case-name NAME     archive directory under data/results/                [simulation.CASENAME]
+  --id NNN             archive env id (single-environment run only)        [env rank]
   --extra "K=V K=V"    extra config overrides for the prepare step
   --skip-prepare       reuse the run folder as it stands (no re-export)
   --dry-run            print the commands without running them
@@ -101,6 +107,9 @@ while [[ $# -gt 0 ]]; do
         --random-init)     RANDOM_INIT="$2"; shift 2 ;;
         --site)            SITE="$2"; shift 2 ;;
         --mpi-opts)        MPI_OPTS="$2"; shift 2 ;;
+        --mv-data)         MV_DATA="$2"; shift 2 ;;
+        --case-name)       CASE_TAG="$2"; shift 2 ;;
+        --id)              DATA_ID="$2"; shift 2 ;;
         --extra)           EXTRA_OVERRIDES="$2"; shift 2 ;;
         --skip-prepare)    SKIP_PREPARE="yes"; shift ;;
         --resume)          RESUME="yes"; shift ;;
@@ -113,6 +122,18 @@ done
 [[ ${#CONFIGS[@]} -gt 0 ]] || { echo "[ERR] give at least one --config" >&2; exit 1; }
 if [[ "${RESUME}" == "yes" && "${SKIP_PREPARE}" == "yes" ]]; then
     echo "[ERR] --resume needs preparation to select its checkpoint; omit --skip-prepare" >&2
+    exit 1
+fi
+case "${MV_DATA}" in
+    yes|no) ;;
+    *) echo "[ERR] --mv-data must be yes or no, got: ${MV_DATA}" >&2; exit 1 ;;
+esac
+if [[ -n "${DATA_ID}" && ! "${DATA_ID}" =~ ^[0-9][0-9][0-9]$ ]]; then
+    echo "[ERR] --id must be a three-digit environment id, got: ${DATA_ID}" >&2
+    exit 1
+fi
+if [[ -n "${DATA_ID}" && "${ENV_START}" != "${NENV}" ]]; then
+    echo "[ERR] --id is only valid for one environment; omit it to archive each env rank" >&2
     exit 1
 fi
 
@@ -191,6 +212,7 @@ for _cfg_in in "${CONFIGS[@]}"; do
     NTOT="$(cfg_get "${CONFIG_NAME}" 'nproc')"
     AGENT_RUN_NAME="$(cfg_get "${CONFIG_NAME}" 'agent_run_name')"
     CASE_NAME="$(cfg_get "${CONFIG_NAME}" 'case_name')"
+    CONFIG_CASE_TAG="$(cfg_get "${CONFIG_NAME}" 'CASENAME')"
     COMPILE_PATH="$(cfg_get "${CONFIG_NAME}" 'compile_path')"
 
     # The channel stack writes RUN_PATH_<agent_run_name>.txt and is entered
@@ -205,15 +227,21 @@ for _cfg_in in "${CONFIGS[@]}"; do
         MARL_MODULE="nek_MARL"
         RUN_KEY="${AGENT_RUN_NAME}"
     fi
+    ARCHIVE_CASE="${CASE_TAG:-${CONFIG_CASE_TAG}}"
 
     echo "------------------------------------------------------------"
     echo "[CFG] ${CONFIG_NAME}"
     echo "[CFG] module=${MARL_MODULE}  run_key=${RUN_KEY}  nproc=${NTOT}"
+    [[ "${MV_DATA}" == "yes" ]] && echo "[CFG] archive=${ARCHIVE_CASE} (per env rank)"
 
     [[ -n "${RUN_KEY}" ]] || {
         echo "[ERR] no runner.agent_run_name or runner.case_name in ${CONFIG_NAME}" >&2; exit 1; }
     [[ "${NTOT}" =~ ^[0-9]+$ ]] || {
         echo "[ERR] simulation.nproc is not a number: '${NTOT}'" >&2; exit 1; }
+    if [[ "${MV_DATA}" == "yes" && -z "${ARCHIVE_CASE}" ]]; then
+        echo "[ERR] --mv-data needs simulation.CASENAME or --case-name" >&2
+        exit 1
+    fi
 
     # The embedded mode NEEDS the raw-solver binary. Catch it here rather than
     # letting the run hang in MPI_INTERCOMM_CREATE waiting for a Python rank
@@ -234,7 +262,31 @@ for _cfg_in in "${CONFIGS[@]}"; do
     [[ "${RESUME}" == "yes" ]]    && EMB_ARGS+=" embedded.resume=True"
 
     for ienv in $(seq "${ENV_START}" "${NENV}"); do
-        echo "[SOLO] rank ${ienv} of ${ENV_START}..${NENV}"
+        if [[ -n "${DATA_ID}" ]]; then
+            ARCHIVE_ID="${DATA_ID}"
+        else
+            printf -v ARCHIVE_ID '%03d' "${ienv}"
+        fi
+        INIT_LOG="${LOG_DIR}/log.solo-initial.${CONFIG_TAG}.env_${ARCHIVE_ID}"
+        SOLO_LOG="${LOG_DIR}/log.solo.${CONFIG_TAG}.env_${ARCHIVE_ID}"
+        # Earlier solo launches used one log per config. Retain that log as a
+        # fallback when archiving the first run after this per-env convention.
+        ARCHIVE_LOG="${SOLO_LOG}"
+        [[ -f "${ARCHIVE_LOG}" ]] || ARCHIVE_LOG="${LOG_DIR}/log.solo.${CONFIG_TAG}"
+
+        echo "[SOLO] rank ${ienv} of ${ENV_START}..${NENV} (env_${ARCHIVE_ID})"
+        # The archive intentionally precedes `initial`: embedded preparation
+        # regenerates actor_*.pol and drl_policy.in, so archiving later would
+        # lose the previous controller provenance even though solver fields
+        # have not yet been overwritten.
+        if [[ "${MV_DATA}" == "yes" ]]; then
+            run_cmd "-" "LOGFILE='${ARCHIVE_LOG}' \
+                bash '${ROOT_DIR}/utils/mv-data' --source_root '${ROOT_DIR}' \
+                --case_name '${ARCHIVE_CASE}' --run_name '${RUN_KEY}' \
+                --id '${ARCHIVE_ID}'" || {
+                echo "[ERR] archive failed for ${RUN_KEY}/env_${ARCHIVE_ID}" >&2
+                exit 1; }
+        fi
         INIT_ARGS="runner.rank=${ienv} runner.evaluation=True "
         if [[ "${MARL_MODULE}" == "meta_MARL" ]]; then
             INIT_ARGS+="runner.learnt_policy=True"
@@ -244,7 +296,7 @@ for _cfg_in in "${CONFIGS[@]}"; do
         [[ -n "${RANDOM_INIT}" ]] && INIT_ARGS+=" runner.random_init=${RANDOM_INIT}"
 
         if [[ "${SKIP_PREPARE}" == "no" ]]; then
-            run_cmd "${LOG_DIR}/log.solo-initial.${CONFIG_TAG}" \
+            run_cmd "${INIT_LOG}" \
                 "mpirun -n 1 python -m ${MARL_MODULE} initial ${CONFIG_NAME} \
                     ${INIT_ARGS} ${EMB_ARGS} ${EXTRA_OVERRIDES}" || {
                 echo "[ERR] prepare failed, see ${LOG_DIR}/log.solo-initial.${CONFIG_TAG}" >&2
@@ -255,10 +307,10 @@ for _cfg_in in "${CONFIGS[@]}"; do
         echo "[SOLO] RUN_PATH=${RUN_PATH}"
 
         # No Python rank: every one of the NTOT ranks runs Nek.
-        run_cmd "${LOG_DIR}/log.solo.${CONFIG_TAG}" \
+        run_cmd "${SOLO_LOG}" \
             "mpirun ${MPI_RUN_OPTS} -n ${NTOT} \
                 bash -c 'cd ${RUN_PATH} && ./${EXENAME}'" || {
-            echo "[ERR] solver failed, see ${LOG_DIR}/log.solo.${CONFIG_TAG}" >&2
+            echo "[ERR] solver failed, see ${SOLO_LOG}" >&2
             exit 1; }
 
         if [[ "${DRY_RUN}" == "no" ]]; then
