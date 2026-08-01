@@ -17,6 +17,7 @@ c=============================================
             include 'SIZE'
             include 'INPUT'
             include 'DRL'       
+            include 'POLICY'
             include 'TSTEP'  
             include 'NEKUSE'  
             include 'mpif.h'
@@ -34,6 +35,9 @@ c=============================================
 c=============================================
 c       Function
 c=============================================
+!     The embedded controller has no Python rank or intercommunicator.
+            if (pol_ifsolo) return
+
             drl_step=int(PARAM(89))
             
             c_cfl = abs(COURNO)

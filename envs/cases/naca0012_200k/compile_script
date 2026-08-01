@@ -17,8 +17,24 @@ function error_quit {
 ## BUILD CONFIG -----------------------------------------------------------
 # Case name (hard-coded)
 export CASE="naca_wing"
-# Source path
-SOURCE_ROOT="../../solver/DEC_DRL_Nek5000"
+# Solver backend: use `raw` for the Python-free embedded controller.
+SOLVER="drl"
+POSARGS=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --solver) SOLVER="$2"; shift 2 ;;
+        *) POSARGS+=("$1"); shift ;;
+    esac
+done
+set -- "${POSARGS[@]}"
+
+case ${SOLVER} in
+    drl) SOLVER_ROOT="DEC_DRL_Nek5000"; BINNAME="nek5000" ;;
+    raw) SOLVER_ROOT="DEC_Nek5000";     BINNAME="nek5000_solo" ;;
+    *)   error_quit "Unknown --solver '${SOLVER}', expected drl or raw." ;;
+esac
+export MAKEFLAGS="BINNAME=${BINNAME} LIBNAME=lib${BINNAME}.a"
+SOURCE_ROOT="../../solver/${SOLVER_ROOT}"
 # Fortran / C compilers
 F77="mpif77"
 CC="mpicc"
@@ -38,6 +54,7 @@ USR+=" time_series.o time_seriesIO.o pts_redistribute.o err_est.o"
 USR+=" rt_filter.o tripf.o misc.o"
 ## CTRL
 USR+=" drl_main.o drl_action.o drl_init.o drl_reward.o drl_state.o drl_IO.o"
+USR+=" pol_core.o pol_net.o pol_main.o pol_IO.o pol_action.o"
 ## ------------------------------------------------------------------------
 
 # assign version tag (required by makenek.inc)
@@ -63,7 +80,7 @@ case $il in
                 # makenek.inc reads $1 as the case name and generates ./makefile
                 set -- ${CASE}
                 source $SOURCE_ROOT_CORE/makenek.inc
-                make -j4 -f makefile 2>&1 | tee log_compile.out
+                make -j4 -f makefile ${MAKEFLAGS} 2>&1 | tee log_compile.out
                 exit 0
                 ;;
         *)

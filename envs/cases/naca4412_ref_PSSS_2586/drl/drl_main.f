@@ -18,10 +18,12 @@ c=============================================
         include 'GLOBALCOM'     ! Communication
         include 'mpif.h'
         include 'DRL'
+        include 'POLICY'
         logical, save :: evolving = .false.
         integer, save :: i_evolv
         integer ndrl,nst,it
         integer drl_step
+        integer ictrl_mode
         character*5 request 
         integer parent_comm,ierr,my_nid,master
         logical drl_check_d
@@ -33,6 +35,14 @@ c       Function
 c=============================================
         
         call drl_if_restart(drl_check_d,2)
+
+c     PARAM(91)=1 selects embedded mode before MPI_INTERCOMM_CREATE.
+        ictrl_mode = int(PARAM(91))
+        pol_ifsolo = ictrl_mode.eq.1
+        if (pol_ifsolo) then
+           call POL_main
+           return
+        endif
 
         drl_step = int(PARAM(89))
         if (NID.eq.0) print *, "[NEK] DRL STEP",drl_step
@@ -49,6 +59,7 @@ c=============================================
         ! SET-UP DRL Information (MUST)
         !----------------------
         call drl_init
+        call pol_rec_coupled_init
         
         else ! We will let Nek run 1 step without control 
   !----------------------
@@ -112,6 +123,7 @@ c=============================================
                   call stop_simulation
                   call nekgsync()
             case ('RSETS')
+                  call pol_rec_close
                   call drl_if_restart(drl_check_d,1) ! 1==> .TRUE.
                   call nekgsync()
                   if (NID.eq.0) print *, "[NEK] RESTART Time Evolution!"
@@ -146,6 +158,7 @@ c=============================================
         ! call drl_action
 
         call drl_reward(i_evolv)
+        if (i_evolv.eq.drl_step) call pol_rec_write
         ! call moving_smooth_action(i_evolv,drl_step)
 
         endif 
@@ -166,6 +179,7 @@ c=============================================
         include "INPUT"
         include "TSTEP"
         include 'PARALLEL'
+        include 'POLICY'
         include 'mpif.h'
         ! include "CHKPOINT"
         character*5 termn, request
@@ -180,6 +194,7 @@ c=============================================
         if(NID.eq.0) print *, "[TERMN] CKPT SAVED!"
         if(NID.eq.0) print *, "--------------STOP-----------------"
         if(NID.eq.0) print *, "[TERMN] DISCONNECT!"
+        call pol_rec_close
         call exitt0
 
         end subroutine stop_simulation
@@ -193,6 +208,7 @@ c: Just Reset the checkpoints file and time steps when resuming the Simulation
       include 'SIZE'
       include 'TOTAL'
       include 'mpif.h'
+      include 'POLICY'
 
       istep = 0
 
@@ -202,6 +218,7 @@ c: Just Reset the checkpoints file and time steps when resuming the Simulation
       print *, "============================"
       endif 
       call checkpoint                   ! Restart check
+      call pol_rec_coupled_init
 
       return
       end

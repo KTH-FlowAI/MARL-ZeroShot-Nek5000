@@ -442,15 +442,24 @@ c=============================================
         ! include 'DRL'
 
         ! YW: I force the nelx = 2D element and nely as the number of 2D elements and 1 here to aviod error
-        real avgVZ(LX1,LY1,xnel,ynel), velV(LX1,LY1,LZ1,LELT),
-     $   w1(LX1,LY1,xnel,ynel),w2(LX1,LY1,xnel,ynel)
-        
-        ! This is a copy of w1 for test 
+        real avgVZ(LX1,LY1,xnel,ynel), velV(LX1,LY1,LZ1,LELT)
+
+!#[MOD] w1 is a run constant: it contains the z-direction GLL quadrature
+!#[MOD] weights accumulated by this rank and then globally reduced.  The mesh
+!#[MOD] partition and wzm1 do not change during a run, so retain it in a
+!#[MOD] common block and construct it only on the first collective call.
+        real w1(LX1,LY1,xnel,ynel),w2(LX1,LY1,xnel,ynel)
+        common /ZAVGWGT/ w1,w2
+        logical zavg_ifw1
+        save    zavg_ifw1
+        data    zavg_ifw1 /.false./
+
+        ! This is a copy of w1 for test
         ! real w1copy(LX1,LY1,xnel,ynel),ws1(LX1,LY1,LZ1,LELT)
         ! COMMON / CTRL / w1copy, ws1
 
-        ! Iterator 
-        integer i,j,k, il, jl 
+        ! Iterator
+        integer i,j,k, il, jl
         integer e,eg,ex,ey,ez,mxy
         real umean, dz2
 
@@ -461,12 +470,11 @@ c=============================================
 
         mxy = LX1*LY1*xnel*ynel
         call rzero(avgVZ,mxy)
-        call rzero(w1,mxy)
-        call rzero(w2,mxy)
+!#[MOD] gop writes all of w2 before copying it back, so w2 is pure output.
 ! #ifdef YWDEBUG
 !         if (NID.eq.0) print *, "[REWARD] ZERO!"
 ! #endif
-c Computing the weighted average along z-dir 
+c Computing the weighted average along z-dir
 c--------------------------------------
         do e=1,lelt
         eg = lglel(e)
@@ -476,15 +484,10 @@ c--------------------------------------
         do k=1,lz1
         avgVZ(i,j,ex,ey)=avgVZ(i,j,ex,ey)
      $              +dz2*wzm1(k)*velV(i,j,k,e)
-
-        w1(i,j,ex,ey)=w1(i,j,ex,ey)+dz2*wzm1(k)
-cc  YW: test, make a copy of w1 
-        ! w1copy(i,j,ex,ey)=w1(i,j,ex,ey)
-        ! ws1(i,j,k,e)=wzm1(k)
         enddo
         enddo
         enddo
-        enddo ! do e=1,nelt 
+        enddo ! do e=1,nelt
 c--------------------------------------
 
 
@@ -492,8 +495,27 @@ c-------------------------------------
 c For global sum-up, communication
 c-------------------------------------
         call gop(avgVZ,w2,'+  ',mxy)
-        call gop(w1,w2,'+  ',mxy)
 c-------------------------------------
+
+!#[MOD] Construct and reduce the invariant weight array once.  This loop
+!#[MOD] keeps the original accumulation order, so subsequent normalisation is
+!#[MOD] bit-for-bit the same while avoiding one global reduction per call.
+        if (.not.zavg_ifw1) then
+           call rzero(w1,mxy)
+           do e=1,lelt
+           eg = lglel(e)
+           call get_exyz_usr(ex,ey,ez,eg,xnel,ynel,nelz)
+           do j=1,ly1
+           do i=1,lx1
+           do k=1,lz1
+           w1(i,j,ex,ey)=w1(i,j,ex,ey)+dz2*wzm1(k)
+           enddo
+           enddo
+           enddo
+           enddo
+           call gop(w1,w2,'+  ',mxy)
+           zavg_ifw1 = .true.
+        endif
 
 c-------------------------------------
 c Normalisation by the weight array
@@ -742,4 +764,3 @@ c-----------------------------------
         return
         end subroutine z_weight_reshape
 c--------------------------------------------------------------------
-

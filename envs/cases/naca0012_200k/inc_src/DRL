@@ -31,6 +31,8 @@
 ! YW:   The instantaneous velocity array 
         real val_obs(NFLDC,totctrl)   ! STATE/Observation 
         real rwd_agt(totctrl)        ! Rewards
+! Net energy-saving components (tau_w, pressure work, kinetic work).
+        real rwd_tau(totctrl), rwd_pw(totctrl), rwd_v3(totctrl)
 
 ! YW:   Prior information of NODE/ELEMENT of Agent
         parameter (nfeat=5)               ! "Library" of prior infomation
@@ -52,6 +54,7 @@
 
         common /drl_act/ actions,msk_act
         common /drl_IO/ iptctl
+        common /drl_netgain/ rwd_tau, rwd_pw, rwd_v3
         ! For Common block of Angle 
         common / oppo_angle / body_sin, body_cos
         common /drl_yw_mpi/ DRL_COMM

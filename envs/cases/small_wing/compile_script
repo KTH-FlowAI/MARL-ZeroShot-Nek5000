@@ -1,9 +1,38 @@
 #!/bin/bash
 # Nek5000 build config file
 
+function error_quit {
+    echo -e "$@"
+    echo
+    echo -e 'Usage:'
+    echo -e './compile_script [--solver drl|raw] --clean'
+    echo -e './compile_script [--solver drl|raw] --all'
+    exit 1
+}
+
+export CASE="small_wing"
+# `raw` selects the unpatched Nek5000 core and writes nek5000_solo, the
+# executable used by the embedded Python-free controller.
+SOLVER="drl"
+POSARGS=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --solver) SOLVER="$2"; shift 2 ;;
+        *) POSARGS+=("$1"); shift ;;
+    esac
+done
+set -- "${POSARGS[@]}"
+
+case ${SOLVER} in
+    drl) SOLVER_ROOT="DEC_DRL_Nek5000"; BINNAME="nek5000" ;;
+    raw) SOLVER_ROOT="DEC_Nek5000";     BINNAME="nek5000_solo" ;;
+    *)   error_quit "Unknown --solver '${SOLVER}', expected drl or raw." ;;
+esac
+export MAKEFLAGS="BINNAME=${BINNAME} LIBNAME=lib${BINNAME}.a"
+
 ## LOCAL ------------------
 # source path
-SOURCE_ROOT="../../solver/DEC_DRL_Nek5000" 
+SOURCE_ROOT="../../solver/${SOLVER_ROOT}"
 # Fortran compiler
 F77="mpif77"
 # C compiler
@@ -34,7 +63,7 @@ G="-I./inc_src -mcmodel=large -std=legacy"
 # pre-processor symbol list 
 # (set PPLIST=? to get a list of available symbols)
 # PPLIST="MPIIO" 
-PPLIST="MPIIO DRL YWDEBUG"
+PPLIST="MPIIO DRL YWDEBUG UTAU NETGAIN"
 
 # linking flags
 #USR_LFLAGS="-L/usr/lib -lfoo"
@@ -70,6 +99,7 @@ USR+=" rt_filter.o tripf.o misc.o"
 ## CTRL
 # USR+=" oppo_ctrl.o oppo_ctrl_IO.o"
 USR+=" drl_main.o drl_action.o drl_init.o drl_reward.o drl_state.o drl_IO.o"
+USR+=" pol_core.o pol_net.o pol_main.o pol_IO.o pol_action.o"
 
 
 # MOAB/iMESH path
@@ -98,16 +128,21 @@ USR+=" drl_main.o drl_action.o drl_init.o drl_reward.o drl_state.o drl_IO.o"
 ###############################################################################
 # assign version tag
 mver=1
-# overwrite source path with optional 2nd argument
-if [ -d $2 ] && [ $# -eq 2 ]; then
-  SOURCE_ROOT="$2"
-  echo "change source code directory to: ", $SOURCE_ROOT
-  SOURCE_ROOT_CORE="$SOURCE_ROOT/core"
-  SOURCE_ROOT_JL="$SOURCE_ROOT/jl"
-  SOURCE_ROOT_CMT="$SOURCE_ROOT/core/cmt"
+if [ $# -ne 1 ]; then
+  error_quit 'Wrong arguments number!'
 fi
-# do some checks and create makefile
-source $SOURCE_ROOT_CORE/makenek.inc
-# compile
-make -j4 -f makefile 2>&1 | tee compiler.out
-exit 0
+
+case $1 in
+  --clean)
+    set -- clean
+    source "$SOURCE_ROOT_CORE/makenek.inc"
+    ;;
+  --all)
+    set -- "${CASE}"
+    source "$SOURCE_ROOT_CORE/makenek.inc"
+    make -j4 -f makefile ${MAKEFLAGS} 2>&1 | tee log_compile.out
+    ;;
+  *)
+    error_quit 'Wrong argument.'
+    ;;
+esac
