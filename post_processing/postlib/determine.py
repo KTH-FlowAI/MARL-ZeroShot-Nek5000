@@ -10,6 +10,8 @@ import os, shutil
 import matplotlib.pyplot as plt 
 import yaml 
 
+from . import results as res
+
 def name_case(conf): 
   """ Name cases based on the algorithm and run name""" 
   run_name = f"{conf['runner']['RL_algorithm']}_Retau{int(conf['simulation']['retau'])}_{conf['runner']['agent_run_name']}"
@@ -20,8 +22,28 @@ def rename_file(run_name,env_id,date_str,format_str):
   file_name = f"{run_name}_env{env_id:03d}_{date_str}"+format_str
   return file_name
   
-def read_deterministic_run(run_path,case_list,verbose=True):
-    """Read the deterministic run"""
+def deterministic_save_path(conf, case, results_root=None):
+    """
+    Where the sorted reward / action / observation records of one case go.
+
+    data/results/<solver_case>/<run_name>/drl/, the same root utils/mv-data
+    archives raw solver output to, so one case has one home.  The solver case
+    name comes from the config (simulation.CASENAME) and the run name is the
+    runs/ folder, which is what was asked for.
+    """
+    solver_case = (conf.get('simulation') or {}).get('CASENAME', 'unknown')
+    root = res.case_root(case, solver_case, root=results_root)
+    return str(root / 'drl'), root, solver_case
+
+
+def read_deterministic_run(run_path,case_list,verbose=True,results_root=None):
+    """
+    Read the deterministic run.
+
+    The sorted records are written to the results tree rather than back into
+    runs/ -- see deterministic_save_path.  `results_root` overrides the base
+    for a one-off.
+    """
     case_dict = {}
     for il, case in enumerate(case_list):
         if verbose:
@@ -48,14 +70,19 @@ def read_deterministic_run(run_path,case_list,verbose=True):
         f.close()
 
         case_dict[case]['run_name']=name_case(case_dict[case]['conf'])
-        save_path = os.path.join(case_path, case_dict[case]["run_name"])
-        if not os.path.exists(save_path):
-          if verbose:
-            print(f"Create new folder: {save_path}")
-          os.mkdir(save_path)
+        save_path, result_root, solver_case = deterministic_save_path(
+            case_dict[case]['conf'], case, results_root)
+        case_dict[case]['result_root'] = str(result_root)
+        case_dict[case]['save_path'] = save_path
+        os.makedirs(save_path, exist_ok=True)
+        if verbose:
+          print(f"[IO] Records -> {save_path}")
 
-        # --- Copy the config file ---  
-        shutil.copy(os.path.join(case_path,'current_conf.yml'),os.path.join(save_path,'current_conf.yml'))
+        # --- Copy the config exactly as the run used it ---
+        config_dir = os.path.join(str(result_root), 'config')
+        os.makedirs(config_dir, exist_ok=True)
+        shutil.copy(os.path.join(case_path,'current_conf.yml'),
+                    os.path.join(config_dir,'current_conf.yml'))
 
         # --- Get the test run list ---  
         env_list = os.listdir(case_path)
@@ -132,6 +159,13 @@ def read_deterministic_run(run_path,case_list,verbose=True):
         case_dict[case]['reward'] = np.concatenate(case_dict[case]['reward'],0)
         case_dict[case]['action'] = np.concatenate(case_dict[case]['action'],0)
         case_dict[case]['states'] = np.concatenate(case_dict[case]['states'],0)
+
+        res.write_meta(result_root, solver_case=solver_case,
+                       run_name=str(case),
+                       drl={'records': len(rec_file_list),
+                            'name': case_dict[case]['run_name'],
+                            'source': case_path,
+                            'reward_shape': list(case_dict[case]['reward'].shape)})
 
         if verbose:
             print(f"[IO] Reward: {case_dict[case]['reward'].shape}")

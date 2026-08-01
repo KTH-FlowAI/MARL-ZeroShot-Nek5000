@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""
+Spectra and two-point correlations from stitched tsrs data.
+
+Computes, per wall-normal plane: premultiplied 1-D spectra in x and z, the uv
+co-spectrum, two-point correlations in x and z, the wall-normal correlation
+matrix, temporal PSD and convection velocity.  Several cases can be given and
+are overlaid, so controlled-vs-uncontrolled comparison is the normal mode of
+use rather than an afterthought.
+
+This script draws.  For record diagnostics (stationarity, u_tau, resolution,
+noise floor) and for error bars on the map, use tsrs_diag.py.
+
+Everything is validated against Parseval at runtime -- see postlib/tsrs_spectra.py.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+import warnings
+from pathlib import Path
+
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import numpy as np
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from postlib import tsrs_spectra as sp                    # noqa: E402
+from postlib import tsrs_case as tc                       # noqa: E402
+
+ANALYSES = ('spectra', 'map', 'correlations', 'ycorr', 'frequency', 'convection')
+
+
+def parse_args():
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('case_ids', type=str, nargs='+',
+                    help='cases to compare; the first is the reference')
+    ap.add_argument('--runs-dir', default='../runs')
+    ap.add_argument('--env', type=int, default=0)
+    ap.add_argument('--field', default='u',
+                    help='variable for spectra/correlations (default: %(default)s)')
+    ap.add_argument('--planes', default=None,
+                    help='comma-separated nominal y+ values (default: all)')
+    ap.add_argument('--t0', type=float, default=None,
+                    help='discard snapshots before this time (transient)')
+    ap.add_argument('--t1', type=float, default=None)
+    ap.add_argument('--utau', type=float, default=None,
+                    help='*reference* u_tau, the one the stored y+ labels and '
+                         'nu were built with; default reads runner.u_tau from '
+                         'current_conf.yml')
+    ap.add_argument('--scale', default='actual', choices=tc.SCALES,
+                    help="wall units the figures are drawn in: 'actual' (the "
+                         "case's own u_tau, from the viscous sublayer) or "
+                         "'reference' (the baseline u_tau, common to all "
+                         "cases).  Default: %(default)s")
+    ap.add_argument('--lag', type=int, default=1,
+                    help='time lag for the convection velocity (default: %(default)s)')
+    ap.add_argument('--nperseg', type=int, default=None,
+                    help='Welch segment length (default: nt//4)')
+    ap.add_argument('--what', default='all',
+                    help=f'comma-separated subset of {",".join(ANALYSES)}')
+    ap.add_argument('--map-quantity', default='uu', choices=('uu', 'uv', 'both'),
+                    help="which premultiplied spectrum to map: 'uu' is the "
+                         "auto-spectrum of --field, 'uv' its co-spectrum with "
+                         "v.  The names are shorthand -- with --field w they "
+                         "mean Phi_ww and Phi_wv (default: %(default)s)")
+    ap.add_argument('--map-dir', default='z', choices=('z', 'x'),
+                    help='wavelength axis of the map (default: %(default)s)')
+    ap.add_argument('--map-levels', type=int, default=21,
+                    help='number of filled contour levels (default: %(default)s)')
+    ap.add_argument('--map-points', action='store_true',
+                    help='overlay the actual (lambda, y+) sample locations')
+    ap.add_argument('--map-style', default='contour', choices=('contour', 'mesh'),
+                    help="'contour' interpolates between samples; 'mesh' draws "
+                         'one cell per sample and claims no resolution it does '
+                         'not have (default: %(default)s)')
+    ap.add_argument('--outdir', default='Figs')
+    ap.add_argument('--save', default=None,
+                    help='also write the computed curves to this .npz')
+    ap.add_argument('--head', default=None,
+                    help='figure filename prefix (default: the case ids)')
+    return ap.parse_args()
+
+
+def figure_prefix(case_ids, head=None):
+    """
+    Filename prefix for every figure.
+
+    Defaults to the case ids themselves, so figures from different cases never
+    collide in --outdir; --head overrides it when a shorter name is wanted.
+    """
+    if head:
+        return head
+    return '_vs_'.join(re.sub(r'[^\w.+-]', '-', str(c)) for c in case_ids)
+
+
