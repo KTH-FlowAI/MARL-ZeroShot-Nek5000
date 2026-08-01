@@ -18,6 +18,7 @@ except ModuleNotFoundError:
     SubsampleOnInsertBuffer = None
     SelectiveReplayBuffer = None
 import yaml
+import glob
 import os
 import shutil
 import pickle
@@ -111,10 +112,24 @@ def archive_eval_checkpoint(conf, ckpt_path, dst_dir=None):
     if not os.path.exists(dst_dir):
         os.makedirs(dst_dir, exist_ok=True)
 
-    dst = os.path.join(dst_dir,
-                       f"eval_model_{conf.runner.agent_run_name}.zip")
+    # Name the copy after the run folder, which is what the results tree and
+    # every post-processing script key on.  io_path() sets logging.run_name
+    # from runner.agent_run_name, so the fallback is only for hand-built confs.
+    run_name = getattr(getattr(conf, 'logging', None), 'run_name', None) \
+        or conf.runner.agent_run_name
+    dst = os.path.join(dst_dir, f"eval_model_{run_name}.zip")
     shutil.copy2(src, dst)
     print(f"[EVAL] COPIED EVALUATED CHECKPOINT:\n{src}\n-> {dst}", flush=True)
+
+    # Drop a copy in every evaluation environment as well.  The env folders are
+    # what gets archived and post-processed, and a run whose checkpoint is only
+    # in logs/ becomes untraceable as soon as new checkpoints overwrite it.
+    for env_dir in sorted(glob.glob(os.path.join(
+            conf.logging.save_dir, str(run_name), 'eval', 'env_[0-9][0-9][0-9]'))):
+        env_dst = os.path.join(env_dir, os.path.basename(dst))
+        if not os.path.exists(env_dst):
+            shutil.copy2(dst, env_dst)
+            print(f"[EVAL] tracked checkpoint in {env_dir}", flush=True)
     return dst
 
 

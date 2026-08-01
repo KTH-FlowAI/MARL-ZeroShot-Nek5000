@@ -36,8 +36,10 @@ the Python-side records into `eval/` does not affect the solver connection; the
 `mpi_info` `wdir` is not the connection mechanism.
 
 - `src/initial.py` creates the solver dir at `eval/env_XXX` (`os.makedirs`, so the
-  `eval/` parent is created). The `RUN_PATH` cache therefore points the solver at
-  `eval/env_XXX`.
+  `eval/` parent is created), then saves the final merged configuration to
+  `eval/current_conf.yml`. The `RUN_PATH` cache therefore points the solver at
+  `eval/env_XXX`. Saving it during preparation also covers `nek-solo-run.sh`,
+  which deliberately never starts the Python evaluation environment.
 - `src/evaluate.py` builds the Python env with `rank_folder = <run>/eval`, so the
   env's `history_path` (all reward logs, NODE_INFO, current_conf) becomes
   `eval/history`. `vars_record_*.mat` is written to `eval/env_XXX`.
@@ -48,7 +50,7 @@ the Python-side records into `eval/` does not affect the solver connection; the
 
 | File | Change |
 |------|--------|
-| `src/initial.py` | eval branch: `rank_folder = <run>/eval/env_XXX`; `os.mkdir` → `os.makedirs` |
+| `src/initial.py` | eval branch: `rank_folder = <run>/eval/env_XXX`; `os.mkdir` → `os.makedirs`; save the finalized configuration at `eval/current_conf.yml` during preparation (including Nek-solo) |
 | `src/evaluate.py` | env `rank_folder = <run>/eval` (reward logs → `eval/history`); `vars_record` → `eval/env_XXX` |
 
 `src/nek_marl.py` needs no change — it just uses the `rank_folder` it is given.

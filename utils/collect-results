@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# Gather everything derived from one evaluated run into its results folder.
+#
+#   data/results/<case_name>/<run_name>/
+#       meta.yml       what was collected, from where, when
+#       config/        current_conf.yml exactly as the run used it
+#       model/         eval_model_<run_name>.zip -- the evaluated checkpoint
+#       drl/           reward / action / observation records (also written by
+#                      post_processing/postlib/determine.py)
+#       spectra/       one .npz per spectrum (written by tsrs_spectra.py --results)
+#       figs/          figures
+#
+# The root is the one utils/mv-data archives raw solver output to
+# (env_<id>/res_N/), so one case has one home and the two never collide.
+#
+# This is the catch-up path for runs that finished before the tracking existed:
+# a fresh evaluation already drops eval_model_<run_name>.zip into logs/ and into
+# every eval/env_XXX/ by itself (src/lib/sb3_utils.py: archive_eval_checkpoint).
+
+set -euo pipefail
+shopt -s nullglob
+
+SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CASE_NAME=""
+RUN_NAME=""
+SEED_ENVS="yes"
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") --run_name NAME [OPTIONS]
+
+  --run_name NAME      runs/<NAME> folder                       (required)
+  --case_name NAME     solver case name; default: from current_conf.yml
+  --source_root PATH   repository root                          [${SOURCE_ROOT}]
+  --no-seed-envs       do not copy the model into each env_XXX
+EOF
+}
+
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        --source_root)  SOURCE_ROOT="$2"; shift 2 ;;
+        --case_name)    CASE_NAME="$2"; shift 2 ;;
+        --run_name)     RUN_NAME="$2"; shift 2 ;;
+        --no-seed-envs) SEED_ENVS="no"; shift ;;
+        -h|--help)      usage; exit 0 ;;
+        *) echo "[ERR] unknown parameter: $1" >&2; exit 1 ;;
+    esac
+done
+
+[[ -n "${RUN_NAME}" ]] || { echo "[ERR] --run_name is required" >&2; usage; exit 1; }
+SOURCE_ROOT="$(cd "${SOURCE_ROOT}" && pwd)"
+
+CASE_PATH="${SOURCE_ROOT}/runs/${RUN_NAME}"
+[[ -d "${CASE_PATH}" ]] || {
+    echo "[ERR] no such run: ${CASE_PATH}" >&2; exit 1; }
+
+# Evaluation artefacts live under eval/ when it exists (see evaluate.py).
+EVAL_PATH="${CASE_PATH}"
+[[ -d "${CASE_PATH}/eval" ]] && EVAL_PATH="${CASE_PATH}/eval"
+
+CONF="${EVAL_PATH}/current_conf.yml"
+[[ -f "${CONF}" ]] || CONF="${CASE_PATH}/current_conf.yml"
+
+# The solver case name is CASENAME in the config; ask the file rather than
+# making the caller repeat it.
+if [[ -z "${CASE_NAME}" ]]; then
+    if [[ -f "${CONF}" ]]; then
+        # YAML quotes the value with either ' or "; strip both
+        CASE_NAME="$(sed -n 's/^[[:space:]]*CASENAME[[:space:]]*:[[:space:]]*//p' "${CONF}" \
+                     | head -1 | tr -d "\"' \t\r")"
+    fi
+    if [[ -z "${CASE_NAME}" ]]; then
+        for sess in "${EVAL_PATH}"/env_*/SESSION.NAME; do
+            CASE_NAME="$(head -1 "${sess}" | tr -d '[:space:]')"; break
+        done
+    fi
+fi
+[[ -n "${CASE_NAME}" ]] || {
+    echo "[ERR] could not determine the solver case name; pass --case_name" >&2
+    exit 1; }
+
+RESULT_ROOT="${SOURCE_ROOT}/data/results/${CASE_NAME}/${RUN_NAME}"
+mkdir -p "${RESULT_ROOT}"/{config,model,drl,spectra,figs}
+
+echo "-------------------------"
+echo "[RES] ${RUN_NAME} (case ${CASE_NAME})"
+echo "[RES] ${CASE_PATH} -> ${RESULT_ROOT}"
+echo "-------------------------"
+
+# ---------------------------------------------------------------- config
+if [[ -f "${CONF}" ]]; then
+    cp -p "${CONF}" "${RESULT_ROOT}/config/"
+    echo "[RES] config: current_conf.yml"
+else
+    echo "[RES] WARN: no current_conf.yml found"
+fi
+
+# ---------------------------------------------------------------- model
+MODEL_NAME="eval_model_${RUN_NAME}.zip"
+model_found=""
+for cand in "${CASE_PATH}/logs/${MODEL_NAME}" \
+            "${EVAL_PATH}/logs/${MODEL_NAME}" \
+            "${EVAL_PATH}"/env_*/"${MODEL_NAME}"; do
+    if [[ -f "${cand}" ]]; then model_found="${cand}"; break; fi
+done
+
+# Fall back to the checkpoint the config names, and rename it on the way in.
+if [[ -z "${model_found}" && -f "${CONF}" ]]; then
+    policy="$(sed -n 's/^[[:space:]]*policy[[:space:]]*:[[:space:]]*//p' "${CONF}" \
+              | head -1 | tr -d "\"' \t\r")"
+    if [[ -n "${policy}" ]]; then
+        for cand in "${CASE_PATH}/logs/${policy}" "${CASE_PATH}/logs/${policy}.zip"; do
+            if [[ -f "${cand}" ]]; then
+                model_found="${cand}"
+                echo "[RES] no ${MODEL_NAME}; using the configured checkpoint ${policy}"
+                break
+            fi
+        done
+    fi
+fi
+
+if [[ -n "${model_found}" ]]; then
+    cp -p "${model_found}" "${RESULT_ROOT}/model/${MODEL_NAME}"
+    echo "[RES] model: ${model_found##*/} -> ${MODEL_NAME}"
+    # Track which model produced which environment's data.
+    if [[ "${SEED_ENVS}" == "yes" ]]; then
+        n=0
+        for env_dir in "${EVAL_PATH}"/env_[0-9][0-9][0-9]; do
+            [[ -d "${env_dir}" ]] || continue
+            if [[ ! -f "${env_dir}/${MODEL_NAME}" ]]; then
+                cp -p "${RESULT_ROOT}/model/${MODEL_NAME}" "${env_dir}/"
+                n=$((n + 1))
+            fi
+        done
+        (( n > 0 )) && echo "[RES] seeded ${MODEL_NAME} into ${n} env folder(s)"
+    fi
+else
+    echo "[RES] no ${MODEL_NAME} (expected for OC and other non-learnt runs)"
+fi
+
+# A solo-nek run carries its policy as an exported F77 actor rather than an SB3
+# checkpoint, and drl_policy.in records the reward mode and gains it ran with.
+# Both are the provenance of what actually acted, so they belong with the model.
+n=0
+for env_dir in "${EVAL_PATH}"/env_[0-9][0-9][0-9]; do
+    [[ -d "${env_dir}" ]] || continue
+    env_id="${env_dir##*/env_}"
+    for pol in "${env_dir}"/actor_*.pol "${env_dir}/drl_policy.in"; do
+        [[ -f "${pol}" ]] || continue
+        cp -p "${pol}" "${RESULT_ROOT}/model/env${env_id}_${pol##*/}"
+        n=$((n + 1))
+    done
+done
+(( n > 0 )) && echo "[RES] embedded policy: ${n} file(s)"
+
+# ---------------------------------------------------------------- drl records
+n=0
+for env_dir in "${EVAL_PATH}"/env_[0-9][0-9][0-9]; do
+    [[ -d "${env_dir}" ]] || continue
+    env_id="${env_dir##*/env_}"
+    for rec in "${env_dir}"/*vars_record*; do
+        cp -p "${rec}" "${RESULT_ROOT}/drl/${RUN_NAME}_env${env_id}_${rec##*/}"
+        n=$((n + 1))
+    done
+done
+(( n > 0 )) && echo "[RES] drl: ${n} record file(s)" \
+            || echo "[RES] drl: none (run post_processing/deterministic.ipynb)"
+
+# ---------------------------------------------------------------- inventory
+{
+    echo "solver_case: ${CASE_NAME}"
+    echo "run_name: ${RUN_NAME}"
+    echo "collected: $(date -Iseconds)"
+    echo "source: ${CASE_PATH}"
+    echo "contents:"
+    for d in config model drl spectra figs; do
+        c=$(find "${RESULT_ROOT}/${d}" -maxdepth 1 -type f | wc -l)
+        echo "  ${d}: ${c}"
+    done
+} > "${RESULT_ROOT}/collect.yml"
+
+echo "[RES] inventory -> ${RESULT_ROOT}/collect.yml"
+echo "[RES] complete"

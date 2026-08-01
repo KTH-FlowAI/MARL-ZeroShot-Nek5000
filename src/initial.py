@@ -202,6 +202,22 @@ def preserve_and_clean_eval(rank_folder):
               flush=True)
 
 
+def save_evaluation_config(conf, run_folder):
+    """Persist the final evaluation config where post-processing resolves it.
+
+    Coupled evaluations also create ``eval/current_conf.yml`` when their
+    Python environment starts.  Embedded Nek-solo runs intentionally do not
+    start that environment, so preparation must write the same file itself.
+    This is called after ``NEK_INIT.main()`` because embedded preparation
+    derives ``simulation.numSteps`` (and may select a resume checkpoint).
+    """
+    eval_folder = os.path.join(run_folder, "eval")
+    os.makedirs(eval_folder, exist_ok=True)
+    config_path = os.path.join(eval_folder, "current_conf.yml")
+    OmegaConf.save(conf, config_path)
+    print(f"[IO] SAVED EVALUATION CONFIG: {config_path}", flush=True)
+
+
 def initial(conf_file,overrides,**ignored_kwargs):
     """
     Initialization of the program
@@ -329,6 +345,12 @@ def initial(conf_file,overrides,**ignored_kwargs):
                            log=conf.get('logging', None))
     initializer.main()
     #-----------------------------------
+
+    # Nek-solo exits after preparation, while the coupled launcher subsequently
+    # creates a Python environment that normally writes this file.  Save it
+    # here so eval/ always remains self-contained for stitch_tsrs and friends.
+    if conf.runner.evaluation:
+        save_evaluation_config(conf, run_folder)
     
     # Check the checkpoints 
     if not conf.runner.evaluation:
