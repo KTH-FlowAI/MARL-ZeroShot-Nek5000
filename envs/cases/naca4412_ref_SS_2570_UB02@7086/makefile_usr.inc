@@ -25,6 +25,7 @@ $(OBJDIR)/pol_main.o          :$(DRL_SRC)/pol_main.f;      $(F77) -c $(FL2) -I$(
 $(OBJDIR)/pol_IO.o          :$(DRL_SRC)/pol_IO.f;      $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_init.o          :$(DRL_SRC)/drl_init.f;      $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_reward.o        :$(DRL_SRC)/drl_reward.f;    $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/drl_netgain.o       :$(DRL_SRC)/drl_netgain.f;   $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_state.o         :$(DRL_SRC)/drl_state.f;     $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_action.o        :$(DRL_SRC)/drl_action.f;    $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_IO.o            :$(DRL_SRC)/drl_IO.f;        $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@

@@ -29,7 +29,11 @@ c=============================================
         ! YW: OCT15 I got a issue regarding the MEMORY
         ! I comment this and will test it on cluster in the future.
         !-----------------
+#ifdef NETGAIN
+        call compute_netGain_posOnly(i_evolv)
+#else
         call compute_dudy(i_evolv)
+#endif
         !-----------------
         call drl_reward_out(i_evolv)
         
@@ -359,4 +363,3 @@ c=============================================
         
         end subroutine switch_BC_2Drichlet
 c------------------------------------------------------------------
-

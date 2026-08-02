@@ -65,7 +65,7 @@ USR+=" time_series.o time_seriesIO.o pts_redistribute.o err_est.o"
 ## Tripping force
 USR+=" rt_filter.o tripf.o misc.o"
 ## CTRL
-USR+=" drl_main.o drl_action.o drl_init.o drl_reward.o drl_state.o drl_IO.o"
+USR+=" drl_main.o drl_action.o drl_init.o drl_reward.o drl_netgain.o drl_state.o drl_IO.o"
 #[MOD] Embedded deterministic policy (Python-free evaluation mode).
 USR+=" pol_core.o pol_net.o pol_main.o pol_IO.o"
 ## ------------------------------------------------------------------------
