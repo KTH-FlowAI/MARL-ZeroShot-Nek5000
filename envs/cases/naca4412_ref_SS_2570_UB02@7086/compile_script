@@ -53,7 +53,7 @@ CC="mpicc"
 G="-I./inc_src -mcmodel=large -std=legacy"
 # pre-processor symbol list.  YWDEBUG is intentionally absent from the
 # production build; GAINMONITOR writes one compact rank-0 cross-check.
-PPLIST="MPIIO DRL UTAU NETGAIN GAINMONITOR"
+PPLIST="MPIIO DRL UTAU NETGAIN GAINMONITOR BLOW"
 # disable/enable profiling (default true)
 IFPROFILING="true"
 # auxilliary files to compile (a makefile_usr.inc provides the build rules)
