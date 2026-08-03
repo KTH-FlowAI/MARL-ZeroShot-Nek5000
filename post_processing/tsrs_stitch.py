@@ -11,6 +11,7 @@ global point ids stored in the file.  See postlib/tsrs.py.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -40,7 +41,41 @@ def parse_args():
                     help='storage precision (default: %(default)s)')
     ap.add_argument('--overwrite', action='store_true',
                     help='restitch environments that already have a .npz')
-    return ap.parse_args()
+    ap.add_argument('--env-start', type=int, default=None, metavar='N',
+                    help='first environment to stitch, by the number in its '
+                         'directory name: --env-start 3 starts at env_003 '
+                         '(default: the lowest one present)')
+    ap.add_argument('--nenv', type=int, default=None, metavar='N',
+                    help='stitch at most N environments from --env-start '
+                         '(default: all of them)')
+    args = ap.parse_args()
+    if args.nenv is not None and args.nenv < 1:
+        ap.error('--nenv must be at least 1')
+    if args.env_start is not None and args.env_start < 0:
+        ap.error('--env-start must not be negative')
+    return args
+
+
+def env_number(name):
+    """The number in an env directory name: env_003 -> 3, else None."""
+    match = re.search(r'env_?(\d+)', name)
+    return int(match.group(1)) if match else None
+
+
+def select_envs(env_dirs, env_start, nenv):
+    """
+    The subset of environments to stitch.
+
+    Selecting on the number in the directory name rather than on position keeps
+    `--env-start 3` meaning env_003 even when an earlier environment is missing
+    or was never written.
+    """
+    if env_start is None and nenv is None:
+        return env_dirs
+    if env_start is not None:
+        env_dirs = [d for d in env_dirs
+                    if (n := env_number(d.name)) is not None and n >= env_start]
+    return env_dirs[:nenv] if nenv is not None else env_dirs
 
 
 def resolve_case(runs_dir, case_id):
@@ -74,16 +109,25 @@ def main():
                            Nx=sim['Nx'], Nz=sim['Nz'], lx1=sim['lx1'])
     shape = (len(y), len(x), len(z))
 
+    all_envs = sorted(d for d in data_path.iterdir()
+                      if d.is_dir() and 'env' in d.name)
+    if not all_envs:
+        raise SystemExit(f'no env_* directories under {data_path}')
+
+    env_dirs = select_envs(all_envs, args.env_start, args.nenv)
+    if not env_dirs:
+        raise SystemExit(
+            f'--env-start {args.env_start} / --nenv {args.nenv} selects none of '
+            f'the {len(all_envs)} environments under {data_path}: '
+            f'{", ".join(d.name for d in all_envs)}')
+
     print(f'Case {args.case_id} ({case_name}) in {data_path}')
     print(f'  Re_tau = {retau}, planes y+ = {resolve_yplus(yplus)} -> y = {y}')
     print(f'  grid (ny, nx, nz) = {shape}, Lx = {sim["Lx"]}, Lz = {sim["Lz"]}')
     print(f'  fields = {fields} as {args.dtype}')
+    print(f'  environments = {env_dirs[0].name} .. {env_dirs[-1].name} '
+          f'({len(env_dirs)} of {len(all_envs)})')
     print('-' * 32)
-
-    env_dirs = sorted(d for d in data_path.iterdir()
-                      if d.is_dir() and 'env' in d.name)
-    if not env_dirs:
-        raise SystemExit(f'no env_* directories under {data_path}')
 
     written, skipped, failed = 0, 0, []
     for env_dir in env_dirs:
