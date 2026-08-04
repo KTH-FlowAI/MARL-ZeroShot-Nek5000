@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 runner: 
-    ctrl_max_amp    :  0.0610        # The alpha
-    ctrl_min_amp    : -0.0610        # The alpha
+    ctrl_max_amp    :  0.039        # The alpha
+    ctrl_min_amp    : -0.039        # The alpha
     action_noise    :  0.1
     npl_state       :  2
     ckpt_int        :  1
     
     if_eval          : True
-    eval_freq        : 2
+    eval_freq        : 5
     
     nb_episodes     : 200
     nb_interactions : 2500 # Time steps in 1 episode t^+ = 1500  steps = nb_interact * ndrl 
@@ -18,8 +18,8 @@ runner:
     RL_algorithm    : "TD3"
     rescale_actions : True
     learning_rate   : 1e-3
-    batch_size      : 2048        # Since we have more envs, this should be sufficiently large
-    buffer_size     : 20_000_000
+    batch_size      : 6144        # Since we have more envs, this should be sufficiently large
+    buffer_size     : 400_000_000
     learning_starts : 100
     tau             : 0.005
     
@@ -28,7 +28,7 @@ runner:
     load_agent      :  True
     normalize_input : 'utau'   # Between None, utau, std, maxmin
 
-    seed : 1998
+    seed : 20010603
 
     custom_buffer  : False
     keep_frac      : 0.25 
@@ -36,13 +36,13 @@ runner:
 
     random_init     : 6
     rank            : 1          # Which initial contion to use
-    agent_run_name  : "lc_omega2_SS_nes_org"
+    agent_run_name  : "lc_omega4_US02_SS_nes_org"
     
     evaluation      : False
     learnt_policy   : True
 
-    u_tau           : 0.0610
-    dUdy            : 16.90
+    u_tau           : 0.039
+    dUdy            : 13.28
 
     # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
     reward_fn       : net_gain
@@ -57,41 +57,39 @@ simulation:
     CASENAME : "tcf"
     #I/O
     exeName : 'nek5000'
-    compile_path   : "envs/cases/lc_n7"
-    restart_folder : "data/restarts/rs6_lc_noresize_new_reth515"
-    shared_data_path: 'data/simulations/large_channel'
+    compile_path   : "envs/cases/lc_extra_n11"
+    restart_folder : "data/restarts/rs6_lc_noresize_reth856_H169"
+    shared_data_path: 'data/simulations/refined_large_channel'
     shared_data_link: true
     #------------------------------------------
     # Generally VERY IMPORTANT
-    TOTCTRL : 128       # Be consistent with SIZE
-    nproc   : 512 
-    ndrl    : 25        # Steps to update the rewards (t^+=0.6)
+    TOTCTRL : 288       # Be consistent with SIZE
+    nproc   : 1024         
+    ndrl    : 24             # Steps to update the rewards (t^+=0.6)
     znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
-    retau : 280.0 
+    retau : 338.0
     y_sensing : 15.0 
     nzs       : 1   # Clustering nodes 
     nxs       : 1   # Clustering nodes on z dir 
-    gll_unique : 1
     #--- Body-Force Damping config, it will be used only if BDFD is on ----
-    ys_bdf  : 0.0 # Volume for Body-Force
-    amp_bdf : 0.0 # Amplitude for Body-Force
-    ret_bdf : 0.0 # Scale for Body-Force, it depends on the uncontrolled channel, but the drl sensing plane depends on the body-force channel
+    ys_bdf: 100.0 # Volume for Body-Force
+    amp_bdf : 25.0 # Amplitude for Body-Force
+    ret_bdf : 486.0 # Scale for Body-Force, it depends on the uncontrolled channel, but the drl sensing plane depends on the body-force channel
  
     #------------------------------------------
-
     # slurm specific 
     out_log : 'logfile'
     #------------------------
     # SIZE
     #------------------------
-    lx1       :  8               # Polynomial Order 
+    lx1       :  12               # Polynomial Order 
     Lx        :  6.28
     Ly        :  1.0
     Lz        :  3.14   # Size of domain 
-    Nx        :  10
+    Nx        :  12
     Ny        :  8
-    Nz        :  9         # No. Spectral Elements    
+    Nz        :  10        # No. Spectral Elements    
     #--------------------------
     # .par file 
     #--------------------------
@@ -118,7 +116,7 @@ simulation:
     v_residualTol   :  1e-8
     v_residualProj  :  "no"
     density         :  1.0
-    viscosity       :  -4600
+    viscosity       :  -8600
     advection       :  "yes"
     
     #[_RUNPAR]               # Runtime parameter section for rprm module
@@ -132,12 +130,13 @@ simulation:
     #[_CHKPOINT]             # Runtime paramere section for checkpoint module
     READCHKPT     :  "yes"     # Restat from checkpoint
     CHKPFNUMBER   :  1         # Restart file number
-    CHKPINTERVAL  :  10000000      # Checkpiont saving frequency (number of time steps)
+    CHKPINTERVAL  :  200_000_000      # Checkpiont saving frequency (number of time steps)
 
     #[_STAT]             # Runtime paramere section for statistics module
     AVSTEP     :  10
-    IOSTEP     :  100_000_000
+    IOSTEP     :  200_000_000
 
     #[_TSRS]
-    SMPSTEP : 100_000_000   # How many steps to sample the time series? 
+    SMPSTEP : 5000  # How many steps to sample the time series? 
+
 

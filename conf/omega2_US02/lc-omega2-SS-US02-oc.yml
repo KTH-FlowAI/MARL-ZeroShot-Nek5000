@@ -1,48 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 runner: 
-    ctrl_max_amp    :  0.0610        # The alpha
-    ctrl_min_amp    : -0.0610        # The alpha
-    action_noise    :  0.1
+    ctrl_max_amp    :  1.0        # The alpha
     npl_state       :  2
     ckpt_int        :  1
-    
-    if_eval          : True
-    eval_freq        : 2
-    
-    nb_episodes     : 200
-    nb_interactions : 2500 # Time steps in 1 episode t^+ = 1500  steps = nb_interact * ndrl 
-    train_steps     : 300
-    gradient_steps  : 64      # For each training step, how many times we extract the off-policy history from the history buffer with batch size?
-   
-    RL_algorithm    : "TD3"
-    rescale_actions : True
-    learning_rate   : 1e-3
-    batch_size      : 2048        # Since we have more envs, this should be sufficiently large
-    buffer_size     : 20_000_000
-    learning_starts : 100
-    tau             : 0.005
-    
-    policy_file     : 'conf/default_ddpg_policy.yml'
-    policy          : 'best_model'
-    load_agent      :  True
-    normalize_input : 'utau'   # Between None, utau, std, maxmin
-
-    seed : 1998
-
-    custom_buffer  : False
-    keep_frac      : 0.25 
-    buffer_mode    : 'rotate'      
+    vars_record_freq : 16
+ 
+    RL_algorithm    : "OC"
+    nb_interactions : 48000 # Time steps in 1 episode t^+ = 1500  steps = nb_interact * ndrl
+    rescale_actions : False
+    load_agent      : False
+    normalize_input : 'None'   # Between None, utau, std, maxmin
 
     random_init     : 6
     rank            : 1          # Which initial contion to use
-    agent_run_name  : "lc_omega2_SS_nes_org"
+    agent_run_name  : "lc_omega1_US02_SS_oc"
     
-    evaluation      : False
-    learnt_policy   : True
+    evaluation      : True
+    learnt_policy   : False
 
-    u_tau           : 0.0610
-    dUdy            : 16.90
+    u_tau           : 0.048
+    dUdy            : 9.75
 
     # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
     reward_fn       : net_gain
@@ -51,32 +29,28 @@ runner:
     reward_gamma    : 1.0
 
 
-
-
 simulation: 
     CASENAME : "tcf"
     #I/O
     exeName : 'nek5000'
     compile_path   : "envs/cases/lc_n7"
-    restart_folder : "data/restarts/rs6_lc_noresize_new_reth515"
-    shared_data_path: 'data/simulations/large_channel'
-    shared_data_link: true
+    restart_folder : "data/restarts/rs6_lc_noresize_reth467_H163"
     #------------------------------------------
     # Generally VERY IMPORTANT
     TOTCTRL : 128       # Be consistent with SIZE
     nproc   : 512 
-    ndrl    : 25        # Steps to update the rewards (t^+=0.6)
-    znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
+    ndrl    : 1        # Steps to update the rewards (t^+=0.6)
+    znmf_avg: 0           # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
-    retau : 280.0 
+    retau : 204.0 
     y_sensing : 15.0 
     nzs       : 1   # Clustering nodes 
     nxs       : 1   # Clustering nodes on z dir 
-    gll_unique : 1
+    gll_unique : 0
     #--- Body-Force Damping config, it will be used only if BDFD is on ----
-    ys_bdf  : 0.0 # Volume for Body-Force
-    amp_bdf : 0.0 # Amplitude for Body-Force
-    ret_bdf : 0.0 # Scale for Body-Force, it depends on the uncontrolled channel, but the drl sensing plane depends on the body-force channel
+    ys_bdf : 30.0 # Volume for Body-Force
+    amp_bdf : 15.0 # Amplitude for Body-Force
+    ret_bdf : 261.0 # Scale for Body-Force, depends on the uncontrolled channel, but the drl sensing plane depends on the body-force channel
  
     #------------------------------------------
 
@@ -98,7 +72,7 @@ simulation:
     ### General 
     stopAt : "numSteps"
     numSteps : 500000       # Make it a bit longer so that the simulation not stops
-    dt       : -2.0e-03
+    dt       : -4.0e-03
     tmax     : 100000.0
     timeStepper : "bdf3"
     variableDt : "no"
@@ -118,7 +92,7 @@ simulation:
     v_residualTol   :  1e-8
     v_residualProj  :  "no"
     density         :  1.0
-    viscosity       :  -4600
+    viscosity       :  -4300
     advection       :  "yes"
     
     #[_RUNPAR]               # Runtime parameter section for rprm module
@@ -136,8 +110,8 @@ simulation:
 
     #[_STAT]             # Runtime paramere section for statistics module
     AVSTEP     :  10
-    IOSTEP     :  100_000_000
+    IOSTEP     :  100_000
 
     #[_TSRS]
-    SMPSTEP : 100_000_000   # How many steps to sample the time series? 
+    SMPSTEP : 17   # How many steps to sample the time series? 
 

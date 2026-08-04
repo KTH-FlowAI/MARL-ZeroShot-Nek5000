@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+## Use the polices trained by original reward function (net_gain) to test the performance of the new reward function.
 runner: 
-    ctrl_max_amp    :  0.0630        # The alpha
-    ctrl_min_amp    : -0.0630        # The alpha
+    ctrl_max_amp    :  0.0610        # The alpha
+    ctrl_min_amp    : -0.0610        # The alpha
     action_noise    :  0.1
     npl_state       :  2
     ckpt_int        :  1
@@ -36,13 +37,13 @@ runner:
 
     random_init     : 6
     rank            : 1          # Which initial contion to use
-    agent_run_name  : 300101
+    agent_run_name  : "lc_omega2_SS_nes_org_TEST_jfm_normp"
     
     evaluation      : False
     learnt_policy   : True
 
-    u_tau           : 0.0630
-    dUdy            : 13.10
+    u_tau           : 0.0610
+    dUdy            : 16.90
 
     # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
     reward_fn       : net_gain
@@ -57,16 +58,16 @@ simulation:
     CASENAME : "tcf"
     #I/O
     exeName : 'nek5000'
-    compile_path   : "envs/cases/lc_n7_jfm"
-    restart_folder : "data/restarts/rs6_lc_noresize_reth365"
+    compile_path   : "envs/cases/lc_n7_jfm_normp"
+    restart_folder : "data/restarts/rs6_lc_noresize_new_reth515"
     #------------------------------------------
     # Generally VERY IMPORTANT
     TOTCTRL : 128       # Be consistent with SIZE
     nproc   : 512 
-    ndrl    : 12        # Steps to update the rewards (t^+=0.6)
+    ndrl    : 25        # Steps to update the rewards (t^+=0.6)
     znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
-    retau : 207.0 
+    retau : 280.0 
     y_sensing : 15.0 
     nzs       : 1   # Clustering nodes 
     nxs       : 1   # Clustering nodes on z dir 
@@ -87,16 +88,16 @@ simulation:
     Lx        :  6.28
     Ly        :  1.0
     Lz        :  3.14   # Size of domain 
-    Nx        :  8
+    Nx        :  10
     Ny        :  8
-    Nz        :  8         # No. Spectral Elements    
+    Nz        :  9         # No. Spectral Elements    
     #--------------------------
     # .par file 
     #--------------------------
     ### General 
     stopAt : "numSteps"
     numSteps : 500000       # Make it a bit longer so that the simulation not stops
-    dt       : -4.0e-03
+    dt       : -2.0e-03
     tmax     : 100000.0
     timeStepper : "bdf3"
     variableDt : "no"
@@ -116,7 +117,7 @@ simulation:
     v_residualTol   :  1e-8
     v_residualProj  :  "no"
     density         :  1.0
-    viscosity       :  -3300
+    viscosity       :  -4600
     advection       :  "yes"
     
     #[_RUNPAR]               # Runtime parameter section for rprm module

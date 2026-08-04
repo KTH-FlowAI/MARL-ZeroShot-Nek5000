@@ -10,13 +10,23 @@
 #   * data/restarts/rs6_lc_noresize_reth365/init_<rank>/
 #   * data/simulations/large_channel/tcf.re2 and tcf.ma2
 
+embedded:
+    enabled: true
+    net_precision: 8
+    # Writing every cycle would be about 8 GB for 2500 cycles at 512 ranks.
+    # Every tenth cycle retains a diagnostic trajectory at a manageable size.
+    rec_freq: 16
+    rec_bufsize: 2500
+    resume: false
+    coupled_recorder: true
+
 runner:
     # Controller trained for this Re_tau=207 case.  Actions are normalized by
     # u_tau, then scaled by ctrl_max_amp inside the exported actor.
     RL_algorithm: "TD3"
     policy_file: 'conf/default_ddpg_policy.yml'
     policy: 'best_model'
-    agent_run_name: '300101'
+    agent_run_name: 'lc_omega1_SS_nes_solonek'
     load_agent: true
     learnt_policy: true
     evaluation: true
@@ -65,6 +75,8 @@ simulation:
     target_cfl: 2.0
     retau: 207.0
     y_sensing: 15.0
+    # in visous units, calculate the spectra
+    y_planes: [0,3,5,8,10,12,15,20,23,26,30,40,50,100,200]
     gll_unique: 1
     nzs: 1
     nxs: 1
@@ -105,17 +117,7 @@ simulation:
     CHKPFNUMBER: 1
     # 500 interactions per checkpoint; sufficient for --resume without
     # changing the control trajectory between checkpoint writes.
-    CHKPINTERVAL: 6000
+    CHKPINTERVAL: 60000000
     AVSTEP: 10
-    IOSTEP: 100000000
-    SMPSTEP: 100000000
-
-embedded:
-    enabled: true
-    net_precision: 8
-    # Writing every cycle would be about 8 GB for 2500 cycles at 512 ranks.
-    # Every tenth cycle retains a diagnostic trajectory at a manageable size.
-    rec_freq: 10
-    rec_bufsize: 100
-    resume: false
-    coupled_recorder: false
+    IOSTEP: 10000
+    SMPSTEP: 16

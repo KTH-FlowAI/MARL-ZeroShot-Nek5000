@@ -59,8 +59,6 @@ simulation:
     exeName : 'nek5000'
     compile_path   : "envs/cases/lc_n7"
     restart_folder : "data/restarts/rs6_lc_noresize_new_reth515"
-    shared_data_path: 'data/simulations/large_channel'
-    shared_data_link: true
     #------------------------------------------
     # Generally VERY IMPORTANT
     TOTCTRL : 128       # Be consistent with SIZE

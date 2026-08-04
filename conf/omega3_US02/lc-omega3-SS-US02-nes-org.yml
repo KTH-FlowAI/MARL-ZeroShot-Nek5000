@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 runner: 
-    ctrl_max_amp    :  0.0610        # The alpha
-    ctrl_min_amp    : -0.0610        # The alpha
+    ctrl_max_amp    :  0.048        # The alpha
+    ctrl_min_amp    : -0.048        # The alpha
     action_noise    :  0.1
     npl_state       :  2
     ckpt_int        :  1
     
     if_eval          : True
-    eval_freq        : 2
+    eval_freq        : 5
     
     nb_episodes     : 200
     nb_interactions : 2500 # Time steps in 1 episode t^+ = 1500  steps = nb_interact * ndrl 
@@ -18,8 +18,8 @@ runner:
     RL_algorithm    : "TD3"
     rescale_actions : True
     learning_rate   : 1e-3
-    batch_size      : 2048        # Since we have more envs, this should be sufficiently large
-    buffer_size     : 20_000_000
+    batch_size      : 4096        # Since we have more envs, this should be sufficiently large
+    buffer_size     : 200_000_000 # A bit larger buffer size 
     learning_starts : 100
     tau             : 0.005
     
@@ -28,7 +28,7 @@ runner:
     load_agent      :  True
     normalize_input : 'utau'   # Between None, utau, std, maxmin
 
-    seed : 1998
+    seed : 20010603
 
     custom_buffer  : False
     keep_frac      : 0.25 
@@ -36,13 +36,13 @@ runner:
 
     random_init     : 6
     rank            : 1          # Which initial contion to use
-    agent_run_name  : "lc_omega2_SS_nes_org"
+    agent_run_name  : "lc_omega3_US02_SS_nes_org"
     
     evaluation      : False
     learnt_policy   : True
 
-    u_tau           : 0.0610
-    dUdy            : 16.90
+    u_tau           : 0.048
+    dUdy            : 13.53
 
     # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
     reward_fn       : net_gain
@@ -57,26 +57,26 @@ simulation:
     CASENAME : "tcf"
     #I/O
     exeName : 'nek5000'
-    compile_path   : "envs/cases/lc_n7"
-    restart_folder : "data/restarts/rs6_lc_noresize_new_reth515"
+    compile_path   : "envs/cases/lc_n11"
+    restart_folder : "data/restarts/rs6_lc_noresize_reth622_H162"
     shared_data_path: 'data/simulations/large_channel'
     shared_data_link: true
     #------------------------------------------
     # Generally VERY IMPORTANT
-    TOTCTRL : 128       # Be consistent with SIZE
+    TOTCTRL : 288       # Be consistent with SIZE
     nproc   : 512 
-    ndrl    : 25        # Steps to update the rewards (t^+=0.6)
+    ndrl    : 25             # Steps to update the rewards (t^+=0.6)
     znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
-    retau : 280.0 
+    retau : 286.0
     y_sensing : 15.0 
     nzs       : 1   # Clustering nodes 
     nxs       : 1   # Clustering nodes on z dir 
     gll_unique : 1
     #--- Body-Force Damping config, it will be used only if BDFD is on ----
-    ys_bdf  : 0.0 # Volume for Body-Force
-    amp_bdf : 0.0 # Amplitude for Body-Force
-    ret_bdf : 0.0 # Scale for Body-Force, it depends on the uncontrolled channel, but the drl sensing plane depends on the body-force channel
+    ys_bdf : 60.0 # Volume for Body-Force
+    amp_bdf : 15.0 # Amplitude for Body-Force
+    ret_bdf : 353.0 # Scale for Body-Force, depends on the uncontrolled channel, but the drl sensing plane depends on the body-force channel
  
     #------------------------------------------
 
@@ -118,7 +118,7 @@ simulation:
     v_residualTol   :  1e-8
     v_residualProj  :  "no"
     density         :  1.0
-    viscosity       :  -4600
+    viscosity       :  -6000
     advection       :  "yes"
     
     #[_RUNPAR]               # Runtime parameter section for rprm module

@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+# Embedded (Nek-solo) evaluation for omega2_BASE -- Re_tau = 280, mesh lc_n7.
+#
+#   ./execs/nek-solo-run.sh --config conf/omega2_BASE/solo/dr.yml
+#
+# Budget: 5000 control cycles = 125000 solver steps, shared by
+# every case in this folder so the four records are directly comparable.
+#
+# NOTE: agent_run_name is extrapolated from the omega1 naming
+# (lc_omega1_SS_dr). Check runs/<name>/logs/best_model.zip exists
+# before submitting -- preparation aborts with "checkpoint NOT FOUND".
+
+embedded:
+    enabled: true
+    net_precision: 8
+    # Every 10th control cycle == every 250 solver steps,
+    # the same physical cadence as base.yml and oc.yml.
+    rec_freq: 10
+    rec_bufsize: 500
+    resume: false
+    coupled_recorder: true
+
+runner:
+    ctrl_max_amp      : 0.061    # the alpha
+    ctrl_min_amp      : -0.061    # the alpha
+    action_noise      : 0.1
+    npl_state         : 2
+    ckpt_int          : 1
+
+    if_eval           : true
+    eval_freq         : 2
+
+    nb_episodes       : 200
+    nb_interactions   : 5000    # 5000 = 2x the training episode
+    train_steps       : 300
+    gradient_steps    : 64
+
+    RL_algorithm      : 'TD3'
+    rescale_actions   : true
+    learning_rate     : 1e-3
+    batch_size        : 2048
+    buffer_size       : 20000000
+    learning_starts   : 100
+    tau               : 0.005
+
+    policy_file       : 'conf/default_ddpg_policy.yml'
+    policy            : 'best_model'    # checkpoint flown by the solver
+    load_agent        : true
+    normalize_input   : 'utau'
+    seed              : 1998
+
+    custom_buffer     : false
+    keep_frac         : 0.25
+    buffer_mode       : 'rotate'
+
+    random_init       : 6
+    rank              : 1
+    agent_run_name    : 'lc_omega2_SS_dr'    # output goes to runs/<this>/eval/
+
+    evaluation        : true    # output under runs/<run>/eval/; also forced by nek-solo-run.sh
+    learnt_policy     : true
+    u_tau             : 0.061
+    dUdy              : 16.9
+
+    reward_fn         : 'net_gain'
+    reward_alpha      : 1.0
+    reward_beta       : 1.0
+    reward_gamma      : 1.0
+
+simulation:
+    CASENAME          : 'tcf'
+    solver_version    : 'v19'
+    exeName           : 'nek5000_solo'
+    compile_path      : 'envs/cases/lc_n7'
+    restart_folder    : 'data/restarts/rs6_lc_noresize_new_reth515'
+    shared_data_path  : 'data/simulations/large_channel'
+    shared_data_link  : true
+
+    TOTCTRL           : 128    # be consistent with SIZE
+    nproc             : 512
+    ndrl              : 25
+    znmf_avg          : 1
+    target_cfl        : 2.0
+    retau             : 280.0
+    y_sensing         : 15.0
+    nzs               : 1
+    nxs               : 1
+    gll_unique        : 1
+    ys_bdf            : 0.0
+    amp_bdf           : 0.0
+    ret_bdf           : 0.0
+    out_log           : 'logfile'
+
+    #------------------------------------------
+    # tsrs interpolation mesh: Nx*lx1 x Nz*lx1 points per plane,
+    # matching the solver GLL count. y_planes are in wall units and
+    # are shared by every case in this folder.
+    #------------------------------------------
+    lx1               : 8
+    Lx                : 6.28
+    Ly                : 1.0
+    Lz                : 3.14
+    Nx                : 10
+    Ny                : 8
+    Nz                : 9
+    y_planes          : [0,3,5,8,10,12,15,20,23,26,30,40,50,75,100,150,200,250]
+
+    #--------------------------
+    # .par file
+    #--------------------------
+    stopAt            : 'numSteps'
+    numSteps          : 125000    # nb_interactions * ndrl of the DRL case
+    dt                : -2.0e-03
+    tmax              : 100000.0
+    timeStepper       : 'bdf3'
+    variableDt        : 'no'
+    writeControl      : 'timeStep'
+    writeInterval     : 200000000
+    dealiasing        : 'yes'
+    filtering         : 'none'
+    filterWeight      : 0.01
+    filterCutoffRatio : 0.9
+    stressFormulation : 'no'
+    variableProperties: 'no'
+    p_residualTol     : 1e-8
+    p_residualProj    : 'no'
+    v_residualTol     : 1e-8
+    v_residualProj    : 'no'
+    density           : 1.0
+    viscosity         : -4600
+    advection         : 'yes'
+
+    PARFWRITE         : 'no'
+    PARFNAME          : 'outparfile'
+    LOGLEVEL          : 1
+    WALLTIME          : '23:45'
+    READCHKPT         : 'yes'
+    CHKPFNUMBER       : 1
+    CHKPINTERVAL      : 20000    # the run spans several jobs; needed by --resume
+    AVSTEP            : 10
+    IOSTEP            : 10000
+    SMPSTEP           : 25    # time-series sampling on the DRL control cadence

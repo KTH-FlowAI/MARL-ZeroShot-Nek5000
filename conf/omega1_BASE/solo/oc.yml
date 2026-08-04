@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+# Embedded, Python-free opposition control for the Re_tau=207 lc_n7 case.
+#
+# Parity target: conf/omega1_BASE/lc-omega1-SS-oc.yml. This configuration
+# uses an analytic OC .pol file, so it deliberately has NO SB3 checkpoint
+# dependency. The generated actor is action = -v' at every solver step.
+
+embedded:
+    enabled: true
+    analytic_policy: 'OC'
+    # scl_obs=1 and scl_act=1 make the one-layer actor exactly -v', while
+    # runner.u_tau remains the physical reference value above.
+    u_tau: [1.0]
+    ctrl_max_amp: [1.0]
+    net_precision: 8
+    # OC has 30,000 control cycles; record sparsely to avoid multi-GB output.
+    # Freq = n_drl_TD3 * sample_freq
+    rec_freq: 272 
+    rec_bufsize: 2500
+    resume: false
+    coupled_recorder: true
+
+runner:
+    RL_algorithm: 'OC'
+    # Legacy OC consumes unnormalised (u', v') and uses alpha=1:
+    # lib.AFC.OppoCtrl -> action = -1.0 * observation[1] = -v'.
+    normalize_input: 'None'
+    rescale_actions: false
+    ctrl_min_amp: -1.0
+    ctrl_max_amp: 1.0
+    npl_state: 2
+    u_tau: 0.0630            # physical reference; OC export scale is below
+    dUdy: 13.10
+
+    nb_interactions: 60000
+    random_init: 6
+    rank: 1
+    agent_run_name: 'lc_omega1_SS_oc_solonek'
+    load_agent: false
+    learnt_policy: false
+    evaluation: true
+    reward_fn: net_gain
+    reward_alpha: 1.0
+    reward_beta: 1.0
+    reward_gamma: 1.0
+
+simulation:
+    solver_version: 'v19'
+    CASENAME: 'tcf'
+    exeName: 'nek5000_solo'
+    compile_path: 'envs/cases/lc_n7'
+    shared_data_path: 'data/simulations/large_channel'
+    shared_data_link: true
+    restart_folder: 'data/restarts/rs6_lc_noresize_reth365'
+
+    TOTCTRL: 128
+    nproc: 512
+    lx1: 9
+    Lx: 6.28
+    Ly: 1.0
+    Lz: 3.14
+    Nx: 10
+    Ny: 8
+    Nz: 9
+
+    # OC refreshes every solver step and uses no zero-net-mass-flux averaging,
+    # matching lc-omega1-SS-oc.yml.
+    ndrl: 1
+    znmf_avg: 0
+    target_cfl: 2.0
+    retau: 207.0
+    y_sensing: 15.0
+    # in visous units, calculate the spectra
+    y_planes: [0,3,5,8,10,12,15,20,23,26,30,40,50,75,100,150,200]
+    gll_unique: 0
+    nzs: 1
+    nxs: 1
+    ys_bdf: 0.0
+    amp_bdf: 0.0
+    ret_bdf: 0.0
+
+    # numSteps is derived to nb_interactions * ndrl = 30000 at preparation.
+    stopAt: 'numSteps'
+    numSteps: 30000
+    dt: -4.0e-03
+    tmax: 100000.0
+    timeStepper: 'bdf3'
+    variableDt: 'no'
+    writeControl: 'timeStep'
+    writeInterval: 200000000
+    dealiasing: 'yes'
+    filtering: 'none'
+    filterWeight: 0.01
+    filterCutoffRatio: 0.9
+    stressFormulation: 'no'
+    variableProperties: 'no'
+    p_residualTol: 1e-8
+    p_residualProj: 'no'
+    v_residualTol: 1e-8
+    v_residualProj: 'no'
+    density: 1.0
+    viscosity: -3300
+    advection: 'yes'
+    PARFWRITE: 'no'
+    PARFNAME: 'outparfile'
+    LOGLEVEL: 1
+    WALLTIME: '23:45'
+    READCHKPT: 'yes'
+    CHKPFNUMBER: 1
+    CHKPINTERVAL: 100_00_000
+    AVSTEP: 10
+    IOSTEP: 10_000
+    SMPSTEP: 12
+

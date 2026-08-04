@@ -31,7 +31,7 @@ runner:
 
     # Must differ from the coupled run so META's RUN_PATH cache and outputs
     # cannot be overwritten by a solo test.
-    case_name: "naca4412_ref_DR_2570_nek_solo_take2"
+    case_name: "naca4412_ref_DR_2570_blw2_7086"
     evaluation: true
     learnt_policy: true
 
@@ -65,7 +65,7 @@ simulation:
     solver_version: 'v17'
     # Built by: ./utils/compile_case.sh --path envs/cases/naca4412_ref_SS_2570 --solver raw
     exeName: 'nek5000_solo'
-    compile_path: 'envs/cases/naca4412_ref_SS_2570'
+    compile_path: 'envs/cases/naca4412_ref_SS_2570_UB02@7086'
     restart_folder: 'data/restarts/rs8_naca4412_200k_ref'
     shared_data_path: 'data/simulations/naca4412_200k'
     shared_data_link: true

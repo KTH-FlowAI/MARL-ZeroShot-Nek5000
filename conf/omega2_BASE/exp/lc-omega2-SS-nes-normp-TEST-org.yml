@@ -36,7 +36,7 @@ runner:
 
     random_init     : 6
     rank            : 1          # Which initial contion to use
-    agent_run_name  : "lc_omega2_SS_nes_org"
+    agent_run_name  : "lc_omega2_SS_nes_normp_TEST_org"
     
     evaluation      : False
     learnt_policy   : True
@@ -59,8 +59,6 @@ simulation:
     exeName : 'nek5000'
     compile_path   : "envs/cases/lc_n7"
     restart_folder : "data/restarts/rs6_lc_noresize_new_reth515"
-    shared_data_path: 'data/simulations/large_channel'
-    shared_data_link: true
     #------------------------------------------
     # Generally VERY IMPORTANT
     TOTCTRL : 128       # Be consistent with SIZE

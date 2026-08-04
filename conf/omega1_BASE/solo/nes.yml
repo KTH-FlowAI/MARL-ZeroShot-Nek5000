@@ -1,8 +1,20 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# Embedded, Python-free TD3 Control for the Re_tau=207 lc_n7 case.
+# The nb_interactions = 4000 here to ensure the spectra is converged, but the actual number of control cycles is 2500.
+
+embedded:
+    enabled: true
+    net_precision: 8
+    # Writing every cycle would be about 8 GB for 2500 cycles at 512 ranks.
+    # Every tenth cycle retains a diagnostic trajectory at a manageable size.
+    rec_freq: 12
+    rec_bufsize: 4000
+    resume: false
+    coupled_recorder: true
+
 runner: 
-    ctrl_max_amp    :  0.0610        # The alpha
-    ctrl_min_amp    : -0.0610        # The alpha
+    ctrl_max_amp    :  0.0630        # The alpha
+    ctrl_min_amp    : -0.0630        # The alpha
     action_noise    :  0.1
     npl_state       :  2
     ckpt_int        :  1
@@ -11,7 +23,7 @@ runner:
     eval_freq        : 2
     
     nb_episodes     : 200
-    nb_interactions : 2500 # Time steps in 1 episode t^+ = 1500  steps = nb_interact * ndrl 
+    nb_interactions : 5000 # Time steps in 1 episode t^+ = 1500  steps = nb_interact * ndrl 
     train_steps     : 300
     gradient_steps  : 64      # For each training step, how many times we extract the off-policy history from the history buffer with batch size?
    
@@ -36,13 +48,14 @@ runner:
 
     random_init     : 6
     rank            : 1          # Which initial contion to use
-    agent_run_name  : "lc_omega2_SS_nes_org"
+    # This was 301001 now we adpoted a new naming convention for the run name, which is more descriptive and easier to track
+    agent_run_name  : "lc_omega1_SS_nes_org"  
     
     evaluation      : False
     learnt_policy   : True
 
-    u_tau           : 0.0610
-    dUdy            : 16.90
+    u_tau           : 0.0630
+    dUdy            : 13.10
 
     # Net-gain reward — full: drag reduction + pressure-velocity + kinetic energy costs
     reward_fn       : net_gain
@@ -51,24 +64,22 @@ runner:
     reward_gamma    : 1.0
 
 
-
-
 simulation: 
     CASENAME : "tcf"
     #I/O
     exeName : 'nek5000'
     compile_path   : "envs/cases/lc_n7"
-    restart_folder : "data/restarts/rs6_lc_noresize_new_reth515"
+    restart_folder : "data/restarts/rs6_lc_noresize_reth365"
     shared_data_path: 'data/simulations/large_channel'
     shared_data_link: true
     #------------------------------------------
     # Generally VERY IMPORTANT
     TOTCTRL : 128       # Be consistent with SIZE
     nproc   : 512 
-    ndrl    : 25        # Steps to update the rewards (t^+=0.6)
+    ndrl    : 12        # Steps to update the rewards (t^+=0.6)
     znmf_avg: 1           # NEK(1 == open, 0=close,) -1== Naive Average 
     target_cfl: 2.0           # NEK(1 == open, 0=close,) -1== Naive Average 
-    retau : 280.0 
+    retau : 207.0 
     y_sensing : 15.0 
     nzs       : 1   # Clustering nodes 
     nxs       : 1   # Clustering nodes on z dir 
@@ -83,22 +94,23 @@ simulation:
     # slurm specific 
     out_log : 'logfile'
     #------------------------
-    # SIZE
+    # SIZE for interpolation Mesh
     #------------------------
-    lx1       :  8               # Polynomial Order 
-    Lx        :  6.28
-    Ly        :  1.0
-    Lz        :  3.14   # Size of domain 
-    Nx        :  10
-    Ny        :  8
-    Nz        :  9         # No. Spectral Elements    
+    lx1: 9
+    Lx: 6.28
+    Ly: 1.0
+    Lz: 3.14
+    Nx: 10
+    Ny: 8
+    Nz: 9
+    y_planes: [0,3,5,8,10,12,15,20,23,26,30,40,50,75,100,150,200]
     #--------------------------
     # .par file 
     #--------------------------
     ### General 
     stopAt : "numSteps"
     numSteps : 500000       # Make it a bit longer so that the simulation not stops
-    dt       : -2.0e-03
+    dt       : -4.0e-03
     tmax     : 100000.0
     timeStepper : "bdf3"
     variableDt : "no"
@@ -118,7 +130,7 @@ simulation:
     v_residualTol   :  1e-8
     v_residualProj  :  "no"
     density         :  1.0
-    viscosity       :  -4600
+    viscosity       :  -3300
     advection       :  "yes"
     
     #[_RUNPAR]               # Runtime parameter section for rprm module
@@ -136,8 +148,8 @@ simulation:
 
     #[_STAT]             # Runtime paramere section for statistics module
     AVSTEP     :  10
-    IOSTEP     :  100_000_000
+    IOSTEP     :  10_000
 
     #[_TSRS]
-    SMPSTEP : 100_000_000   # How many steps to sample the time series? 
+    SMPSTEP : 12   # How many steps to sample the time series? 
 
