@@ -27,7 +27,9 @@ c
       ! OPTIONAL
       parameter (ldimt_proj=1)         ! max auxiliary fields residual projection
       parameter (lelr=lelt)            ! max number of local elements per restart file
-      parameter (lhis=100)             ! max history points
+      parameter (lhis=4000)            ! max history points (tsrs: the wall
+                                       ! element row owns ~1750 int_pos points
+                                       ! at 120x108 per plane, see conf/*/solo)
       parameter (maxobj=4)             ! max number of objects
       parameter (lpert=1)              ! max perturbation modes
       parameter (toteq=1)              ! max number of conserved scalars in cmt
