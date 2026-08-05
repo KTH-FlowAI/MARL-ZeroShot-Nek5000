@@ -80,7 +80,7 @@ fi
     exit 1; }
 
 RESULT_ROOT="${SOURCE_ROOT}/data/results/${CASE_NAME}/${RUN_NAME}"
-mkdir -p "${RESULT_ROOT}"/{config,model,drl,spectra,figs}
+mkdir -p "${RESULT_ROOT}"/{config,model,drl,spectra,tsrs,figs}
 
 echo "-------------------------"
 echo "[RES] ${RUN_NAME} (case ${CASE_NAME})"
@@ -177,6 +177,8 @@ done
         c=$(find "${RESULT_ROOT}/${d}" -maxdepth 1 -type f | wc -l)
         echo "  ${d}: ${c}"
     done
+    # tsrs/ is one directory per environment, so count a level deeper
+    echo "  tsrs: $(find "${RESULT_ROOT}/tsrs" -maxdepth 2 -type f | wc -l)"
 } > "${RESULT_ROOT}/collect.yml"
 
 echo "[RES] inventory -> ${RESULT_ROOT}/collect.yml"
