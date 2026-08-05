@@ -1,7 +1,8 @@
 # tsrs time-series post-processing
 
 Three scripts turn the solver's `pts*` point time-series into figures, plus one
-that asks whether the record is good enough to draw them from:
+that asks whether the record is good enough to draw them from, plus a notebook
+that does the whole thing for several cases at once:
 
 ```
 runs/<case>/[eval/]env_XXX/pts<case>0.f#####      raw, one file per output cycle
@@ -19,15 +20,20 @@ runs/<case>/[eval/]env_XXX/tsrs_<case>.npz        one array per environment
         │  Figs/<CASE>_{spectra,corr,ycorr,freq,Uc}_<field>_<uact|uref>.png
         │  Figs/<CASE>_map<z|x>_<uu|uv|uu-uv>[_mesh]_<uact|uref>.png
         │
-        └─ tsrs_diag.py       ← record, scaling, profiles, noise floor, error bars
+        ├─ tsrs_diag.py       ← record, scaling, profiles, noise floor, error bars
+        │      ▼
+        │  stdout only
+        │
+        └─ tsrs_cases.ipynb   ← several cases overlaid, snapshots + spectra
                ▼
-           stdout only
+           data/results/<solver_case>/<run_name>/{tsrs,spectra,figs}/
 ```
 
 `tsrs_spectra.py` draws; `tsrs_diag.py` decides whether the drawing means
 anything. Both share `postlib/tsrs_case.py`, which locates the `.npz`, trims it
 and resolves the wall units, so the two always speak about the same case in the
-same units.
+same units. `tsrs_cases.ipynb` is the multi-case comparison — see section 5.
+Section 6 says where everything any of them writes ends up.
 
 Run both from this directory (`post_processing/`), with the project environment:
 
@@ -36,7 +42,9 @@ source ~/.bashrc.miniforge
 ```
 
 Design rationale and the solver-side details live in
-`temp/docs/tsrs_glid_ordering_multiplane.md`. This file is usage only.
+`temp/docs/tsrs_glid_ordering_multiplane.md`; the case-comparison pipeline
+(sections 5 and 6) is written up in `temp/docs/tsrs_case_postprocessing.md`.
+This file is usage only.
 
 ---
 
@@ -196,7 +204,7 @@ comparison is the normal mode of use.
 | `--map-style` | `contour` | `contour` interpolates between samples; `mesh` draws one cell per sample |
 | `--head` | the case ids | Figure filename prefix |
 | `--outdir` | `Figs` | Where to write the `.png` |
-| `--results` | off | Also save each spectrum as its own `.npz` in the results tree (section 5) |
+| `--results` | off | Also save each spectrum as its own `.npz` in the results tree (section 6) |
 | `--results-root` | `<repo>/data/results` | Override the results base |
 
 Figure names are `<head>_<tag>_<scale>.png`, where the tag carries every switch
@@ -316,10 +324,21 @@ data. Passing all N points to an FFT would declare the period to be `L·N/(N-1)`
 wrong by ~5% at N=20. `periodic_view()` drops the duplicate automatically; the
 header line reports the resulting shape.
 
-**Mean removal differs by analysis, deliberately.** Spatial statistics subtract
-the *instantaneous* plane mean `⟨f⟩_xz(t)`, which makes them immune to a
-drifting bulk state. Frequency spectra subtract the *global* mean, because
-per-instant removal would delete the low frequencies they exist to measure.
+**Mean removal.** `fluctuation()` offers three conventions and defaults to
+`mean='time'`:
+
+| `mean` | Subtracts | Used for |
+|---|---|---|
+| `'time'` | `⟨f⟩_t(x, z)`, per point | **the default.** The Reynolds decomposition. The only one that removes a *stationary spatial pattern* — the actuators sit at fixed `(x, z)`, so a controlled case carries a steady imprint of the control that the other two leave in the fluctuation and count as turbulent energy |
+| `'instant'` | `⟨f⟩_xz(t)`, per instant | immune to a drifting bulk state, and forces `E(k=0) = 0` exactly |
+| `'global'` | `⟨f⟩_xzt`, one number | frequency spectra, where per-instant removal would delete the low frequencies they exist to measure |
+
+Under `'time'` the `k=0` bin holds the variance of the instantaneous plane mean
+about its own time average, so it is no longer identically zero. Every plot
+drops `k=0` and Parseval is checked against whatever field it is given, so
+nothing is inconsistent — but the premultiplied spectrum then integrates to
+slightly less than the full variance. Pass `mean='instant'` to reproduce
+figures made before this became the default.
 
 **No windowing in x and z.** Those directions are genuinely periodic, so the
 DFT is exact and a window would only smear it. Time is windowed (Welch), since
@@ -428,7 +447,62 @@ not reached a stationary state, which is what `record` is for.
 
 ---
 
-## 5. Results live in one place per case
+## 5. `tsrs_cases.ipynb` — several cases in one place
+
+The notebook form: a case table at the top, then snapshots and spectra with
+every case drawn into the same figure. `postlib/tsrs_post.py` holds the logic;
+the notebook is the thin layer, laid out the way `drlrec_cases.ipynb` is.
+
+```python
+from postlib import tsrs_post as tp
+
+cases = tp.resolve_all([
+    dict(case='mc-noctrl', label='uncontrolled', style=STYLE_A),
+    dict(case='oc-mc-dr',  label='opposition',   style=STYLE_B),
+], runs_dir='../runs/')
+
+tp.process(cases, planes=(0.0, 15.0), field='u', scale='reference')
+
+tp.plot_snapshot_grid(cases, yplus=15.0)      # rows cases, cols variables
+tp.plot_map(cases, quantities=('uu', '-uv'))  # rows quantities, cols cases
+tp.plot_correlation(cases, yplus=15.0)        # one subfigure per case
+tp.animate(cases['mc-noctrl'], yplus=15.0, field='u')
+```
+
+**Two phases, with the results tree as the boundary.** `process()` is the only
+expensive call: it reads each stitched record **once** — the `lc_*` ones are
+~5 GB — and writes everything derived from it into the case results folder
+(section 6). Every plotting call reads *those*, memory-mapped, so re-running a
+figure is free and never touches the run directory. Each step skips work whose
+output already exists; `overwrite=True` forces it.
+
+The snapshots are one plain `.npy` per `(plane, variable)` rather than a bundle
+precisely so they can be memory-mapped: drawing one frame of a 3529-snapshot
+record costs one page read instead of 81 MB. The per-point time mean is stored
+beside each one, so the raw field is `snap[:, :, it] + mean`.
+
+**What it does differently from the scripts, and why**
+
+- `env_001` by default, addressed **by directory name**. `tsrs_case.find_npz`
+  takes environments by position in a sorted list; with `env_005` missing,
+  position 4 is `env_006` and a figure captioned env_005 is of something else.
+- `scale='reference'` by default, where `tsrs_spectra.py` uses `'actual'`. In
+  actual units every case is divided by its own `u_τ` and placed on its own
+  `y⁺` axis, which scales the drag reduction out of the picture meant to show
+  it. Both sets can live in the archive at once — the units are in the filename.
+- One colour scale per column in the snapshot grid, and per row in the map, for
+  the same reason. `clim='panel'` restores per-panel scaling.
+- A requested plane a case does not hold is **dropped with a note**, never
+  replaced by the nearest one: `oc-mc-dr` starts at `y⁺ = 5`, and drawing that
+  as "the wall" would be a quietly wrong figure rather than a missing one.
+- `-uv` flips the co-spectrum's sign for the picture only; the archived data
+  stays sign-true.
+- A case whose `current_conf.yml` no longer describes its `pts` files (edited
+  `y_planes`, `Nx`, `lx1`) takes `y_planes=[...]` on its case row.
+
+---
+
+## 6. Results live in one place per case
 
 ```
 data/results/<solver_case>/<run_name>/
@@ -438,6 +512,11 @@ data/results/<solver_case>/<run_name>/
     model/         eval_model_<run_name>.zip, or the exported actor_*.pol
     drl/           reward / action / observation records
     spectra/       one .npz per spectrum
+    tsrs/<env>/    snap_<plane>_<field>.npy   (nx, nz, nt) fluctuation
+                   mean_<plane>_<field>.npy   (nx, nz) the time mean removed
+                   axes.npz, snap_meta.yml
+                   tsrs_<solver_case>.npz     the stitched record, archived
+                   stitch.yml                 its size and mtime at archive time
     figs/          figures
 ```
 
@@ -446,11 +525,15 @@ This is the root `utils/mv-data` archives raw solver output to
 `<solver_case>` is `CASENAME` from the config (`tcf`), `<run_name>` the `runs/`
 folder. Neither has to be typed — both are read off the data.
 
-Three producers fill it:
+Four producers fill it:
 
 ```bash
 # spectra: one self-contained .npz per spectrum
 python tsrs_spectra.py <case> --results
+
+# snapshots + spectra + the archived record: tsrs_cases.ipynb, i.e.
+python -c "from postlib import tsrs_post as tp; \
+           tp.process(tp.resolve_all([dict(case='<case>')], runs_dir='../runs/'))"
 
 # reward / action / observation: postlib/determine.py, i.e. deterministic.ipynb
 python -c "from postlib.determine import read_deterministic_run; \

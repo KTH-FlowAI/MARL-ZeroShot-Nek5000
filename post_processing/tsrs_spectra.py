@@ -28,7 +28,6 @@ from pathlib import Path
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -38,6 +37,12 @@ if str(SCRIPT_DIR) not in sys.path:
 from postlib import tsrs_spectra as sp                    # noqa: E402
 from postlib import tsrs_case as tc                       # noqa: E402
 from postlib import results as res                        # noqa: E402
+# the map is drawn from the notebook as well as from here, so its geometry
+# lives in postlib and both callers get the same picture.  Re-exported:
+# tsrs_diag.py imports these three from this module.
+from postlib import tsrs_post as tp                       # noqa: E402
+from postlib.tsrs_post import (map_label, map_levels,     # noqa: E402,F401
+                               map_planes, map_rows, log_axes)
 
 ANALYSES = ('spectra', 'map', 'correlations', 'ycorr', 'frequency', 'convection')
 
@@ -128,13 +133,9 @@ def _stack(rows):
     return np.asarray(rows, dtype=float)
 
 
-def _plane_axes(case, idx):
-    """The three ways a plane is labelled: physical, chosen units, nominal."""
-    return {
-        'y': np.asarray(case['data']['y'], dtype=float)[idx],
-        'yplus': tc.yplus(case)[idx],
-        'yplus_nominal': np.asarray(case['data']['yplus'], dtype=float)[idx],
-    }
+#: The three ways a plane is labelled: physical, chosen units, nominal.
+#: Shared with the notebook so both write the same plane axes into a dataset.
+_plane_axes = tp._plane_axes
 
 
 # ------------------------------------------------------------------ analyses
@@ -197,95 +198,6 @@ def do_spectra(cases, args, out):
             ax.axhline(0, color='k', lw=0.6)
         axs[i, 0].legend(fontsize=7, ncol=2)
     return fig, f'spectra_{args.field}'
-
-
-def map_label(field, quantity):
-    """
-    Subscript for the mapped quantity, following the field.
-
-    'uv' is the CLI name of the co-spectrum with v; with --field w it is really
-    the wv co-spectrum, and the label has to say so.
-    """
-    return f'{field}{field}' if quantity == 'uu' else f'{field}v'
-
-
-def map_planes(case, planes, verbose=True):
-    """
-    Plane indices to put on the map.
-
-    Both axes are logarithmic, so y+ = 0 cannot be drawn; u is identically zero
-    at the wall anyway, so nothing is lost but the note is printed.
-    """
-    yp_all = tc.yplus(case)
-    idx = tc.plane_indices(case['data'], planes)
-    usable = [k for k in idx if yp_all[k] > 0]
-    dropped = [k for k in idx if yp_all[k] <= 0]
-    if dropped and verbose:
-        print(f'  [{case["id"]}] dropping y+ = '
-              f'{[tc.ylab(yp_all[k]) for k in dropped]} (log axis)')
-    if len(usable) < 2:
-        raise SystemExit(f'case {case["id"]}: need at least 2 planes with '
-                         f'y+ > 0 to draw a map, have {len(usable)}')
-    return usable
-
-
-def map_rows(case, field, quantity, map_dir, usable, data=None):
-    """
-    Premultiplied spectrum on every usable plane, as a (n_planes, n_lambda) map.
-
-    Returns (lam_plus, yplus, M) with lam ascending, ready for contourf.
-    `data` overrides the case's record, so a sub-block can be mapped with the
-    case's own scaling -- that is what tsrs_diag.py uses for its error bars.
-    """
-    d = case['data'] if data is None else data
-    retau, u2 = tc.length(case), tc.norm(case)
-    axis = 1 if map_dir == 'z' else 0
-    L = case['Lz'] if map_dir == 'z' else case['Lx']
-    yp_all = tc.yplus(case)
-
-    rows, lam = [], None
-    for k in usable:
-        f = sp.fluctuation(d, field, k)
-        if quantity == 'uv':
-            if 'v' not in d['names']:
-                raise SystemExit(f'case {case["id"]} has no v; cannot map uv')
-            s = sp.cospectrum_1d(f, sp.fluctuation(d, 'v', k), axis, L)
-        else:
-            s = sp.spectrum_1d(f, axis, L)
-        rows.append(s['kPhi'][1:] / u2)          # drop k=0 (lambda = infinity)
-        lam = s['lam'][1:] * retau
-
-    # the FFT gives lambda descending; contourf wants an ascending axis
-    order = np.argsort(lam)
-    return lam[order], np.asarray([yp_all[k] for k in usable]), \
-        np.asarray(rows)[:, order]
-
-
-def map_levels(q, vmax, n):
-    """Contour levels and colour map for one quantity."""
-    if q == 'uv':                          # co-spectrum is negative: diverging
-        return np.linspace(-vmax, vmax, n), 'RdBu_r', 'both'
-    # energy is positive: sequential from 0, and never < 0, so no lower arrow
-    return np.linspace(0, vmax, n), 'jet', 'max'
-
-
-def log_axes(ax, xlim, ylim):
-    """
-    Log-log (lambda+, y+) axes with readable ticks.
-
-    A log range spanning barely a decade is where matplotlib labels the minor
-    ticks too and they collide ("3x10^1 4x10^1"); place plain 1/2/5 decade
-    ticks instead.
-    """
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    ax.set_xlim(xlim)
-    ax.set_ylim(ylim)
-    for axis_ in (ax.xaxis, ax.yaxis):
-        axis_.set_major_locator(mticker.LogLocator(base=10.0, subs=(1.0, 2.0, 5.0),
-                                                   numticks=12))
-        axis_.set_major_formatter(mticker.ScalarFormatter())
-        axis_.set_minor_formatter(mticker.NullFormatter())
 
 
 def do_map(cases, args, out):
