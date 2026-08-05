@@ -31,9 +31,9 @@ cc      parameter (lxd=18)                ! p-order for over-integration (dealia
       ! OPTIONAL
       parameter (ldimt_proj=1)         ! max auxiliary fields residual projection
       parameter (lelr=lelt)            ! max number of local elements per restart file
-      parameter (lhis=2000)            ! max history points (tsrs: the wall
-                                       ! element row owns ~700 int_pos points
-                                       ! at 80x72 per plane, see conf/*/solo)
+      parameter (lhis=400)             ! max history points (tsrs balances
+                                       ! int_pos evenly: needs npoints/nproc,
+                                       ! max 243 for conf/omega*/solo)
       parameter (maxobj=4)             ! max number of objects
       parameter (lpert=1)              ! max perturbation modes
       parameter (toteq=1)              ! max number of conserved scalars in cmt
