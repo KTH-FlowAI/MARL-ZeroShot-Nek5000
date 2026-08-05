@@ -1,0 +1,7 @@
+label,quantity,peak k Phi+,at lambda_z+,at y+,u_tau,DR [%]
+uncontrolled,uu,3.5526,144,15.0,0.065,-2.01
+opposition,uu,1.2498,144,30.0,0.065,32.17
+OC (large box),uu,2.8937,130,23.0,0.063,31.32
+uncontrolled,uv,-0.5398,144,50.0,0.065,-2.01
+opposition,uv,-0.2652,72,30.0,0.065,32.17
+OC (large box),uv,-0.4384,130,40.0,0.063,31.32
