@@ -15,6 +15,10 @@ so `Phi = E / dk` is the spectral density with `integral Phi dk == <f'^2>`, and
 the premultiplied spectrum is `k*Phi`, whose area against `d(ln k)` is the
 variance -- the usual presentation in wall turbulence.
 
+`f'` throughout is `fluctuation(..., mean='time')`, the Reynolds decomposition
+about the time mean of each point.  See that function for why, and for the two
+other conventions it offers.
+
 A note on the sampling.  writer_int_pos lays points out with
 `np.linspace(0, L, N)`, i.e. **including both endpoints**, so x=0 and x=Lx are
 the same physical point in a periodic channel and appear twice.  Feeding all N
@@ -77,25 +81,40 @@ def domain(data):
     return x.size * dx, z.size * dz
 
 
-def fluctuation(data, name, iy, mean='instant', dtype=np.float64):
+def fluctuation(data, name, iy, mean='time', dtype=np.float64):
     """
     Fluctuation field of one variable on one plane, as (nx, nz, nt).
 
+    mean='time'     subtract <f>_t(x, z), the time mean of each point.  The
+                    Reynolds decomposition, and the default.  It is the only
+                    one of the three that removes a *stationary spatial
+                    pattern*, which matters here: the actuators sit at fixed
+                    (x, z), so a controlled case carries a steady imprint of
+                    the control that the other two conventions leave in the
+                    fluctuation and count as turbulent energy.
     mean='instant'  subtract <f>_xz(t) at each instant.  Immune to a drifting
-                    bulk state, and the right choice for *spatial* statistics:
-                    it is the usual definition of a spatial fluctuation and it
-                    forces E(k=0) = 0 exactly.
+                    bulk state, and it forces E(k=0) = 0 exactly.
     mean='global'   subtract the single <f>_xzt.  Required for *frequency*
                     spectra, which would otherwise have their low-frequency
                     content removed along with the drift.
+
+    Note for spectra: under 'time' the k=0 bin holds the variance of the
+    instantaneous plane mean about its own time average, so it is no longer
+    identically zero.  Every plot here drops k=0, and Parseval is checked
+    against whatever field it is given, so nothing is inconsistent -- but the
+    premultiplied spectrum then integrates to slightly less than the full
+    variance.
     """
     f = tsrs.field(data, name, iy=iy).astype(dtype, copy=True)
-    if mean == 'instant':
+    if mean == 'time':
+        f -= f.mean(axis=-1, keepdims=True)
+    elif mean == 'instant':
         f -= f.mean(axis=(0, 1), keepdims=True)
     elif mean == 'global':
         f -= f.mean()
     elif mean is not None:
-        raise ValueError(f"mean must be 'instant', 'global' or None, got {mean!r}")
+        raise ValueError(f"mean must be 'time', 'instant', 'global' or None, "
+                         f"got {mean!r}")
     return f
 
 
@@ -300,7 +319,7 @@ def correlation_1d(f, axis, L, check=True):
     return {'sep': sep, 'R': R[:half], 'rho': rho, 'var': R[0], 'L': L}
 
 
-def correlation_y(data, name, mean='instant', dtype=np.float64):
+def correlation_y(data, name, mean='time', dtype=np.float64):
     """
     Correlation coefficient between every pair of stored wall-normal planes.
 

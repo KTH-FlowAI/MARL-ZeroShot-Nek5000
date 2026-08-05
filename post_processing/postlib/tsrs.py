@@ -55,6 +55,25 @@ class PointSeries:
         return self.fld.shape[2]
 
 
+def read_header(fname):
+    """
+    The 132-byte header of a ``pts`` file, without reading the data behind it.
+
+    Enough to say how many points and snapshots a file holds, which is how a
+    stitch can check what it is about to replace before it replaces it.
+    """
+    with open(fname, 'rb') as fh:
+        raw = fh.read(HEADER_SIZE)
+    header = raw.split()
+    if not header or header[0] != b'#std':
+        raise ValueError(f'{fname}: not a Nek std file '
+                         f'(tag {header[0] if header else b""!r})')
+    return {'wdsize': int(header[1]), 'ldim': int(header[2]),
+            'nelo': int(header[3]), 'nptot': int(header[4]),
+            'ntsnap': int(header[5]), 'nfld': int(header[6]),
+            'time': float(header[7])}
+
+
 def read_pts(fname):
     """Read a single ``pts`` file into a :class:`PointSeries`."""
     with open(fname, 'rb') as fh:

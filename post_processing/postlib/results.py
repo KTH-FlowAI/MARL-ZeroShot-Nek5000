@@ -7,6 +7,7 @@ Where post-processed results live, and what a saved dataset looks like.
         model/         eval_model_<run_name>.zip -- the evaluated checkpoint
         drl/           reward / action / observation records, one per env
         spectra/       one .npz per spectrum
+        tsrs/<env>/    snapshots as .npy, plus the stitched .npz it came from
         figs/          figures
 
 The root mirrors ``utils/mv-data``, which archives the *raw* solver output to
@@ -46,6 +47,7 @@ SUBDIRS = {
     'model': 'the evaluated checkpoint, eval_model_<run>.zip',
     'drl': 'reward / action / observation records',
     'spectra': 'one .npz per spectrum',
+    'tsrs': 'per-env snapshots (one .npy per field) and the stitched record',
     'figs': 'figures',
 }
 

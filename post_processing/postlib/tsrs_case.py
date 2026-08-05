@@ -64,16 +64,26 @@ def read_utau(data_path):
 
 
 def load_case(case_id, runs_dir='../runs', env=0, field='u', t0=None, t1=None,
-              utau=None, scale='actual', verbose=True):
+              utau=None, scale='actual', verbose=True,
+              data=None, npz_path=None, data_path=None):
     """
     Load one case, trimmed and scaled, ready for either script.
 
     Returns a dict with the periodic-view data, the box lengths, dt, the
     reference scaling as stored, the sublayer u_tau estimate and the resolved
     `scale` (see set_scale).
+
+    `data`/`npz_path`/`data_path` bypass the search and the read.  A stitched
+    record can be several GB, so a caller that already holds one passes it in
+    rather than paying for a second copy of it.
     """
-    path, data_path = find_npz(runs_dir, case_id, env)
-    data = tsrs.load(path)
+    if npz_path is None or data_path is None:
+        path, dpath = find_npz(runs_dir, case_id, env)
+        npz_path = npz_path or path
+        data_path = data_path or dpath
+    path = Path(npz_path)
+    if data is None:
+        data = tsrs.load(path)
     # validate before anything touches the field, so a typo gives this message
     # rather than a KeyError from deep inside the diagnostics
     if field not in data['names']:
