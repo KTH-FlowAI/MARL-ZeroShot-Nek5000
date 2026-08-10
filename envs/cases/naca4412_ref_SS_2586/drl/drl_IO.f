@@ -176,6 +176,7 @@ c=============================================
             include 'SIZE'
             ! include 'INPUT'
             include 'DRL'         
+            include 'PARALLEL'   ! NP for the handshake length
             include 'mpif.h'
             integer ierr,parent_comm
             integer k,il,jl        ! Iteration
@@ -207,7 +208,7 @@ c=============================================
 ! #endif
             ! print *, node_list
             if (NID.eq.0) then 
-              call MPI_SEND(node_list,LP,MPI_INTEGER,
+              call MPI_SEND(node_list,NP,MPI_INTEGER,
      $                     0,1996,
      $                     DRL_COMM,ierr)
             print *, "[NEK] SEND HAND-SHAKE"
@@ -314,15 +315,15 @@ c     Function
 c=============================================
       ! call nekgsync()
       
-      call izero(listp1,LP)
-      call izero(listp2,LP)
+      call izero(listp1,NP)
+      call izero(listp2,NP)
       
       ! Inquire num of control 
       ! print *, NUMCTRL
       listp1(NID+1)=(NUMCTRL)
       
       ! Global operation, sum everything up 
-      call igop(listp1,listp2,"+  ",LP) 
+      call igop(listp1,listp2,"+  ",NP) 
 
       return
       end subroutine count_total_ctrlpts

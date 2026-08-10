@@ -565,7 +565,7 @@ c       Step 2: Register them on the map
      &   dist,1,                      ! $ dist,1
      &   pos_obs(1,1),NDIM,                   ! $ x
      &   pos_obs(2,1),NDIM,                   ! $ y
-     &   pos_obs(3,1),NDIM,TOTCTRL)           ! $ z     
+     &   pos_obs(3,1),NDIM,NUMCTRL)           ! $ z     
 
 #ifdef YWDEBUG
         if (NID.eq.0) print *,"[DEBUGG] INTPTS SETUP!"

@@ -49,8 +49,10 @@ cc    On the full-res case
 cc    Test on less core=2048, use for 5th and 7th 
       ! parameter (lp=2048)
       ! parameter (lelt=65)
-cc For N=11
-      parameter(lp=4096,lelt=33)
+cc For N=11. lp is the hard upper bound on ranks (iniproc aborts if np>lp);
+cc lelt sets the LOWER bound, since chk_nel needs np*lelt >= nelgt=126684,
+cc i.e. np >= 3839. So lelt=33 lets this one binary run at 4096 and 8192.
+      parameter(lp=8192,lelt=33)
 cc    Even Less just for quick test 
       ! parameter (lp=1024)
       ! parameter (lelt=130)
