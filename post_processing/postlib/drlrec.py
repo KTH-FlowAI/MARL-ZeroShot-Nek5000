@@ -8,12 +8,20 @@ decomposition, and writes the outcome to the results tree that
 
     data/results/<solver_case>/<run_name>/
         config/   current_conf.yml, env<NNN>_drl_policy.in
-        drl/      <run_name>_env<NNN>_drlrec.mat
+        drl/      <run_name>_env<NNN>_drlrec.mat     the full per-agent record
+            processed_data/                          the plot-ready products
+                <run_name>_reward_terms.mat
+                <run_name>_observation.mat
+                <run_name>_action.mat
+                <run_name>_control_law.mat
         meta.yml
 
 It backs `post_processing/drlrec_cases.ipynb` the way `determine.py` backs
 `deterministic.ipynb`: the notebook holds the case table and the plots, the
-reading and the arithmetic live here.
+reading and the arithmetic live here.  That includes the arrays *behind* the
+figures -- `observation_pdf`, `control_law`, `sensitivity_sweep`,
+`action_traces` and `reward_terms` -- so the notebook plots the object it is
+about to archive and a saved file is never a recomputation with other bins.
 
 Typical use
 -----------
@@ -22,7 +30,8 @@ Typical use
     case_dict = read_drlrec_cases('../runs/', ['solo_timing_cmp', 'oc_solonek'])
     summary_table(case_dict)
     for case in case_dict:
-        save_case_mat(case_dict, case)
+        save_case_mat(case_dict, case)      # the full record, GB-scale
+    save_light(case_dict)                   # the four products, kB-scale
 
 What the reward columns mean
 ----------------------------
@@ -40,6 +49,7 @@ reading a `dudy` run as if it were net_gain silently scales the drag by nu.
 
 from __future__ import annotations
 
+import datetime
 import glob
 import os
 import re
@@ -548,7 +558,29 @@ def env_mean_std(case_entry, key):
     return tp, arr.mean(axis=0), arr.std(axis=0)
 
 
-def pool(case_entry, what, agents=None, mask=None):
+def env_agents(env, policy=None):
+    """
+    Agent indices within one env: its own selection, optionally one `ipol`.
+
+    Resolved per env rather than once for the case, because an index is only
+    meaningful against the env's own agent table.  Every env of a run shares a
+    mesh today, but nothing in the format guarantees it.
+    """
+    sel = env['agent_sel']
+    if policy is None:
+        return sel
+    ipol = env['rec'].agents['ipol'].to_numpy()
+    return sel[ipol[sel] == int(policy)]
+
+
+def policies(case_entry, active_only=True):
+    """The policy regions present, as ints.  `ipol == 0` is unclaimed wall."""
+    ipol = case_entry['envs'][0]['rec'].agents['ipol'].to_numpy()
+    vals = np.unique(ipol)
+    return [int(p) for p in vals if p > 0 or not active_only]
+
+
+def pool(case_entry, what, agents=None, mask=None, policy=None):
     """
     Exact samples from every env, concatenated -- no averaging anywhere.
 
@@ -556,13 +588,15 @@ def pool(case_entry, what, agents=None, mask=None):
     distributions are built from: an env-mean would invent a sample that no run
     ever produced, whereas pooling keeps every value the solver wrote.
     `agents` defaults to the case's own selection; `mask` is a per-record
-    boolean, e.g. the evaluation window.
+    boolean, e.g. the evaluation window; `policy` restricts to one `ipol`
+    region and is resolved per env (see env_agents).
     Returns (N,) for 'act' and (N, nfld) for 'obs'.
     """
     out = []
     for env in case_entry['envs']:
         rec = env['rec']
-        sel = env['agent_sel'] if agents is None else np.asarray(agents)
+        sel = (env_agents(env, policy) if agents is None
+               else np.asarray(agents))
         arr = rec.act[:, sel] if what == 'act' else rec.obs[:, sel, :]
         if mask is not None:
             arr = arr[mask[:arr.shape[0]]]
@@ -585,6 +619,254 @@ def eval_mask(tp, trans_time=500.0, eval_time=1500.0, min_count=10):
     if sel.sum() >= min_count:
         return sel, f"{trans_time:g} < t+ < {eval_time:g}", True
     return np.ones_like(tp, dtype=bool), "whole record (transient included)", False
+
+
+# ------------------------------------------------------- plot-ready products
+#
+# The four things the notebook draws and the results tree archives.  They live
+# here rather than in the notebook so the figure and the saved file cannot
+# drift: each cell plots the dict it is about to write, and writes the dict it
+# just plotted.
+#
+# Each returns meshgrid-ready arrays (`X`, `Y`, `Z` all the same shape) beside
+# the bin edges, so a saved file goes straight into pcolor/surf/contourf
+# without the reader having to reconstruct anything.
+
+OBS_LABELS = ('u_t+', 'v_n+')
+
+#: Percentile clip for the observation plane.  The tails are single samples;
+#: including them stretches both axes and leaves the populated region a dot.
+OBS_CLIP = (0.5, 99.5)
+
+
+def obs_scaled(case_entry, policy=None, mask=None):
+    """Pooled observations divided by u_tau, and the scale that was applied."""
+    utau = case_entry['scale']['utau']
+    scale = utau if np.isfinite(utau) else 1.0
+    return pool(case_entry, 'obs', mask=mask, policy=policy) / scale, scale
+
+
+def _plane_range(obs, clip=OBS_CLIP):
+    """Axis limits of the observation plane, as [[x0, x1], [y0, y1]]."""
+    return [list(np.percentile(obs[:, 0], clip)),
+            list(np.percentile(obs[:, 1], clip))]
+
+
+def _centres(edges):
+    return 0.5 * (edges[:-1] + edges[1:])
+
+
+def observation_pdf(case_entry, nbin=80, clip=OBS_CLIP, policy=None,
+                    marg_bins=90, rng=None):
+    """
+    Joint and marginal densities of the observation, pooled over agents and envs.
+
+    The joint is a 2-D histogram rather than a KDE: at 1e5-1e7 samples a
+    Gaussian KDE is not tractable, and at that count the histogram is already
+    smooth.
+
+    `counts` is stored beside `pdf` deliberately -- a density says nothing about
+    how many samples produced it, and the sparse corners of the plane are where
+    that matters.
+
+    `rng` pins the axes instead of fitting them to the samples given.  The
+    per-policy breakdowns are built with the *pooled* range for exactly that
+    reason: letting each region auto-zoom to its own percentiles would put
+    every region at the centre of its own axes and normalise away the fact that
+    the wing's four regions occupy different parts of the observation plane.
+    """
+    obs, uscale = obs_scaled(case_entry, policy)
+    rng = _plane_range(obs, clip) if rng is None else np.asarray(rng).tolist()
+    pdf, xe, ye = np.histogram2d(obs[:, 0], obs[:, 1], bins=nbin, range=rng,
+                                 density=True)
+    cnt, _, _ = np.histogram2d(obs[:, 0], obs[:, 1], bins=nbin, range=rng)
+    xc, yc = _centres(xe), _centres(ye)
+    X, Y = np.meshgrid(xc, yc, indexing='ij')
+
+    marg = {}
+    for k in range(2):
+        h, e = np.histogram(obs[:, k], bins=marg_bins, density=True)
+        marg[f'pdf{k + 1}'] = h
+        marg[f'edges{k + 1}'] = e
+        marg[f'centres{k + 1}'] = _centres(e)
+
+    return {'X': X, 'Y': Y, 'pdf': pdf, 'counts': cnt,
+            'xedges': xe, 'yedges': ye, 'xcentres': xc, 'ycentres': yc,
+            'range': np.asarray(rng), 'clip': np.asarray(clip),
+            'nbin': int(nbin), 'nsample': int(obs.shape[0]),
+            'utau_applied': float(uscale),
+            'labels': np.array(list(OBS_LABELS), dtype=object),
+            **marg}
+
+
+def control_law(case_entry, nbin=50, clip=OBS_CLIP, policy=None, min_count=1,
+                rng=None):
+    """
+    Mean action per observation bin -- the policy that actually flew.
+
+    Binning the recorded action on the observation plane recovers the complete
+    input-output map, restricted to the states the flow visited.  Opposition
+    control would be the plane `a = -v'`: no `u'` dependence at all.
+
+    Bins with fewer than `min_count` samples are NaN.  The default of 1 keeps
+    every bin any sample landed in, which is what the figure has always shown;
+    `counts` is stored so a reader can be stricter without recomputing, and
+    should be, because a bin holding three samples plots exactly as confidently
+    as one holding three thousand.
+
+    `rng` pins the axes rather than fitting them to the samples given -- see
+    observation_pdf for why the per-policy breakdowns need it.
+    """
+    obs, uscale = obs_scaled(case_entry, policy)
+    act = pool(case_entry, 'act', policy=policy)
+    rng = _plane_range(obs, clip) if rng is None else np.asarray(rng).tolist()
+    tot, xe, ye = np.histogram2d(obs[:, 0], obs[:, 1], bins=nbin, range=rng,
+                                 weights=act)
+    cnt, _, _ = np.histogram2d(obs[:, 0], obs[:, 1], bins=nbin, range=rng)
+    mean = np.where(cnt >= max(1, min_count), tot / np.maximum(cnt, 1), np.nan)
+    xc, yc = _centres(xe), _centres(ye)
+    X, Y = np.meshgrid(xc, yc, indexing='ij')
+
+    return {'X': X, 'Y': Y, 'act_mean': mean, 'counts': cnt,
+            'xedges': xe, 'yedges': ye, 'xcentres': xc, 'ycentres': yc,
+            'range': np.asarray(rng), 'clip': np.asarray(clip),
+            'nbin': int(nbin), 'min_count': int(min_count),
+            'nsample': int(act.size), 'utau_applied': float(uscale),
+            'labels': np.array(list(OBS_LABELS), dtype=object)}
+
+
+def sensitivity_sweep(case_entry, nbin=25, band=0.1, policy=None):
+    """
+    One observation component swept with the other held near its median.
+
+    A pure opposition controller is flat in `u_t+` and a straight negative slope
+    in `v_n+`, so this is the one-dimensional read of what the map above shows.
+    `band` is the half-width of the hold, in standard deviations of the held
+    component.  Returns NaN-free arrays per component, empty when the band
+    holds too few samples to mean anything.
+    """
+    obs, uscale = obs_scaled(case_entry, policy)
+    act = pool(case_entry, 'act', policy=policy)
+    out = {'band': float(band), 'nbin': int(nbin),
+           'utau_applied': float(uscale),
+           'labels': np.array(list(OBS_LABELS), dtype=object)}
+
+    for k in range(2):
+        other = 1 - k
+        near = np.abs(obs[:, other] - np.median(obs[:, other])) \
+            < band * np.std(obs[:, other])
+        xk, ak = obs[near, k], act[near]
+        if xk.size < 50:
+            out[f'x{k + 1}'] = np.array([])
+            out[f'a{k + 1}'] = np.array([])
+            out[f'n{k + 1}'] = int(xk.size)
+            continue
+        edges = np.percentile(xk, np.linspace(1, 99, nbin))
+        idx = np.digitize(xk, edges)
+        keep = [i for i in range(1, len(edges)) if np.any(idx == i)]
+        out[f'x{k + 1}'] = np.array([xk[idx == i].mean() for i in keep])
+        out[f'a{k + 1}'] = np.array([ak[idx == i].mean() for i in keep])
+        out[f'n{k + 1}'] = int(xk.size)
+    return out
+
+
+def action_traces(case_entry, n_show=3, agents=None, policy=None, bins=80):
+    """
+    Exact action traces of a few agents, plus the across-agent envelope and PDF.
+
+    Traces are stacked over envs to `(nenv, nmin, n_show)` rather than pooled:
+    concatenating two time series would invent a trajectory neither run
+    produced.  The distribution below them *is* pooled, since there every
+    sample stands on its own.
+
+    `agents` gives explicit indices into the env's own agent table; the default
+    spreads `n_show` picks evenly over the case's active agents.  Their wall
+    coordinates travel with them, so a trace can be put back on the wall.
+    """
+    envs = case_entry['envs']
+    sel0 = env_agents(envs[0], policy)
+    if agents is None:
+        pick = np.unique(np.linspace(0, len(sel0) - 1, n_show).astype(int))
+    else:
+        pick = np.asarray(agents, dtype=int)
+
+    nmin = min(env['rec'].act.shape[0] for env in envs)
+    tp = envs[0]['series']['tp'][:nmin]
+
+    traces, env_mean, env_std, ids, coords = [], [], [], None, None
+    for env in envs:
+        sel = env_agents(env, policy)
+        idx = sel[pick[pick < len(sel)]]
+        rec = env['rec']
+        traces.append(rec.act[:nmin, idx])
+        band = rec.act[:nmin, sel]
+        env_mean.append(band.mean(axis=1))
+        env_std.append(band.std(axis=1))
+        if ids is None:
+            ids = idx
+            ag = rec.agents
+            coords = np.stack([ag['x'].to_numpy()[idx], ag['y'].to_numpy()[idx],
+                               ag['z'].to_numpy()[idx],
+                               ag['ipol'].to_numpy()[idx]], axis=1)
+
+    act = pool(case_entry, 'act', policy=policy)
+    amax = float(np.abs(act).max())
+    hist, edges = np.histogram(act, bins=bins, density=True)
+
+    return {'tp': tp, 'time': envs[0]['rec'].time[:nmin],
+            'traces': np.stack(traces, axis=0),          # (nenv, nmin, n_show)
+            'agent_index': np.asarray(ids),
+            'agent_xyz_ipol': coords,
+            'band_mean': np.stack(env_mean, axis=0),     # (nenv, nmin)
+            'band_std': np.stack(env_std, axis=0),
+            'pdf': hist, 'pdf_edges': edges,
+            'pdf_centres': _centres(edges),
+            'act_max': amax,
+            'act_sat_pct': (100.0 * float(np.mean(np.abs(act) > 0.99 * amax))
+                            if amax > 0 else 0.0),
+            'nsample': int(act.size),
+            'env_ids': np.array([e['env_id'] for e in envs], dtype=np.int32)}
+
+
+def reward_terms(case_entry, trans_time=500.0, eval_time=1500.0, policy=None):
+    """
+    Every reward series of every env, stacked, with the ensemble mean and std.
+
+    `(nenv, nmin)` per term plus `<term>_mean` / `<term>_std` across envs --
+    exactly what the reward figures draw.  The terms are **unweighted**; only
+    `R_tot` carries alpha/beta/gamma, and those travel in the scale block so
+    the total can be recomposed under different gains.
+    """
+    scale = case_entry['scale']
+    keys = ('q', 'pw', 'v3', 'R_tau', 'R_pw', 'R_v3', 'R_tot', 'dr_t')
+
+    if policy is None:
+        series = [env['series'] for env in case_entry['envs']]
+    else:
+        series = [derive_terms(env['rec'], scale, env_agents(env, policy))
+                  for env in case_entry['envs']]
+
+    nmin = min(len(s['R_tot']) for s in series)
+    tp = series[0]['tp'][:nmin]
+    out = {'tp': tp, 'time': series[0]['time'][:nmin],
+           'tp_unit': series[0]['tp_unit'],
+           'env_ids': np.array([e['env_id'] for e in case_entry['envs']],
+                               dtype=np.int32),
+           'rwd_names': np.array(list(RWD_NAMES.get(
+               scale['reward_mode'], ('rwd1', 'rwd2', 'rwd3'))), dtype=object)}
+
+    for key in keys:
+        arr = np.stack([s[key][:nmin] for s in series], axis=0)
+        out[key] = arr
+        out[f'{key}_mean'] = arr.mean(axis=0)
+        # one env has no spread; zeros are the honest answer, not an error
+        out[f'{key}_std'] = arr.std(axis=0)
+
+    sel, window, windowed = eval_mask(tp, trans_time, eval_time)
+    out['eval_mask'] = sel.astype(np.int8)
+    out['eval_window'] = window
+    out['eval_windowed'] = int(windowed)
+    return out
 
 
 # --------------------------------------------------------------- summaries
@@ -774,3 +1056,169 @@ def save_all(case_dict, **kwargs):
     """`save_case_mat` over every case; returns {case: [file names]}."""
     return {case: save_case_mat(case_dict, case, **kwargs)
             for case in case_dict}
+
+
+# ------------------------------------------------- lightweight products
+#
+# The plot-ready arrays behind the four figures, one flat `.mat` each, under
+#
+#     data/results/<solver_case>/<run_name>/drl/processed_data/
+#
+# beside the full per-env record in `drl/`.  These are the files to hand to
+# someone who wants the figure, not the run: all four for a case come to well
+# under a megabyte, against gigabytes for the per-agent arrays.
+
+#: Subdirectory of `drl/` the light products go in.  The file names already
+#: say what each one is, so one folder is enough to separate them from the
+#: full records without fragmenting the tree.
+LIGHT_DIR = 'processed_data'
+
+LIGHT_PRODUCTS = ('reward_terms', 'observation', 'action', 'control_law')
+
+
+def _light_meta(entry, product, extra=None):
+    """The provenance block every light product carries."""
+    scale = entry['scale']
+    meta = {
+        'product': product,
+        'case': entry['case'],
+        'run_name': entry['run_name'],
+        'solver_case': entry['solver_case'],
+        'name': entry['name'],
+        'source': entry['path'],
+        'nenv': int(entry['nenv']),
+        'env_ids': np.array([e['env_id'] for e in entry['envs']],
+                            dtype=np.int32),
+        'reward_mode': scale['reward_mode'],
+        'agent_selection': str(entry['agents']),
+        'nagent_total': int(entry['nagent']),
+        'nagent_used': int(entry['nactive']),
+        'time_unit': entry['envs'][0]['series']['tp_unit'],
+        'pooled_over_envs': 1,
+        'writer': 'postlib.drlrec.save_light',
+        'written': datetime.datetime.now().isoformat(timespec='seconds'),
+    }
+    meta.update(extra or {})
+    return meta
+
+
+def _by_policy(entry, fn, by_policy, **kw):
+    """
+    `fn` per policy region, as a MATLAB-safe struct, or {} when not wanted.
+
+    'auto' includes it only where it says something the pooled version does
+    not: on the channel one policy covers the whole wall and the breakdown
+    would be a copy, on the wing the regions sit at different chord stations
+    and pooling smears them.
+    """
+    pols = policies(entry)
+    if by_policy is False or (by_policy == 'auto' and len(pols) < 2):
+        return {}
+    return {f'pol{p}': fn(entry, policy=p, **kw) for p in pols}
+
+
+def save_light(case_dict, case=None, nbin_pdf=80, nbin_law=50, n_show=3,
+               min_count=1, by_policy='auto', trans_time=500.0,
+               eval_time=1500.0, products=LIGHT_PRODUCTS, precomputed=None,
+               verbose=True):
+    """
+    Write the four plot-ready products of one case (or every case) as `.mat`.
+
+        drl/processed_data/<run_name>_reward_terms.mat
+        drl/processed_data/<run_name>_observation.mat
+        drl/processed_data/<run_name>_action.mat
+        drl/processed_data/<run_name>_control_law.mat
+
+    Pass `precomputed={'observation': {...}, ...}` to archive the very objects
+    a notebook already plotted, instead of recomputing them here -- that is how
+    the figure and the file are kept from drifting.  Anything not supplied is
+    computed with the arguments given.
+
+    Returns {case: [file names]}.
+    """
+    if case is None:
+        return {c: save_light(case_dict, c, nbin_pdf=nbin_pdf,
+                              nbin_law=nbin_law, n_show=n_show,
+                              min_count=min_count, by_policy=by_policy,
+                              trans_time=trans_time, eval_time=eval_time,
+                              products=products,
+                              precomputed=(precomputed or {}).get(c),
+                              verbose=verbose)
+                for c in case_dict}
+
+    unknown = set(products) - set(LIGHT_PRODUCTS)
+    if unknown:
+        raise ValueError(f'unknown product(s) {sorted(unknown)}; '
+                         f'choose from {LIGHT_PRODUCTS}')
+
+    entry = case_dict[case]
+    have = precomputed or {}
+    out_dir = Path(entry['save_path']) / LIGHT_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+    scalars = _mat_scalars(entry['scale'])
+    written = []
+
+    def _write(product, payload, extra=None):
+        payload = dict(payload)
+        payload['scale'] = scalars
+        payload['meta'] = _light_meta(entry, product, extra)
+        path = out_dir / f"{entry['run_name']}_{product}.mat"
+        sio.savemat(path, payload, do_compression=True)
+        written.append(path.name)
+        if verbose:
+            print(f"[IO] {path}  ({path.stat().st_size / 1e3:.0f} kB)")
+
+    if 'reward_terms' in products:
+        d = have.get('reward_terms') or reward_terms(entry, trans_time, eval_time)
+        d = dict(d)
+        d.update(_by_policy(entry, reward_terms, by_policy,
+                            trans_time=trans_time, eval_time=eval_time))
+        _write('reward_terms', d,
+               {'note': 'terms are unweighted; only R_tot carries '
+                        'alpha/beta/gamma.  <term> is (nenv, nt), '
+                        '<term>_mean/_std are across envs.'})
+
+    if 'observation' in products:
+        d = have.get('observation') or observation_pdf(entry, nbin=nbin_pdf)
+        d = dict(d)
+        # the regions share the pooled axes, so their panels compare
+        d.update(_by_policy(entry, observation_pdf, by_policy, nbin=nbin_pdf,
+                            rng=d['range']))
+        _write('observation', d,
+               {'note': 'X, Y, pdf are the meshgrid-ready triple; counts is '
+                        'the raw sample count per bin.  pdf1/pdf2 are the '
+                        'marginals of u_t+ and v_n+.'})
+
+    if 'action' in products:
+        d = have.get('action') or action_traces(entry, n_show=n_show)
+        d = dict(d)
+        d.update(_by_policy(entry, action_traces, by_policy, n_show=n_show))
+        _write('action', d,
+               {'note': 'traces is (nenv, nt, nagent_shown), stacked not '
+                        'pooled; band_mean/_std are over every active agent.  '
+                        'pdf pools every sample of every env.'})
+
+    if 'control_law' in products:
+        d = dict(have.get('control_law')
+                 or control_law(entry, nbin=nbin_law, min_count=min_count))
+        sw = have.get('sensitivity') or sensitivity_sweep(entry)
+        d.update({f'sweep_{k}': v for k, v in sw.items()})
+        d.update(_by_policy(entry, control_law, by_policy, nbin=nbin_law,
+                            min_count=min_count, rng=d['range']))
+        _write('control_law', d,
+               {'note': 'X, Y, act_mean are the meshgrid-ready triple.  Bins '
+                        'below min_count are NaN; check counts before reading '
+                        'the sparse corners.  sweep_x1/a1 and sweep_x2/a2 hold '
+                        'one component swept with the other near its median.'})
+
+    res.write_meta(Path(entry['result_root']),
+                   solver_case=entry['solver_case'],
+                   run_name=entry['run_name'],
+                   drl_processed={'dir': f'drl/{LIGHT_DIR}',
+                                  'files': written,
+                                  'by_policy': (sorted(policies(entry))
+                                                if by_policy else []),
+                                  'nbin_pdf': int(nbin_pdf),
+                                  'nbin_law': int(nbin_law),
+                                  'min_count': int(min_count)})
+    return written

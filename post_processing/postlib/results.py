@@ -6,6 +6,7 @@ Where post-processed results live, and what a saved dataset looks like.
         config/        current_conf.yml exactly as the run used it
         model/         eval_model_<run_name>.zip -- the evaluated checkpoint
         drl/           reward / action / observation records, one per env
+          processed_data/  the plot-ready .mat products of those records
         spectra/       one .npz per spectrum
         tsrs/<env>/    snapshots as .npy, plus the stitched .npz it came from
         figs/          figures
@@ -45,7 +46,8 @@ import yaml
 SUBDIRS = {
     'config': 'current_conf.yml as the run used it',
     'model': 'the evaluated checkpoint, eval_model_<run>.zip',
-    'drl': 'reward / action / observation records',
+    'drl': ('reward / action / observation records; processed_data/ holds the '
+            'plot-ready .mat products'),
     'spectra': 'one .npz per spectrum',
     'tsrs': 'per-env snapshots (one .npy per field) and the stitched record',
     'figs': 'figures',
