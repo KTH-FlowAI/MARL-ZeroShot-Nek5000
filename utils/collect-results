@@ -7,7 +7,9 @@
 #       model/         eval_model_<run_name>.zip -- the evaluated checkpoint
 #       drl/           reward / action / observation records (also written by
 #                      post_processing/postlib/determine.py)
+#         processed_data/  plot-ready .mat products (postlib/drlrec.save_light)
 #       spectra/       one .npz per spectrum (written by tsrs_spectra.py --results)
+#       tsrs/<env>/    snapshots and the stitched record (postlib/tsrs_post)
 #       figs/          figures
 #
 # The root is the one utils/mv-data archives raw solver output to
@@ -173,12 +175,15 @@ done
     echo "collected: $(date -Iseconds)"
     echo "source: ${CASE_PATH}"
     echo "contents:"
-    for d in config model drl spectra figs; do
+    for d in config model spectra figs; do
         c=$(find "${RESULT_ROOT}/${d}" -maxdepth 1 -type f | wc -l)
         echo "  ${d}: ${c}"
     done
-    # tsrs/ is one directory per environment, so count a level deeper
-    echo "  tsrs: $(find "${RESULT_ROOT}/tsrs" -maxdepth 2 -type f | wc -l)"
+    # These two hold subdirectories -- tsrs/ one per environment, drl/ the
+    # processed_data/ products -- so they are counted a level deeper.
+    for d in drl tsrs; do
+        echo "  ${d}: $(find "${RESULT_ROOT}/${d}" -maxdepth 2 -type f | wc -l)"
+    done
 } > "${RESULT_ROOT}/collect.yml"
 
 echo "[RES] inventory -> ${RESULT_ROOT}/collect.yml"
