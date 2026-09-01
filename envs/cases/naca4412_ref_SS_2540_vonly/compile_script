@@ -1,0 +1,103 @@
+#!/bin/bash
+# Nek5000 build script (DEC_DRL_Nek5000)
+
+function error_quit {
+    echo -e "$@"
+    echo
+    echo -e 'Usage:'
+    echo -e './compile_script --clean'
+    echo -e '   To clean the build directory.'
+    echo
+    echo -e './compile_script --all'
+    echo -e '   To compile the code.'
+    exit 1
+}
+
+
+## BUILD CONFIG -----------------------------------------------------------
+# Case name (hard-coded)
+export CASE="naca_wing"
+# Source path
+#[MOD] Solver backend selection, mirroring the mini_channel script.
+#[MOD]   drl (default) -> DEC_DRL_Nek5000, ./nek5000       (coupled: rank 0
+#[MOD]                    is reserved for Python, nek_solve loops episodes)
+#[MOD]   raw           -> DEC_Nek5000,     ./nek5000_solo  (stock core, every
+#[MOD]                    rank runs Nek; use with PARAM(91)=1)
+SOLVER="drl"
+POSARGS=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --solver) SOLVER="$2"; shift 2 ;;
+        *) POSARGS+=("$1"); shift ;;
+    esac
+done
+set -- "${POSARGS[@]}"
+
+case ${SOLVER} in
+    drl) SOLVER_ROOT="DEC_DRL_Nek5000"; BINNAME="nek5000" ;;
+    raw) SOLVER_ROOT="DEC_Nek5000";     BINNAME="nek5000_solo" ;;
+    *)   error_quit "Unknown --solver '${SOLVER}', expected drl or raw." ;;
+esac
+
+#[MOD] makefile.template hardcodes BINNAME/LIBNAME and makenek does not
+#[MOD] substitute them; GNU make treats assignments in MAKEFLAGS as
+#[MOD] command-line overrides, which beat the in-file ones. That lets both
+#[MOD] binaries live in this folder without editing the solver tree.
+export MAKEFLAGS="BINNAME=${BINNAME} LIBNAME=lib${BINNAME}.a"
+
+SOURCE_ROOT="../../solver/${SOLVER_ROOT}"
+# Fortran / C compilers
+F77="mpif77"
+CC="mpicc"
+# generic compiler flags
+G="-I./inc_src -mcmodel=large -std=legacy"
+# pre-processor symbol list.  YWDEBUG is intentionally absent from the
+# production build; GAINMONITOR writes one compact rank-0 cross-check.
+PPLIST="MPIIO DRL UTAU NETGAIN GAINMONITOR"
+# disable/enable profiling (default true)
+IFPROFILING="true"
+# auxilliary files to compile (a makefile_usr.inc provides the build rules)
+USR="IO_tools.o chkpoint.o uparam.o"
+## Statistics
+USR+=" statistics_2D.o statistics_2DIO.o statistics_2D_usr.o statistics_2D_debug.o"
+## Time-series
+USR+=" time_series.o time_seriesIO.o pts_redistribute.o err_est.o"
+## Tripping force
+USR+=" rt_filter.o tripf.o misc.o"
+## CTRL
+USR+=" drl_main.o drl_action.o drl_init.o drl_reward.o drl_state.o drl_IO.o"
+#[MOD] Embedded deterministic policy (Python-free evaluation mode).
+USR+=" pol_core.o pol_net.o pol_main.o pol_IO.o"
+## ------------------------------------------------------------------------
+
+# assign version tag (required by makenek.inc)
+mver=1
+SOURCE_ROOT_CORE="$SOURCE_ROOT/core"
+SOURCE_ROOT_JL="$SOURCE_ROOT/jl"
+SOURCE_ROOT_CMT="$SOURCE_ROOT/core/cmt"
+
+# check arguments
+if [ $# -ne 1 ]; then
+    error_quit 'Wrong arguments number!'
+fi
+
+for il in "$@"
+do
+case $il in
+        --clean)
+                # makenek.inc runs "make clean" and exits when given "clean"
+                set -- clean
+                source $SOURCE_ROOT_CORE/makenek.inc
+                ;;
+        --all)
+                # makenek.inc reads $1 as the case name and generates ./makefile
+                set -- ${CASE}
+                source $SOURCE_ROOT_CORE/makenek.inc
+                make -j4 -f makefile ${MAKEFLAGS} 2>&1 | tee log_compile.out
+                exit 0
+                ;;
+        *)
+                error_quit 'Wrong argument.'
+                ;;
+esac
+done
