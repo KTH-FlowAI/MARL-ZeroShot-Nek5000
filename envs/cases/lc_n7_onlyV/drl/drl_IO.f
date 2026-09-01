@@ -17,6 +17,7 @@ c=============================================
             include 'SIZE'
             include 'INPUT'
             include 'DRL'       
+            include 'POLICY'
             include 'TSTEP'  
             include 'NEKUSE'  
             include 'mpif.h'
@@ -36,6 +37,10 @@ c=============================================
 c=============================================
 c       Function
 c=============================================
+!#[MOD] Embedded mode has no Python receiver. The local reward arrays remain
+!#[MOD] available to pol_IO.f, so skip the MPI reward/CFL transfer entirely.
+            if (pol_ifsolo) return
+
             drl_step = UPARAM(1)
 !#[MOD] Runtime reward-mode selector; MUST match the switch in drl_reward().
 !#[MOD] UPARAM(9): 0 = dudy (1 buffer), 1 = net_gain (3 buffers: tau/pw/v3).

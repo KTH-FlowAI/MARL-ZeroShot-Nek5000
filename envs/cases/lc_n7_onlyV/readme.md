@@ -26,6 +26,18 @@ Please, adopt them to the compiler you have on PC/Cluter!!
 
         ./compile_scipt --clean
 
+## Nek-solo (embedded policy, v-only state)
+
+This case also supports the Python-free Nek-solo evaluation path. Build the
+embedded binary with:
+
+        ./compile_script --solver raw --all
+
+This produces `nek5000_solo`, which is launched through `nek-solo-run.sh`.
+The observation is deliberately one-dimensional: `NFLDC=1` and the state is
+the wall-normal velocity fluctuation `v'` only. Use a policy/configuration
+whose `npl_state` (and exported policy input dimension) is `1`.
+
 ## Mesh? 
 
   Go to the folder [msh](./msh)
@@ -51,4 +63,3 @@ Please, adopt them to the compiler you have on PC/Cluter!!
 
 ## How it works? 
 All the user-defined subroutines are placed in [tcf.usr](./tcf.usr), which WORKS ONLY IF COMPILED!
-

@@ -380,7 +380,7 @@ c$$$ TEST: Write down all the sensing points that we have found and the averaged
          iy = info_agt(4,ilx)
          iz = info_agt(5,ilx)
          ctrl_test1(ix,iy,iz,iel)=val_obs(1,ilx)
-         ctrl_test2(ix,iy,iz,iel)=val_obs(2,ilx)
+!        v-only observation: CTRL_TEST2 remains zero (initialized above).
         enddo
         call outpost(ctrl_test1,ctrl_test2,
      &          ctrl_test1,pr,t,'fli')
