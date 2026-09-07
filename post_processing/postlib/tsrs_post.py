@@ -49,7 +49,8 @@ import matplotlib.ticker as mticker
 import numpy as np
 import yaml
 
-from . import results as res, tsrs, tsrs_case as tc, tsrs_spectra as sp
+from . import (results as res, tsrs, tsrs_case as tc, tsrs_spectra as sp,
+               tsrs_timeseries as tsp)
 
 #: Default environment.  One case, one policy, one sample -- see the note above.
 DEFAULT_ENV = 'env_001'
@@ -360,7 +361,8 @@ def archive_stitched(entry, overwrite=False, verbose=True):
 
 def process(cases, planes=DEFAULT_PLANES, fields=None, field='u',
             quantities=('uu', 'uv'), map_dir='z', scale='reference',
-            do_stitch=True, do_snapshots=True, do_spectra=True, do_archive=True,
+            wall_velocity=None, do_stitch=True, do_snapshots=True,
+            do_spectra=True, do_archive=True,
             overwrite=False, overwrite_stitch=False, verbose=True):
     """
     Phase A for every case: stitch, extract, spectra, archive.
@@ -378,6 +380,12 @@ def process(cases, planes=DEFAULT_PLANES, fields=None, field='u',
     `tsrs_spectra.py`: these figures put cases side by side, and only the
     common reference u_tau puts them on one energy and one y+ axis.  Both sets
     can live in the archive at once -- the units are in the file name.
+
+    ``wall_velocity`` optionally enables the Brown-style correlation between
+    reconstructed streamwise wall shear and streamwise velocity away from the
+    wall.  It is a dictionary passed to :func:`compute_wall_velocity_correlation`,
+    for example ``{'planes': (2, 5, 15, 30), 'max_lag_time': 20.0}``.  Leaving
+    it ``None`` preserves the inexpensive historical processing path.
     """
     entries = cases.values() if isinstance(cases, dict) else cases
     done = {}
@@ -391,6 +399,8 @@ def process(cases, planes=DEFAULT_PLANES, fields=None, field='u',
         needed |= do_spectra and not (
             _spectra_present(entry, field, quantities, map_dir, scale)
             and not overwrite)
+        needed |= wall_velocity is not None and not (
+            _wall_velocity_present(entry, wall_velocity, scale) and not overwrite)
 
         data = None
         if needed:
@@ -406,6 +416,12 @@ def process(cases, planes=DEFAULT_PLANES, fields=None, field='u',
             compute_spectra(entry, field=field, quantities=quantities,
                             map_dir=map_dir, scale=scale, data=data,
                             overwrite=overwrite, verbose=verbose)
+        if wall_velocity is not None:
+            options = dict(wall_velocity)
+            options.setdefault('scale', scale)
+            compute_wall_velocity_correlation(entry, data=data,
+                                              overwrite=overwrite,
+                                              verbose=verbose, **options)
         del data
         gc.collect()
 
@@ -639,6 +655,248 @@ def _plane_axes(case, idx):
 def _save(entry, case, name, suffix, arrays, **meta):
     target = entry['spectra_dir'] / f'{entry["id"]}_{name}_{suffix}.npz'
     return res.save_dataset(target, arrays, res.scalars_from_case(case), meta)
+
+
+# ----------------------------------------------------- wall shear / velocity
+
+def _wall_velocity_name(velocity='u', tau_component='u'):
+    """Archive name for a signed wall-shear/velocity correlation."""
+    direction = _tau_direction(tau_component)
+    return f'wallcorr_tau{direction}w_{velocity}'
+
+
+def _tau_direction(tau_component):
+    """Cartesian direction of a tangential velocity component at the wall."""
+    direction = {'u': 'x', 'w': 'z'}.get(str(tau_component))
+    if direction is None:
+        raise ValueError("tau_component must be 'u' (streamwise) or 'w' "
+                         f"(spanwise), got {tau_component!r}")
+    return direction
+
+
+def _wall_velocity_present(entry, options, scale):
+    """Whether this analysis has already produced its requested unit set."""
+    options = dict(options or {})
+    name = _wall_velocity_name(options.get('velocity', 'u'),
+                               options.get('tau_component', 'u'))
+    requested = options.get('scale', scale)
+    suffixes = ('uref',) if requested == 'reference' else ('uact', 'uref')
+    return any((entry['spectra_dir'] /
+                f'{entry["id"]}_{name}_{suffix}.npz').exists()
+               for suffix in suffixes)
+
+
+def _kinematic_viscosity(entry, case):
+    """Viscosity from the Nek config, with a documented wall-unit fallback."""
+    raw = entry.get('sim', {}).get('viscosity')
+    if raw is not None:
+        raw = float(raw)
+        if raw == 0.0 or not np.isfinite(raw):
+            raise ValueError(f'{entry["id"]}: invalid simulation.viscosity={raw!r}')
+        # Nek's channel inputs use a negative reciprocal Reynolds number.
+        return 1.0 / abs(raw) if raw < 0.0 else raw
+    if case['utau'] is not None and case['retau'] > 0:
+        return float(case['utau']) / float(case['retau'])
+    raise ValueError(f'{entry["id"]}: no simulation.viscosity and no reference '
+                     'u_tau/Re_tau from which to derive it')
+
+
+def compute_wall_velocity_correlation(entry, planes=None, velocity='u',
+                                      tau_component='u', wall_y=0.0, nwall=3,
+                                      max_lag=None, max_lag_time=None,
+                                      x_shift=0, z_shift=0, scale='reference',
+                                      data=None, overwrite=False, strict=False,
+                                      verbose=True):
+    """Archive Brown-style wall-shear/streamwise-velocity correlations.
+
+    The wall-shear signal is reconstructed from the no-slip tangential
+    velocity with a one-sided derivative.  A record without the wall plus the
+    requested number of near-wall planes cannot support that reconstruction;
+    by default such a case is reported and skipped, which keeps a multi-case
+    notebook honest rather than substituting a different observable.  Set
+    ``strict=True`` when an absent wall correlation should stop a batch.
+
+    ``planes`` are nominal y+ requests and must exist exactly (within the
+    normal ``resolve_planes`` tolerance).  ``None`` analyses every off-wall
+    stored plane.  The result contains both the primary ``nwall`` derivative
+    and a two-point correlation diagnostic when ``nwall > 2``.
+    """
+    name = _wall_velocity_name(velocity, tau_component)
+    tau_direction = _tau_direction(tau_component)
+    if _wall_velocity_present(entry, {
+            'velocity': velocity, 'tau_component': tau_component, 'scale': scale},
+            scale) and not overwrite:
+        if verbose:
+            print(f'  wall correlation: {name} already in {entry["spectra_dir"]}, '
+                  'skipping (overwrite=True to redo)')
+        return None
+
+    if data is None:
+        data = tsrs.load(entry['npz'])
+    try:
+        case = load_case_scaled(entry, field=velocity, scale=scale, data=data,
+                                verbose=False)
+        d = case['data']
+        nu = _kinematic_viscosity(entry, case)
+        if planes is None:
+            indices = [int(i) for i, y in enumerate(d['y'])
+                       if not np.isclose(y, wall_y, atol=1e-12)]
+        else:
+            found = resolve_planes(d, planes, verbose=verbose, case=entry['id'])
+            indices = [int(i) for i, _, _ in found]
+        if not indices:
+            raise ValueError('none of the requested velocity planes is present')
+
+        corr = tsp.wall_velocity_correlation(
+            d, viscosity=nu, velocity=velocity, plane_indices=indices,
+            tau_component=tau_component, wall_y=wall_y, nwall=nwall,
+            max_lag=max_lag, max_lag_time=max_lag_time,
+            x_shift=x_shift, z_shift=z_shift, sensitivity=True)
+    except ValueError as exc:
+        message = f'  [{entry["id"]}] wall correlation skipped: {exc}'
+        if strict:
+            raise ValueError(message) from exc
+        if verbose:
+            print(message)
+        return None
+
+    shear = corr['wall_shear']
+    time_factor = ((case['scale']['utau'] ** 2 / nu)
+                   if case['scale']['utau'] is not None else np.nan)
+    nx, nz = d['fld'].shape[1:3]
+    dx, dz = case['Lx'] / nx, case['Lz'] / nz
+    yplus = tc.yplus(case)[corr['indices']]
+    arrays = {
+        'lag': corr['lag'],
+        'lag_time': corr['lag_time'],
+        'lag_plus': corr['lag_time'] * time_factor,
+        'rho': corr['rho'],
+        'n_time_pairs': corr['n_time_pairs'],
+        'rms_tau': corr['rms_tau'],
+        'rms_velocity': corr['rms_velocity'],
+        'peak_index': corr['peak_index'],
+        'peak_lag': corr['peak_lag'],
+        'peak_lag_time': corr['peak_lag_time'],
+        'peak_lag_plus': corr['peak_lag_time'] * time_factor,
+        'peak_rho': corr['peak_rho'],
+        'plane_index': corr['indices'],
+        'y': corr['y'],
+        'yplus': yplus,
+        'yplus_nominal': corr['yplus_nominal'],
+        'wall_index': shear['wall_index'],
+        'wall_y': shear['wall_y'],
+        'stencil_index': shear['indices'],
+        'stencil_y': shear['y'],
+        'stencil_yplus_nominal': shear['yplus'],
+        'stencil_weights': shear['weights'],
+        'viscosity': nu,
+        'nwall': int(nwall),
+        'x_shift': int(x_shift),
+        'z_shift': int(z_shift),
+        'x_offset': float(x_shift) * dx,
+        'z_offset': float(z_shift) * dz,
+    }
+    if 'rho_low_order' in corr:
+        arrays.update({
+            'rho_low_order': corr['rho_low_order'],
+            'low_order_nwall': corr['low_order_nwall'],
+            'low_order_y': corr['low_order_y'],
+            'low_order_weights': corr['low_order_weights'],
+        })
+    target = _save(
+        entry, case, name, scale_suffix(case), arrays,
+        kind='time correlation', quantity=f'tau_{tau_direction}w,{velocity}',
+        field=velocity, tau_component=tau_component,
+        mean='time at each x,z', time_pairs='overlapping only; not periodic',
+        derivative=shear['method'],
+        xlabel='T+', ylabel=f'R_tau{tau_direction}w,{velocity}')
+    res.write_meta(entry['root'], solver_case=entry['solver_case'],
+                   run_name=entry['id'],
+                   wall_velocity_correlation={
+                       'velocity': velocity, 'tau_component': tau_component,
+                       'scale': scale, 'file': target.name,
+                       'stencil': f'{nwall}-point one-sided derivative',
+                   })
+    if verbose:
+        unit = '+' if np.isfinite(time_factor) else ''
+        print(f'  wall correlation tau_{tau_direction}w,{velocity}: '
+              f'{len(indices)} planes, |T| <= {abs(corr["lag_time"][-1]):.3g} '
+              f'time units ({abs(arrays["lag_plus"][-1]):.0f} T{unit})')
+    return target
+
+
+def load_wall_velocity_correlation(entry, velocity='u', tau_component='u',
+                                   scale=None, verbose=True):
+    """Load one archived wall-shear/velocity correlation, or return ``None``."""
+    name = _wall_velocity_name(velocity, tau_component)
+    suffix = {'actual': 'uact', 'reference': 'uref', None: '*'}[scale]
+    hits = sorted(entry['spectra_dir'].glob(f'{entry["id"]}_{name}_{suffix}.npz'))
+    if not hits:
+        if verbose:
+            print(f'  [{entry["id"]}] no {name} ({scale or "any"} units); '
+                  'the case may lack the wall/y+<=5 stencil')
+        return None
+    if len(hits) > 1 and verbose:
+        print(f'  [{entry["id"]}] {name}: both wall unit sets on disk, '
+              f'using {hits[0].name}')
+    with np.load(hits[0], allow_pickle=False) as fh:
+        return {k: fh[k] for k in fh.files}
+
+
+def plot_wall_velocity_correlation(cases, yplus=(2.0, 5.0, 15.0, 30.0),
+                                   velocity='u', tau_component='u',
+                                   scale='reference', save=None, verbose=True):
+    """Plot Brown-style ``tau_w``--velocity lag curves for every available case."""
+    entries = _cases(cases)
+    tau_direction = _tau_direction(tau_component)
+    fig, axs = plt.subplots(1, len(entries), squeeze=False,
+                            figsize=(5.0 * len(entries), 4.2))
+    for j, entry in enumerate(entries):
+        ax = axs[0, j]
+        d = load_wall_velocity_correlation(entry, velocity=velocity,
+                                           tau_component=tau_component,
+                                           scale=scale, verbose=verbose)
+        if d is None:
+            ax.set_title(entry['label'], loc='left', fontsize=11)
+            ax.text(0.5, 0.5, 'wall correlation unavailable', ha='center', va='center',
+                    transform=ax.transAxes, color='0.35')
+            ax.set_axis_off()
+            continue
+        yp = np.asarray(d['yplus'], dtype=float)
+        requested = yp if yplus is None else np.asarray(yplus, dtype=float)
+        color = plt.get_cmap('viridis', max(1, requested.size))
+        x = np.asarray(d['lag_plus'], dtype=float)
+        xlabel = r'$T^+$'
+        if not np.isfinite(x).all():
+            x = np.asarray(d['lag_time'], dtype=float)
+            xlabel = r'$T$'
+        plotted = 0
+        for i, wanted in enumerate(requested):
+            hit = np.flatnonzero(np.isclose(yp, wanted, rtol=0.0, atol=1e-6))
+            if not hit.size:
+                if verbose and yplus is not None:
+                    print(f'  [{entry["id"]}] no archived wall correlation at '
+                          f'y+ = {wanted:g}; skipped')
+                continue
+            k = int(hit[0])
+            c = color(i)
+            ax.plot(x, d['rho'][k], color=c, lw=1.8,
+                    label=fr'$y^+={yp[k]:.4g}$')
+            pk = int(d['peak_index'][k])
+            ax.plot(x[pk], d['peak_rho'][k], 'o', color=c, ms=4)
+            plotted += 1
+        ax.axhline(0.0, color='k', lw=0.8, ls=(0, (4, 3)))
+        ax.axvline(0.0, color='k', lw=0.8, ls=(0, (4, 3)))
+        ax.set(xlabel=xlabel,
+               ylabel=fr'$R_{{\tau_{{{tau_direction}w}},{velocity}}}$'
+                      if j == 0 else None)
+        ax.set_title(entry['label'], loc='left', fontsize=11)
+        ax.grid(alpha=0.3)
+        if plotted:
+            ax.legend(fontsize=8, title='velocity plane', title_fontsize=8)
+    fig.tight_layout()
+    _save_fig(fig, save, verbose)
+    return fig
 
 
 # --------------------------------------------------------------- phase B

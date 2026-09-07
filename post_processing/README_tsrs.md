@@ -461,11 +461,16 @@ cases = tp.resolve_all([
     dict(case='oc-mc-dr',  label='opposition',   style=STYLE_B),
 ], runs_dir='../runs/')
 
-tp.process(cases, planes=(0.0, 15.0), field='u', scale='reference')
+wall_velocity = dict(velocity='u', tau_component='u',
+                     planes=(2, 5, 10, 15, 30, 50), nwall=3,
+                     max_lag_time=20.0)
+tp.process(cases, planes=(0.0, 15.0), field='u', scale='reference',
+           wall_velocity=wall_velocity)
 
 tp.plot_snapshot_grid(cases, yplus=15.0)      # rows cases, cols variables
 tp.plot_map(cases, quantities=('uu', '-uv'))  # rows quantities, cols cases
 tp.plot_correlation(cases, yplus=15.0)        # one subfigure per case
+tp.plot_wall_velocity_correlation(cases, yplus=wall_velocity['planes'])
 tp.animate(cases['mc-noctrl'], yplus=15.0, field='u')
 ```
 
@@ -499,6 +504,13 @@ beside each one, so the raw field is `snap[:, :, it] + mean`.
   stays sign-true.
 - A case whose `current_conf.yml` no longer describes its `pts` files (edited
   `y_planes`, `Nx`, `lx1`) takes `y_planes=[...]` on its case row.
+- `wall_velocity` adds the Brown--Thomas long-time correlation
+  `R_{tau_xw,u}(T;y)`: signed streamwise wall shear against streamwise velocity
+  at each requested wall-normal plane.  The TSRS field does not store `tau_xw`,
+  so it is reconstructed as `nu*dudy|wall` with a nonuniform one-sided stencil
+  through `y+=0,2,5`. A case without those planes is reported as unavailable;
+  it is never replaced by a velocity proxy.  The archived result records the
+  derivative weights and both three- and two-point correlation curves.
 
 ---
 
@@ -511,7 +523,7 @@ data/results/<solver_case>/<run_name>/
     config/        current_conf.yml exactly as the run used it
     model/         eval_model_<run_name>.zip, or the exported actor_*.pol
     drl/           reward / action / observation records
-    spectra/       one .npz per spectrum
+    spectra/       one .npz per spectrum or correlation
     tsrs/<env>/    snap_<plane>_<field>.npy   (nx, nz, nt) fluctuation
                    mean_<plane>_<field>.npy   (nx, nz) the time mean removed
                    axes.npz, snap_meta.yml
