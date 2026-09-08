@@ -29,8 +29,9 @@ c creates it), otherwise in the working directory with a warning.
 c
 c Why not TSRS: it re-interpolates onto its own point set, which is
 c exactly what must not happen on a wing, where the agents already sit
-c on curved-wall GLL nodes. Here the values are dumped as the controller
-c saw them.
+c on curved-wall GLL nodes. Here the values are sampled at the controller's
+c sensing points. The v-only channel case records [u',v'] for generic
+c post-processing while its actor still consumes only val_obs(1)=v'.
 c
 c File layout (stream access, native endianness, marked in the header):
 c
@@ -39,7 +40,7 @@ c     char*8  'NEKPOLR2'          magic + format version
 c     int32   1234567890          endianness probe
 c     int32   nid
 c     int32   nagents             agents owned by THIS rank
-c     int32   nfld                observation components per agent
+c     int32   nfld                recorded observation components per agent
 c     int32   nrwd                reward components per agent (3)
 c     int32   ndrl                solver steps per control cycle
 c     int32   rec_freq            cycles between records
@@ -238,7 +239,7 @@ c        next collective, i.e. deadlock the whole job.
       write(pol_runit) 1234567890
       write(pol_runit) NID
       write(pol_runit) NUMCTRL
-      write(pol_runit) NFLDC
+      write(pol_runit) NRECFLD
       write(pol_runit) nrwd
       write(pol_runit) nint(UPARAM(1))
       write(pol_runit) pol_recf
@@ -272,8 +273,9 @@ c------------------------------------------------------------------
       subroutine pol_rec_write
 c Append one record. Called at the END of a control cycle, where all
 c three quantities are simultaneously valid:
-c   val_obs  still holds the observation that produced this action
-c            (it is only refreshed at the next cycle start)
+c   val_rec_obs holds [u',v'] sampled with the observation that produced
+c            this action (it is only refreshed at the next cycle start)
+c   val_obs  remains the policy-only state and may have fewer components
 c   pol_hold holds the action actually applied during the cycle
 c   rwd_*    hold the completed moving average over the cycle
 c------------------------------------------------------------------
@@ -293,7 +295,8 @@ c------------------------------------------------------------------
       write(pol_runit) ISTEP
       write(pol_runit) pol_icyc
 
-      write(pol_runit) ((val_obs(kl,il),kl=1,NFLDC),il=1,NUMCTRL)
+      write(pol_runit) ((val_rec_obs(kl,il),kl=1,NRECFLD),
+     $                  il=1,NUMCTRL)
       write(pol_runit) (pol_hold(il),il=1,NUMCTRL)
 
       if (pol_rwmode.eq.1) then

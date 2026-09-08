@@ -3,7 +3,7 @@
 ! ======================================
 ! Define the control regin Basically indicating the wall
       real ctrlxs,ctrlxe,ctrlys,ctrlye,nuctrl,dyi
-      integer NUMCTRL,NFLDC             ! Number of fields to be interplotaed
+      integer NUMCTRL,NFLDC,NRECFLD      ! Policy and recorder field counts
       integer inth_hpts1, inth_hpts2
       integer nfeat
       logical obs_xavg,obs_zavg,rwd_zavg,rwd_xavg,act_xavg,act_zavg
@@ -27,9 +27,14 @@
       integer proc(totctrl)
       integer iptctl(totctrl) ! The array for the processor
 
-! YW:   The instantaneous velocity array
-      parameter(NFLDC=1)        ! Vy only control!
-      real val_obs(NFLDC,totctrl)   ! STATE/Observation
+! YW:   The instantaneous velocity arrays
+! NFLDC is the controller contract: keep it at one for the v-only policy
+! and the coupled Python/MPI state exchange. NRECFLD is recorder-only:
+! it preserves the generic drlrec [u',v'] layout for post-processing.
+      parameter(NFLDC=1)        ! Policy state: wall-normal fluctuation v'
+      parameter(NRECFLD=2)      ! drlrec diagnostics: u', v' (in this order)
+      real val_obs(NFLDC,totctrl)       ! Policy/MPI observation only
+      real val_rec_obs(NRECFLD,totctrl) ! Recorder diagnostic observation
       real rwd_agt(totctrl)        ! Rewards
 ! YW:   Net energy saving component
       real rwd_tau(totctrl), rwd_pw(totctrl), rwd_v3(totctrl)
@@ -55,7 +60,7 @@
       parameter(act_xavg=.TRUE.,act_zavg=.TRUE.)  ! REWARD
 
       common /YW_drl / NUMCTRL,inth_hpts1,
-     $                 iwk,rwk, val_obs,
+     $                 iwk,rwk, val_obs,val_rec_obs,
      $                 pos_obs,pos_agt,rwd_agt !Real for ctrl
       common /drl_netgain/ rwd_tau, rwd_pw, rwd_v3
       common /drl_act/ actions, msk_act

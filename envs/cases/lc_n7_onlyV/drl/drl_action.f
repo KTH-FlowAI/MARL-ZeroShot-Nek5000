@@ -193,7 +193,7 @@ c--------------------------
             ix=info_agt(3,il)
             iy=info_agt(4,il)
             iz=info_agt(5,il)
-            act_i=val_obs(2,il)
+            act_i=val_rec_obs(2,il)
             sts_buff(ix,iy,iz,lclid)=act_i
       enddo 
       

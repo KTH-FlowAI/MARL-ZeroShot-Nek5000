@@ -332,20 +332,32 @@ c=============================================
         endif 
 #endif
 
-        ! v-only state: pack ONLY the wall-normal fluctuation v' into
-        ! the single field val_obs(1,:). (Streamwise u' is intentionally
-        ! not sensed here; NFLDC=1 must match npl_state=1 on the Python side.)
+        ! Capture [u',v'] for the recorder without changing the v-only
+        ! controller/MPI contract. NRECFLD is the output stride because
+        ! fgslib_findpts_eval writes one value per point at that stride.
+        call copy(buffV,ctrlVx(1,1,1,1),ntot)
+        call fgslib_findpts_eval(inth_hpts1,val_rec_obs(1,1),NRECFLD,
+     &                       iwk(1,1),1,
+     &                       iwk(1,3),1,
+     &                       iwk(1,2),1,
+     &                       rwk(1,2),NDIM,NUMCTRL,
+     &                       buffV(1))
         call copy(buffV,ctrlVy(1,1,1,1),ntot)
-        call fgslib_findpts_eval(inth_hpts1,val_obs(1,1),NFLDC,
+        call fgslib_findpts_eval(inth_hpts1,val_rec_obs(2,1),NRECFLD,
      &                       iwk(1,1),1,
      &                       iwk(1,3),1,
      &                       iwk(1,2),1,
      &                       rwk(1,2),NDIM,NUMCTRL,
      &                       buffV(1))
 
+        ! The actor and coupled MPI path still see exactly one input: v'.
+        do il=1,NUMCTRL
+          val_obs(1,il)=val_rec_obs(2,il)
+        enddo
+
 #ifdef YWDEBUG
         if (NID.eq.0) print *,"[DRL] GET FINDPTS"
-#endif YWDEBUG
+#endif
 
 
 c$$$ TEST: Write down all the sensing points that we have found and the averaged velocity
@@ -364,7 +376,7 @@ c$$$ TEST: Write down all the sensing points that we have found and the averaged
      $     ISTEP,
      $     (info_agt(ily,ilx),ily=1,nfeat),
      $     (pos_obs(ily,ilx), ily=1,NDIM),
-     $     (val_obs(ily,ilx), ily = 1,nfldc)
+     $     (val_rec_obs(ily,ilx), ily = 1,nrecfld)
         enddo
         close(10001)
         endif
@@ -379,8 +391,8 @@ c$$$ TEST: Write down all the sensing points that we have found and the averaged
          ix = info_agt(3,ilx)
          iy = info_agt(4,ilx)
          iz = info_agt(5,ilx)
-         ctrl_test1(ix,iy,iz,iel)=val_obs(1,ilx)
-!        v-only observation: CTRL_TEST2 remains zero (initialized above).
+         ctrl_test1(ix,iy,iz,iel)=val_rec_obs(1,ilx)
+         ctrl_test2(ix,iy,iz,iel)=val_rec_obs(2,ilx)
         enddo
         call outpost(ctrl_test1,ctrl_test2,
      &          ctrl_test1,pr,t,'fli')
