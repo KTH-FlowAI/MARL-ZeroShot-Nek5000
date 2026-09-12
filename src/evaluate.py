@@ -130,7 +130,7 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
                 policy_kwargs = yaml.load(file, Loader=yaml.FullLoader)
         else:
             policy_kwargs = {}
-        
+
         # Load model from path
         # custom_objects is required because the action_space
         # is not correctly deserialized when loading from file 
@@ -156,7 +156,16 @@ def evaluate(conf_file,overrides,**ignored_kwargs):
             loaded_model = RL_algorithm(agent_list=agents_list,
                                     ctrl_max_amp=conf.runner.ctrl_max_amp,
                                     )
-            
+        elif conf.runner.RL_algorithm == 'OC_U':
+            from lib.AFC import OCUCtrl as RL_algorithm
+            loaded_model = RL_algorithm(agent_list=agents_list,
+                                        ctrl_max_amp=conf.runner.ctrl_max_amp,
+                                        )
+        elif conf.runner.RL_algorithm == 'OC_UVCOMB':
+            from lib.AFC import OCUVCombCtrl as RL_algorithm
+            loaded_model = RL_algorithm(agent_list=agents_list,
+                                        ctrl_max_amp=conf.runner.ctrl_max_amp,
+                                        )
         elif conf.runner.RL_algorithm == 'BL':
             from lib.AFC import BLCtrl as RL_algorithm
             loaded_model = RL_algorithm(agent_list=agents_list,

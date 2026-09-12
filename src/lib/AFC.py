@@ -60,6 +60,34 @@ class OppoCtrl(AFC):
     action = -1.0 * self.alpha * observation[1,0,0] 
     return action
 
+
+class OCUCtrl(AFC):
+  """One-state streamwise proportional control: ``a_w = -alpha * u'``."""
+
+  def __init__(self, agent_list, ctrl_max_amp) -> None:
+    super().__init__(agent_list)
+    self.alpha = ctrl_max_amp
+
+  def policy(self, observation):
+    # The lc_n7_onlyU controller/MPI contract is one field: observation[0]=u'.
+    return -1.0 * self.alpha * observation[0,0,0]
+
+
+class OCUVCombCtrl(AFC):
+  """Two-state analytic law: ``a_w = -alpha * (0.5*u' - v')``.
+
+  The conventional channel ordering is ``observation[0]=u'`` and
+  ``observation[1]=v'``.
+  """
+
+  def __init__(self, agent_list, ctrl_max_amp) -> None:
+    super().__init__(agent_list)
+    self.alpha = ctrl_max_amp
+
+  def policy(self, observation):
+    return -1.0 * self.alpha * (
+        0.5 * observation[0,0,0] - observation[1,0,0])
+
 class BLCtrl(AFC):
   """
   Steady uniform blowing/suction

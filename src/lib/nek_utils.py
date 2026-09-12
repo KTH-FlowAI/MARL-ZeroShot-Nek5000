@@ -711,14 +711,20 @@ class NEK_INIT():
         analytic = getattr(emb, 'analytic_policy', None)
         if analytic is not None:
             analytic = str(analytic).strip().upper()
-            if analytic not in ('OC', 'BL'):
+            if analytic not in ('OC', 'BL', 'OC_U', 'OC_UVCOMB'):
                 raise ValueError(
                     f"[POLICY] unsupported analytic_policy '{analytic}'; "
-                    "expected OC or BL")
+                    "expected OC, BL, OC_U, or OC_UVCOMB")
             nstate = int(getattr(drl, 'npl_state', 2))
             if nstate < 2 and analytic == 'OC':
                 raise ValueError(
                     '[POLICY] analytic OC needs npl_state >= 2 for v\'')
+            if nstate != 1 and analytic == 'OC_U':
+                raise ValueError(
+                    "[POLICY] OC_U needs npl_state=1 with val_obs(1)=u'")
+            if nstate != 2 and analytic == 'OC_UVCOMB':
+                raise ValueError(
+                    "[POLICY] OC_UVCOMB needs npl_state=2 ordered as [u', v']")
         else:
             nstate = 0
 

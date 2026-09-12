@@ -225,6 +225,13 @@ def write_analytic_pol(path, kind, scl_obs, scl_act, nin=2, ivel=1,
              where |v'| > u_tau.
 
       'BL' : steady uniform blowing/suction, action = amp
+
+      'OC_U' : streamwise proportional control, action = -amp * u'.
+                 It is a one-input law for the ``lc_n7_onlyU`` state.
+
+      'OC_UVCOMB' : oppose the requested two-component combination,
+                 action = -amp * (0.5*u' - v') = amp * (v' - 0.5*u').
+                 The input order is the channel convention [u', v'].
              identical to lib.AFC.BLCtrl.
 
     lib.AFC.SinWave is deliberately NOT supported: it is a function of
@@ -243,9 +250,18 @@ def write_analytic_pol(path, kind, scl_obs, scl_act, nin=2, ivel=1,
         W[0, ivel] = -float(gain)
     elif kind == "BL":
         b[0] = float(gain)
+    elif kind == "OC_U":
+        if nin != 1:
+            raise ValueError("OC_U requires exactly one u' input")
+        W[0, 0] = -float(gain)
+    elif kind == "OC_UVCOMB":
+        if nin != 2:
+            raise ValueError("OC_UVCOMB requires ordered [u', v'] inputs")
+        W[0, 0] = -0.5 * float(gain)
+        W[0, 1] = float(gain)
     else:
         raise ValueError(f"unsupported analytic policy '{kind}'; "
-                         "expected 'OC' or 'BL'")
+                         "expected 'OC', 'BL', 'OC_U', or 'OC_UVCOMB'")
 
     # squash=0: no tanh, and no SB3 unscale_action either -- the classical
     # laws in lib.AFC apply neither.
