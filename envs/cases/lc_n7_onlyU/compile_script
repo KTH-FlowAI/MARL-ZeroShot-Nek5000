@@ -1,0 +1,93 @@
+#!/bin/bash
+
+function error_quit {
+    echo -e "$@"
+    echo
+    echo -e 'Usage:'
+    echo -e './compile_script [--solver drl|raw] --clean'
+    echo -e '   To clean build direcrtory. Makenek will ask for cleaning 3rd-party libraries.'
+    echo
+    echo -e './compile_script [--solver drl|raw] --all'
+    echo -e '   To compile the code.'
+    echo
+    echo -e '--solver drl (default): coupled KTH_DRL_Framework -> nek5000'
+    echo -e '--solver raw: embedded KTH_Framework -> nek5000_solo'
+    exit 1
+}
+
+#[MOD] The source is shared by the coupled and embedded binaries.  The raw
+#[MOD] core lets every rank enter Nek; the DRL core reserves rank 0 for Python.
+SOLVER="drl"
+POSARGS=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --solver) SOLVER="$2"; shift 2 ;;
+        *) POSARGS+=("$1"); shift ;;
+    esac
+done
+set -- "${POSARGS[@]}"
+
+case "${SOLVER}" in
+    drl) SOLVER_ROOT="KTH_DRL_Framework"; BINNAME="nek5000" ;;
+    raw) SOLVER_ROOT="KTH_Framework";     BINNAME="nek5000_solo" ;;
+    *) error_quit "Unknown --solver '${SOLVER}', expected drl or raw." ;;
+esac
+
+# Keep both binaries in this case directory.  GNU make command-line overrides
+# beat makenek's template defaults without modifying either solver tree.
+export MAKEFLAGS="BINNAME=${BINNAME} LIBNAME=lib${BINNAME}.a"
+
+export TOOLBOX_SRC="../../solver/${SOLVER_ROOT}/Toolbox"
+source ${TOOLBOX_SRC}/toolbox_path.sh
+
+# Nek5000 parameters
+export CASE="tcf"
+export NEK_SOURCE_ROOT="../../solver/${SOLVER_ROOT}/Nek5000"
+export FC="mpif77 "${TOOLBOX_INC}
+export CC="mpicc"
+# export PPLIST="MPIIO CTRL YWDEBUG"
+#[MOD] NETGAIN removed: reward fn (dudy/net_gain) is now a runtime
+#[MOD] UPARAM(9) switch written from Python Runner.reward_fn (no recompile).
+export PPLIST="MPIIO DRL BDFD TSRS GAINMONITOR"
+# export PPLIST="MPIIO DRL"
+# export PPLIST="MPIIO"
+export USR="frame.o mntrlog_block.o mntrlog.o mntrtmr_block.o mntrtmr.o rprm_block.o rprm.o io_tools_block.o io_tools.o"
+USR+=" chkpoint.o chkpt_mstp.o map2D.o stat.o stat_IO.o math_tools.o"
+USR+=" drl_main.o drl_state.o drl_reward.o drl_IO.o drl_action.o drl_init.o"
+USR+=" pol_core.o pol_net.o pol_main.o pol_IO.o"
+USR+=" tsrs.o tsrs_IO.o pts_redistribute.o"
+USR+=" bdforce.o"
+export USR_LFLAGS=""
+
+# Change a possible relative path to an absolute one; e.g. parRSB doesn't like a relative path
+# This is just a hack
+cd ${NEK_SOURCE_ROOT}
+NEK_SOURCE_ROOT=`pwd`
+cd -
+
+# arguments
+args=("$@")
+argsnr=$#
+
+# check arguments
+# parameters number check
+if [ $[argsnr] -ne 1 ]; then
+    error_quit 'Wrong arguments number!'
+fi
+
+for il in "$@"
+do
+case $il in
+        --clean)
+                ${NEK_SOURCE_ROOT}/bin/makenek clean
+                shift
+                ;;
+        --all)
+                ${NEK_SOURCE_ROOT}/bin/makenek ${CASE}
+                shift
+                ;;
+        *) 
+                error_quit 'Wrong argument.'
+                ;;
+esac
+done
