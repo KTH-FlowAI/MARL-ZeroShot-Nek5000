@@ -1,0 +1,18 @@
+# DDPG/TD3 policy variant with identity (linear) hidden activations.
+#
+# This retains the exact network widths from default_ddpg_policy.yml:
+#   actor (pi): 8
+#   critic (qf): 16 -> 64 -> 64
+#
+# SB3's built-in TD3Policy/DDPGPolicy accepts one ``activation_fn`` for both
+# the actor and critic.  Therefore this configuration makes BOTH networks
+# linear; selecting a linear actor while retaining a ReLU critic requires a
+# custom policy class rather than a YAML-only policy_kwargs change.
+#
+# The actor's final tanh action squashing is still provided by SB3 and is not
+# changed by Identity here.
+net_arch:
+    qf: [16,64,64]
+    pi: [8,]
+
+activation_fn: !!python/name:torch.nn.Identity
