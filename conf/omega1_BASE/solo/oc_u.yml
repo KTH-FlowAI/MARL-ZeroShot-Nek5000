@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+# Embedded, Python-free streamwise proportional control for the Re_tau=207
+# lc_n7_onlyU case.
+#
+# This configuration deliberately has NO SB3 checkpoint dependency. The
+# generated actor is action = -alpha*u'(y+=15) at every solver step, where
+# alpha is embedded.ctrl_max_amp[0] (kept equal to runner.ctrl_max_amp for
+# coupled-path parity).
+
+embedded:
+    enabled: true
+    analytic_policy: 'OC_U'
+    # scl_obs=1 and scl_act=alpha make the one-layer actor exactly
+    # -alpha*u'. runner.u_tau remains the physical reference value below.
+    u_tau: [1.0]
+    ctrl_max_amp: [1.0]
+    net_precision: 8
+    # Record sparsely to avoid multi-GB output.
+    rec_freq: 272 
+    rec_bufsize: 2500
+    resume: false
+    coupled_recorder: true
+
+runner:
+    RL_algorithm: 'OC_U'
+    # OC_U consumes the one unnormalised state u' and uses alpha=1:
+    # lib.AFC.OCUCtrl -> action = -1.0 * observation[0] = -u'.
+    normalize_input: 'None'
+    rescale_actions: false
+    ctrl_min_amp: -1.0
+    ctrl_max_amp: 1.0
+    npl_state: 1
+    u_tau: 0.0630            # physical reference; export scale is above
+    dUdy: 13.10
+
+    nb_interactions: 60000
+    random_init: 6
+    rank: 1
+    agent_run_name: 'lc_omega1_SS_oc_u_solonek'
+    load_agent: false
+    learnt_policy: false
+    evaluation: true
+    reward_fn: net_gain
+    reward_alpha: 1.0
+    reward_beta: 1.0
+    reward_gamma: 1.0
+
+simulation:
+    solver_version: 'v19'
+    CASENAME: 'tcf'
+    exeName: 'nek5000_solo'
+    compile_path: 'envs/cases/lc_n7_onlyU'
+    shared_data_path: 'data/simulations/large_channel'
+    shared_data_link: true
+    restart_folder: 'data/restarts/rs6_lc_noresize_reth365'
+
+    TOTCTRL: 128
+    nproc: 512
+    lx1: 8
+    Lx: 6.28
+    Ly: 1.0
+    Lz: 3.14
+    Nx: 10
+    Ny: 8
+    Nz: 9
+
+    # Fast analytic reference: refresh every solver step and use no
+    # zero-net-mass-flux averaging.
+    ndrl: 1
+    znmf_avg: 0
+    target_cfl: 2.0
+    retau: 207.0
+    y_sensing: 15.0
+    # in visous units, calculate the spectra
+    y_planes: [0,3,5,8,10,12,15,20,23,26,30,40,50,75,100,150,200]
+    gll_unique: 1
+    nzs: 1
+    nxs: 1
+    ys_bdf: 0.0
+    amp_bdf: 0.0
+    ret_bdf: 0.0
+
+    # numSteps is derived to nb_interactions * ndrl at preparation.
+    stopAt: 'numSteps'
+    numSteps: 60000
+    dt: -4.0e-03
+    tmax: 100000.0
+    timeStepper: 'bdf3'
+    variableDt: 'no'
+    writeControl: 'timeStep'
+    writeInterval: 200000000
+    dealiasing: 'yes'
+    filtering: 'none'
+    filterWeight: 0.01
+    filterCutoffRatio: 0.9
+    stressFormulation: 'no'
+    variableProperties: 'no'
+    p_residualTol: 1e-8
+    p_residualProj: 'no'
+    v_residualTol: 1e-8
+    v_residualProj: 'no'
+    density: 1.0
+    viscosity: -3300
+    advection: 'yes'
+    PARFWRITE: 'no'
+    PARFNAME: 'outparfile'
+    LOGLEVEL: 1
+    WALLTIME: '23:45'
+    READCHKPT: 'yes'
+    CHKPFNUMBER: 1
+    CHKPINTERVAL: 100_00_000
+    AVSTEP: 10
+    IOSTEP: 10_000
+    SMPSTEP: 12
