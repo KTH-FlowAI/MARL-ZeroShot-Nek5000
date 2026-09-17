@@ -1,0 +1,92 @@
+! ======================================
+! Embedded deterministic policy (pol_*.f)
+!
+! Holds the actor networks and the per-policy control table for the
+! solo/embedded evaluation mode, in which Nek5000 evaluates the MLP
+! itself instead of exchanging observations and actions with Python
+! over MPI.
+!
+! Must be included AFTER 'SIZE' (uses totctrl).
+!
+! Kinds are explicit throughout: the network weights are the exact
+! float32 values taken from the SB3 checkpoint, while the accumulation
+! in pol_eval8 is float64. -fdefault-real-8 therefore cannot change the
+! stored values.
+!
+! Yuning Wang
+! ======================================
+      integer LPOL, LNLAY, LNW
+      parameter (LPOL  = 8)         ! max collaborating policies
+      parameter (LNLAY = 6)         ! max linear layers per policy
+      parameter (LNW   = 64)        ! max neurons per layer
+
+! ---- activation codes, shared with utils/sb3_to_f77.py
+      integer POL_A_ID, POL_A_RELU, POL_A_TANH
+      parameter (POL_A_ID=0, POL_A_RELU=1, POL_A_TANH=2)
+
+! ---- control-side codes for the region table
+      integer POL_S_ANY, POL_S_SS, POL_S_PS
+      parameter (POL_S_ANY=0, POL_S_SS=1, POL_S_PS=2)
+
+! ---- run-level settings (from drl_policy.in)
+      integer pol_npol              ! number of policies in use
+      integer pol_iprec             ! 4 or 8: accumulation precision
+      integer pol_nbint             ! interaction budget; <=0 = numSteps
+      integer pol_recf              ! record every N control cycles
+      integer pol_recb              ! records buffered before a flush
+      integer pol_rwmode            ! 0=dudy 1=net_gain, cf UPARAM(9)
+
+! ---- reward normalisation, the Python-side _normalize_reward moved into F77
+      real    pol_dudyref           ! baseline dUdy
+      real    pol_alpha, pol_beta, pol_gamma
+
+! ---- per-policy network description
+      integer pol_nlay(LPOL)
+      integer pol_dim(0:LNLAY,LPOL) ! widths; pol_dim(0,*) = input
+      integer pol_act(LNLAY,LPOL)
+      integer pol_isq(LPOL)         ! 1 = apply SB3 unscale_action
+      integer pol_perm(LNW,LPOL)    ! observation permutation
+      real*4  pol_alow(LPOL), pol_ahigh(LPOL)
+      real*4  pol_sobs(LPOL)        ! observation divisor (u_tau)
+      real*4  pol_sact(LPOL)        ! action multiplier   (ctrl_max_amp)
+      real*4  pol_w(LNW,LNW,LNLAY,LPOL)
+      real*4  pol_b(LNW,LNLAY,LPOL)
+
+! ---- per-policy control region and update interval
+      real    pol_xmin(LPOL), pol_xmax(LPOL)
+      integer pol_side(LPOL)        ! POL_S_ANY / POL_S_SS / POL_S_PS
+      integer pol_nupd(LPOL)        ! interactions between updates
+
+! ---- per-agent state
+      integer pol_id(totctrl)       ! agent -> policy, 0 = none
+      real    pol_hold(totctrl)     ! last action, held between updates
+
+! ---- scheduler state
+      logical pol_ifsolo            ! .true. = embedded, no Python
+      integer pol_step0             ! ISTEP the schedule starts at
+      integer pol_icyc              ! completed control cycles
+      logical pol_ifinit
+
+! ---- binary record writer (pol_IO.f)
+      integer pol_runit             ! per-rank record-file unit
+      integer pol_nrec              ! records written so far
+      logical pol_ifrec             ! this rank has agents, recording on
+
+! ---- provenance, kept for the log banner and the record header
+      character*128 pol_file(LPOL)
+
+      common /pol_int/ pol_npol, pol_iprec, pol_nbint, pol_recf,
+     $                 pol_recb, pol_rwmode,
+     $                 pol_nlay, pol_dim, pol_act, pol_isq,
+     $                 pol_perm,
+     $                 pol_side, pol_nupd, pol_id,
+     $                 pol_step0, pol_icyc, pol_ifinit,
+     $                 pol_ifsolo, pol_runit, pol_nrec, pol_ifrec
+
+      common /pol_r8/  pol_dudyref, pol_alpha, pol_beta, pol_gamma,
+     $                 pol_xmin, pol_xmax, pol_hold
+
+      common /pol_r4/  pol_alow, pol_ahigh, pol_sobs, pol_sact,
+     $                 pol_w, pol_b
+
+      common /pol_chr/ pol_file

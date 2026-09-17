@@ -574,28 +574,10 @@ c-----------------------------------------------------------------------
       ! curlz
       call sub3(vort(1,1,1,1,3),dvdx(1,1,1,1,1),dudx(1,1,1,1,2),itmp)
       
-      ! normalise pressure
-      ! in this example I integrate pressure over top faces marked "W"
-      ifll = 1     ! I'm interested in velocity bc
-      ! relying on mesh structure given by genbox set face number
-      jl = 3
-      call rzero(vrtmp2,2)  ! zero work array
-      itmp = LX1*LZ1
-      do il=1,nelv   ! element loop
-         if (cbc(jl,il,ifll).eq.'W  ') then
-            vrtmp2(1) = vrtmp2(1) + vlsum(area(1,1,jl,il),itmp)
-            call ftovec(vrtmp,pres,il,jl,lx1,ly1,lz1)
-            call col2(vrtmp,area(1,1,jl,il),itmp)
-            vrtmp2(2) = vrtmp2(2) + vlsum(vrtmp,itmp)
-         endif
-      enddo
-      ! global communication
-      call gop(vrtmp2,vrtmp,'+  ',2)
-      ! missing error check vrtmp2(1) == 0
-      vrtmp2(2) = -vrtmp2(2)/vrtmp2(1)
-      ! remove mean pressure
-      itmp = LX1*LY1*LZ1*NELV
-      call cadd(pres,vrtmp2(2),itmp)
+      ! DRL initialization relabels controlled "W" faces as "v  ".
+      ! The statistics transform runs after that, so a W-face reduction
+      ! would divide by zero. Reward-side normal_pressure(buffer) remains
+      ! the normp experiment's pressure reference.
 
       return
       end subroutine

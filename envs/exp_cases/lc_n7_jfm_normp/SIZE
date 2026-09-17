@@ -31,7 +31,7 @@ cc      parameter (lxd=18)                ! p-order for over-integration (dealia
       ! OPTIONAL
       parameter (ldimt_proj=1)         ! max auxiliary fields residual projection
       parameter (lelr=lelt)            ! max number of local elements per restart file
-      parameter (lhis=100)             ! max history points
+      parameter (lhis=400)             ! max history points for solo TSRS runs
       parameter (maxobj=4)             ! max number of objects
       parameter (lpert=1)              ! max perturbation modes
       parameter (toteq=1)              ! max number of conserved scalars in cmt

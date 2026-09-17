@@ -17,6 +17,7 @@ c=============================================
             include 'SIZE'
             include 'INPUT'
             include 'DRL'       
+            include 'POLICY'
             include 'TSTEP'  
             include 'NEKUSE'  
             include 'mpif.h'
@@ -36,6 +37,10 @@ c=============================================
 c=============================================
 c       Function
 c=============================================
+! Embedded mode has no Python receiver. The local reward arrays remain
+! available to pol_IO.f, so skip the MPI reward/CFL transfer entirely.
+            if (pol_ifsolo) return
+
             drl_step = UPARAM(1)
 !#[MOD] Runtime reward-mode selector; MUST match the switch in drl_reward().
 !#[MOD] UPARAM(9): 0 = dudy (1 buffer), 1 = net_gain (3 buffers: tau/pw/v3).
@@ -179,6 +184,7 @@ c=============================================
             include 'SIZE'
             ! include 'INPUT'
             include 'DRL'         
+            include 'PARALLEL'
             include 'mpif.h'
             integer ierr
             integer k,il,jl        ! Iteration
@@ -210,7 +216,7 @@ c=============================================
 #endif
             ! print *, node_list
             if (NID.eq.0) then 
-              call MPI_SEND(node_list,LP,MPI_INTEGER,
+              call MPI_SEND(node_list,NP,MPI_INTEGER,
      $                     0,1996,
      $                     DRL_COMM,ierr)
             print *, "[NEK] SEND HAND-SHAKE"
@@ -317,15 +323,15 @@ c     Function
 c=============================================
       ! call nekgsync()
       
-      call izero(listp1,LP)
-      call izero(listp2,LP)
+      call izero(listp1,NP)
+      call izero(listp2,NP)
       
       ! Inquire num of control 
       ! print *, NUMCTRL
       listp1(NID+1)=(NUMCTRL)
       
       ! Global operation, sum everything up 
-      call igop(listp1,listp2,"+  ",LP) 
+      call igop(listp1,listp2,"+  ",NP)
 
       return
       end subroutine count_total_ctrlpts

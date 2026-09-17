@@ -22,6 +22,10 @@ $(OBJDIR)/drl_IO.o          :$ drl/drl_IO.f;                         $(F77) -c $
 $(OBJDIR)/drl_action.o          :$ drl/drl_action.f;                 $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_main.o          :$ drl/drl_main.f;                     $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/drl_init.o          :$ drl/drl_init.f;                     $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/pol_core.o          :$ drl/pol_core.f;                     $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/pol_net.o           :$ drl/pol_net.f;                      $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/pol_main.o          :$ drl/pol_main.f;                     $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
+$(OBJDIR)/pol_IO.o            :$ drl/pol_IO.f;                       $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/tsrs.o            :${TSRS_SRC}/tsrs.f ./TSRSD ;            $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@
 $(OBJDIR)/tsrs_IO.o         :${TSRS_SRC}/tsrs_IO.f ./TSRSD;          $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@ 
 $(OBJDIR)/pts_redistribute.o:${TSRS_SRC}/pts_redistribute.f ./TSRSD; $(F77) -c $(FL2) -I$(INC_SRC) $< -o $@ 
