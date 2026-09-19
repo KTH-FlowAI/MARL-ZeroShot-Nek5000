@@ -32,7 +32,8 @@ Pass that file with ``--case-options``.  The MATLAB export always contains both
 ``act_raw`` and ``act_gll_zero_mean``, along with the weights, support mask,
 and the mean removed at each record.  It also saves the plot-ready products
 behind the observation-component distributions and the action maps (the
-conditional mean action on the first two recorded observation components).
+conditional mean action on the first two recorded observation components),
+plus one-input sensitivity sweeps with the other component near its median.
 """
 
 from __future__ import annotations
@@ -98,10 +99,11 @@ class ZeroMeanResult:
 
 @dataclass
 class ObservationProducts:
-    """Plot-ready action-map and observation-component distribution arrays."""
+    """Plot-ready action-map, distribution, and sensitivity arrays."""
 
     action_map: dict[str, Any]
     component_distribution: dict[str, Any]
+    sensitivity: dict[str, Any]
 
 
 def _as_node_count(value: Any) -> int | str:
@@ -380,11 +382,99 @@ def process_component_distribution(rec: Any, result: ZeroMeanResult,
     return output
 
 
+def process_sensitivity(rec: Any, result: ZeroMeanResult, bins: int = 25,
+                        band: float = 0.1, min_samples: int = 50) -> dict[str, Any]:
+    """Sweep each observation input while the other remains near its median.
+
+    This is the direct-record equivalent of ``sensitivity_sweep`` in
+    ``drlrec_cases.ipynb``.  For input ``k``, samples are retained only when
+    the other component lies within ``band`` standard deviations of its
+    median.  The returned raw and zero-mean curves make the ZNMF impact
+    visible without recomputing the figure after loading a MAT file.
+    """
+    if bins < 2:
+        raise ValueError("sensitivity bins must be at least 2")
+    if band <= 0.0:
+        raise ValueError("sensitivity band must be positive")
+    if min_samples < 1:
+        raise ValueError("sensitivity min_samples must be at least 1")
+
+    obs = _selected_observation_components(rec, result)
+    raw = result.act_raw[:, result.support].reshape(-1)
+    corrected = result.act_zero_mean[:, result.support].reshape(-1)
+    valid = np.isfinite(obs).all(axis=1) & np.isfinite(raw) & np.isfinite(corrected)
+    obs, raw, corrected = obs[valid], raw[valid], corrected[valid]
+    if obs.size == 0:
+        raise ValueError("sensitivity analysis has no finite observation/action samples")
+
+    output: dict[str, Any] = {
+        "bins": int(bins),
+        "band": float(band),
+        "min_samples": int(min_samples),
+        "nsample": int(obs.shape[0]),
+        "labels": np.asarray(OBSERVATION_LABELS, dtype=object),
+        "note": (
+            "For each input, the other observation component is held within "
+            "band standard deviations of its median.  Curves show the mean "
+            "raw and post-hoc GLL-zero-mean action."
+        ),
+    }
+    for component in range(2):
+        other = 1 - component
+        other_values = obs[:, other]
+        spread = float(np.std(other_values))
+        median = float(np.median(other_values))
+        # A constant held component is already at its median for every sample.
+        near = (np.abs(other_values - median) <= np.finfo(float).eps
+                if spread == 0.0 else np.abs(other_values - median) < band * spread)
+        x_values = obs[near, component]
+        raw_values = raw[near]
+        corrected_values = corrected[near]
+        index = component + 1
+        output[f"n{index}"] = int(x_values.size)
+        if x_values.size < min_samples:
+            output[f"x{index}"] = np.array([])
+            output[f"act_raw{index}"] = np.array([])
+            output[f"act_gll_zero_mean{index}"] = np.array([])
+            output[f"counts{index}"] = np.array([], dtype=np.int64)
+            continue
+
+        edges = np.percentile(x_values, np.linspace(1.0, 99.0, bins))
+        # Repeated percentile edges give zero-width bins.  Remove them so the
+        # sensitivity curve stays meaningful for a nearly constant input.
+        edges = np.unique(edges)
+        if edges.size < 2:
+            output[f"x{index}"] = np.array([])
+            output[f"act_raw{index}"] = np.array([])
+            output[f"act_gll_zero_mean{index}"] = np.array([])
+            output[f"counts{index}"] = np.array([], dtype=np.int64)
+            continue
+        bin_index = np.digitize(x_values, edges)
+        occupied = [bin_id for bin_id in range(1, len(edges))
+                    if np.any(bin_index == bin_id)]
+        output[f"x{index}"] = np.asarray(
+            [x_values[bin_index == bin_id].mean() for bin_id in occupied]
+        )
+        output[f"act_raw{index}"] = np.asarray(
+            [raw_values[bin_index == bin_id].mean() for bin_id in occupied]
+        )
+        output[f"act_gll_zero_mean{index}"] = np.asarray(
+            [corrected_values[bin_index == bin_id].mean() for bin_id in occupied]
+        )
+        output[f"counts{index}"] = np.asarray(
+            [(bin_index == bin_id).sum() for bin_id in occupied], dtype=np.int64
+        )
+    return output
+
+
 def process_observation_products(rec: Any, result: ZeroMeanResult,
                                  action_map_bins: int = 50,
                                  component_bins: int = 90,
                                  action_map_min_count: int = 1,
-                                 observation_clip: tuple[float, float] = DEFAULT_OBSERVATION_CLIP
+                                 observation_clip: tuple[float, float] = DEFAULT_OBSERVATION_CLIP,
+                                 sensitivity_bins: int = 25,
+                                 sensitivity_band: float = 0.1,
+                                 sensitivity_min_samples: int = 50,
                                  ) -> ObservationProducts:
     """Build once the observation products that are both plotted and exported."""
     return ObservationProducts(
@@ -394,6 +484,10 @@ def process_observation_products(rec: Any, result: ZeroMeanResult,
         ),
         component_distribution=process_component_distribution(
             rec, result, bins=component_bins
+        ),
+        sensitivity=process_sensitivity(
+            rec, result, bins=sensitivity_bins, band=sensitivity_band,
+            min_samples=sensitivity_min_samples
         ),
     )
 
@@ -481,6 +575,7 @@ def export_mat(case_name: str, env_id: int, env_path: Path, rec: Any,
             "correction_mask": result.support.astype(np.uint8),
             "action_map": products.action_map,
             "component_distribution": products.component_distribution,
+            "sensitivity": products.sensitivity,
             "agent": agent,
             "metadata": metadata,
         },
@@ -498,8 +593,25 @@ def _pooled_values(results: list[tuple[int, Any, ZeroMeanResult, ObservationProd
     return raw, corrected
 
 
+def _trace_environment(
+        environments: list[tuple[int, Any, ZeroMeanResult, ObservationProducts]],
+        trace_env_id: int | None) -> tuple[int, Any, ZeroMeanResult, ObservationProducts]:
+    """Select the one environment used for a case's action-time-series panel."""
+    if trace_env_id is None:
+        return environments[0]
+    for environment in environments:
+        if environment[0] == trace_env_id:
+            return environment
+    available = ", ".join(f"{env_id:03d}" for env_id, *_ in environments)
+    raise ValueError(
+        f"requested --trace-env {trace_env_id:03d} is not available; "
+        f"case has environment(s) {available}"
+    )
+
+
 def plot_cases(cases: list[tuple[str, str, list[tuple[int, Any, ZeroMeanResult, ObservationProducts]], dict[str, int]]],
-               output: Path, bins: int, n_show: int, show: bool) -> None:
+               output: Path, bins: int, n_show: int, show: bool,
+               trace_env_id: int | None = None) -> None:
     """Create one compact three-panel row per case."""
     ncase = len(cases)
     fig, axes = plt.subplots(ncase, 3, squeeze=False, figsize=(15, 3.7 * ncase))
@@ -526,13 +638,19 @@ def plot_cases(cases: list[tuple[str, str, list[tuple[int, Any, ZeroMeanResult, 
         ax_pdf.hist(corrected, bins=edges, density=True, histtype="step", lw=1.5,
                     color="#D23918", label="GLL zero-mean")
 
-        for colour_index, (env_id, rec, result, _) in enumerate(environments):
-            active_indices = np.flatnonzero(result.support)[:n_show]
-            color = cmap(colour_index % 10)
-            for trace_index, agent_index in enumerate(active_indices):
-                label = f"env {env_id:03d}, agent {agent_index}" if trace_index == 0 else None
-                ax_trace.plot(rec.time, result.act_zero_mean[:, agent_index], color=color,
-                              alpha=0.95, lw=1.0, label=label)
+        selected_env_id, selected_rec, selected_result, _ = _trace_environment(
+            environments, trace_env_id
+        )
+        active_indices = np.flatnonzero(selected_result.support)
+        trace_indices = np.array([], dtype=np.int64) if n_show == 0 else active_indices[
+            np.unique(np.linspace(0, active_indices.size - 1,
+                                  min(n_show, active_indices.size)).astype(int))
+        ]
+        for trace_index, agent_index in enumerate(trace_indices):
+            ax_trace.plot(selected_rec.time,
+                          selected_result.act_zero_mean[:, agent_index],
+                          color=cmap(trace_index % 10), alpha=0.95, lw=1.0,
+                          label=f"agent {agent_index}")
 
         node_text = ", ".join(f"{axis}={nodes[axis]}" for axis in AXES)
         ax_mean.set_title(f"{case_name}: removed GLL mean ({support_name}; {node_text})")
@@ -546,7 +664,9 @@ def plot_cases(cases: list[tuple[str, str, list[tuple[int, Any, ZeroMeanResult, 
         ax_pdf.set_ylabel("density")
         ax_pdf.legend(fontsize=8)
 
-        ax_trace.set_title(f"{case_name}: zero-mean action traces")
+        ax_trace.set_title(
+            f"{case_name}: zero-mean action traces (env {selected_env_id:03d})"
+        )
         ax_trace.set_xlabel("time")
         ax_trace.set_ylabel("actuation")
         ax_trace.axhline(0.0, color="0.75", lw=0.8, zorder=0)
@@ -645,6 +765,60 @@ def plot_observation_products(
     plt.close(fig)
 
 
+def plot_sensitivity_products(
+        cases: list[tuple[str, str, list[tuple[int, Any, ZeroMeanResult, ObservationProducts]], dict[str, int]]],
+        output: Path, show: bool) -> None:
+    """Plot the action response to each input with the other input held near median."""
+    rows = [
+        (case_name, env_id, products)
+        for case_name, _, environments, _ in cases
+        for env_id, _, _, products in environments
+    ]
+    if not rows:
+        return
+
+    fig, axes = plt.subplots(len(rows), 2, squeeze=False,
+                             figsize=(11, 3.8 * len(rows)))
+    for row, (case_name, env_id, products) in enumerate(rows):
+        sensitivity = products.sensitivity
+        for component, ax in enumerate(axes[row]):
+            index = component + 1
+            other = 1 - component
+            x_values = sensitivity[f"x{index}"]
+            raw_values = sensitivity[f"act_raw{index}"]
+            corrected_values = sensitivity[f"act_gll_zero_mean{index}"]
+            if x_values.size:
+                ax.plot(x_values, raw_values, color="#777777", ls="--", lw=1.5,
+                        label="raw")
+                ax.plot(x_values, corrected_values, color="#D23918", lw=2.0,
+                        label="GLL zero-mean")
+            else:
+                ax.text(0.5, 0.5,
+                        f"only {sensitivity[f'n{index}']} held samples\n"
+                        f"(need {sensitivity['min_samples']})",
+                        transform=ax.transAxes, ha="center", va="center")
+            ax.axhline(0.0, color="0.75", lw=0.8, zorder=0)
+            ax.set(
+                title=(f"{case_name}, env {env_id:03d}: action vs "
+                       f"{OBSERVATION_LABELS[component]}"),
+                xlabel=OBSERVATION_LABELS[component], ylabel="mean actuation",
+            )
+            if x_values.size:
+                ax.legend(fontsize=8, loc="best")
+            ax.text(0.02, 0.03,
+                    f"{OBSERVATION_LABELS[other]} near median "
+                    f"(band={sensitivity['band']:g} std)",
+                    transform=ax.transAxes, fontsize=8, va="bottom")
+
+    fig.tight_layout()
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output, dpi=200, bbox_inches="tight")
+    print(f"[ZNMF] sensitivity: {output}")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -666,6 +840,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="PNG file name below --outdir (default: %(default)s)")
     parser.add_argument("--products-figure-name", default="gll_zero_mean_observation_products.png",
                         help="action-map/PDF PNG name below --outdir (default: %(default)s)")
+    parser.add_argument("--sensitivity-figure-name", default="gll_zero_mean_sensitivity.png",
+                        help="one-input sensitivity PNG name below --outdir (default: %(default)s)")
     parser.add_argument("--bins", type=int, default=80,
                         help="number of bins in each action PDF (default: %(default)s)")
     parser.add_argument("--action-map-bins", type=int, default=50,
@@ -677,8 +853,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--observation-clip", nargs=2, type=float,
                         metavar=("LOW", "HIGH"), default=DEFAULT_OBSERVATION_CLIP,
                         help="percentile limits for action-map axes (default: %(default)s)")
+    parser.add_argument("--sensitivity-bins", type=int, default=25,
+                        help="percentile bins in each one-input sensitivity sweep (default: %(default)s)")
+    parser.add_argument("--sensitivity-band", type=float, default=0.1,
+                        help="held-input half-band in standard deviations (default: %(default)s)")
+    parser.add_argument("--sensitivity-min-samples", type=int, default=50,
+                        help="minimum held-input samples before plotting a sweep (default: %(default)s)")
     parser.add_argument("--n-show", type=int, default=3,
-                        help="zero-mean traces to show per environment (default: %(default)s)")
+                        help="zero-mean agent traces to show from one environment per case (default: %(default)s)")
+    parser.add_argument("--trace-env", type=int,
+                        help="environment id used for action traces; default is each case's first environment")
     parser.add_argument("--show", action="store_true", help="display the figure after saving it")
     return parser
 
@@ -695,6 +879,12 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--component-bins must be at least 2")
     if args.action_map_min_count < 1:
         raise ValueError("--action-map-min-count must be at least 1")
+    if args.sensitivity_bins < 2:
+        raise ValueError("--sensitivity-bins must be at least 2")
+    if args.sensitivity_band <= 0.0:
+        raise ValueError("--sensitivity-band must be positive")
+    if args.sensitivity_min_samples < 1:
+        raise ValueError("--sensitivity-min-samples must be at least 1")
     observation_clip = tuple(args.observation_clip)
     if not 0.0 <= observation_clip[0] < observation_clip[1] <= 100.0:
         raise ValueError("--observation-clip must satisfy 0 <= LOW < HIGH <= 100")
@@ -722,6 +912,9 @@ def main(argv: list[str] | None = None) -> int:
                 component_bins=args.component_bins,
                 action_map_min_count=args.action_map_min_count,
                 observation_clip=observation_clip,
+                sensitivity_bins=args.sensitivity_bins,
+                sensitivity_band=args.sensitivity_band,
+                sensitivity_min_samples=args.sensitivity_min_samples,
             )
             output = export_mat(case_path.name, env_id, env_path, rec, result,
                                 products, support, args.export_dir)
@@ -741,8 +934,10 @@ def main(argv: list[str] | None = None) -> int:
         plot_data.append((case_path.name, support, environments, nodes))
 
     plot_cases(plot_data, args.outdir / args.figure_name, args.bins, args.n_show,
-               args.show)
+               args.show, args.trace_env)
     plot_observation_products(plot_data, args.outdir / args.products_figure_name,
+                              args.show)
+    plot_sensitivity_products(plot_data, args.outdir / args.sensitivity_figure_name,
                               args.show)
     return 0
 
