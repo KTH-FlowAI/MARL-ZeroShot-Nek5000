@@ -34,6 +34,9 @@ and the mean removed at each record.  It also saves the plot-ready products
 behind the observation-component distributions and the action maps (the
 conditional mean action on the first two recorded observation components),
 plus one-input sensitivity sweeps with the other component near its median.
+When the environment contains its deployed ``drl_policy.in``/``actor_*.pol``
+files, a direct policy surface can also be generated on a user-defined
+``u+``, ``v+`` mesh.
 """
 
 from __future__ import annotations
@@ -41,6 +44,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -99,11 +103,68 @@ class ZeroMeanResult:
 
 @dataclass
 class ObservationProducts:
-    """Plot-ready action-map, distribution, and sensitivity arrays."""
+    """Plot-ready action-map, distribution, sensitivity, and policy arrays."""
 
     action_map: dict[str, Any]
     component_distribution: dict[str, Any]
     sensitivity: dict[str, Any]
+    policy_action_map: dict[str, Any] | None = None
+
+
+@dataclass
+class EmbeddedPolicy:
+    """One actor stored in the solver's portable ``.pol`` format."""
+
+    path: Path
+    dimensions: tuple[int, ...]
+    activations: tuple[int, ...]
+    squash: bool
+    action_lower: float
+    action_upper: float
+    observation_scale: float
+    action_scale_in_file: float
+    observation_permutation: np.ndarray
+    weights: list[np.ndarray]
+    biases: list[np.ndarray]
+
+    def evaluate_normalised(self, observations: np.ndarray, action_scale: float,
+                            precision: int) -> np.ndarray:
+        """Evaluate the actor as the embedded solver does on ``obs / u_tau``.
+
+        ``observations`` are already in plus units, so the ``.pol``
+        observation divisor is deliberately not applied again.  ``action_scale``
+        comes from ``drl_policy.in`` because that is the scale passed to
+        ``pol_eval`` in the running solver.
+        """
+        observations = np.asarray(observations, dtype=np.float64)
+        if observations.ndim != 2 or observations.shape[1] != self.dimensions[0]:
+            raise ValueError(
+                f"{self.path}: expected observations of shape (N, {self.dimensions[0]}), "
+                f"got {observations.shape}"
+            )
+        if precision not in {4, 8}:
+            raise ValueError(f"{self.path}: unsupported embedded precision {precision}")
+
+        dtype = np.float32 if precision == 4 else np.float64
+        values = observations[:, self.observation_permutation - 1].astype(dtype)
+        for weights, bias, activation in zip(self.weights, self.biases,
+                                             self.activations, strict=True):
+            values = values @ weights.astype(dtype).T + bias.astype(dtype)
+            if activation == 1:
+                values = np.maximum(values, dtype(0.0))
+            elif activation == 2:
+                values = np.tanh(values)
+            elif activation != 0:
+                raise ValueError(f"{self.path}: unsupported activation code {activation}")
+        if values.shape[1] != 1:
+            raise ValueError(
+                f"{self.path}: only scalar-action actors are supported, got {values.shape[1]}"
+            )
+        action = values[:, 0]
+        if self.squash:
+            action = (dtype(self.action_lower) + dtype(0.5) * (action + dtype(1.0))
+                      * dtype(self.action_upper - self.action_lower))
+        return np.asarray(action * dtype(action_scale), dtype=np.float64)
 
 
 def _as_node_count(value: Any) -> int | str:
@@ -234,6 +295,185 @@ def zero_mean_action(rec: Any, support: str = "active",
         support=selected,
         gll_nodes=nodes,
     )
+
+
+def _non_comment_lines(path: Path) -> list[str]:
+    """Return non-empty data lines from an embedded-policy text file."""
+    with path.open() as stream:
+        return [line.split("#", 1)[0].strip() for line in stream
+                if line.split("#", 1)[0].strip()]
+
+
+def _read_embedded_policy(path: Path) -> EmbeddedPolicy:
+    """Read an ``actor_*.pol`` file written for the Fortran embedded actor."""
+    lines = _non_comment_lines(path)
+    tokens = " ".join(lines).split()
+    position = 0
+
+    def take(count: int, converter: Any, label: str) -> list[Any]:
+        nonlocal position
+        if position + count > len(tokens):
+            raise ValueError(f"{path}: truncated while reading {label}")
+        result = []
+        for token in tokens[position:position + count]:
+            try:
+                result.append(converter(token.replace("D", "E").replace("d", "e")))
+            except ValueError as exc:
+                raise ValueError(f"{path}: invalid {label} value {token!r}") from exc
+        position += count
+        return result
+
+    version = take(1, int, "version")[0]
+    if version != 2:
+        raise ValueError(f"{path}: unsupported .pol version {version}; expected 2")
+    nlayer = take(1, int, "layer count")[0]
+    if nlayer < 1:
+        raise ValueError(f"{path}: layer count must be positive")
+    dimensions = tuple(take(nlayer + 1, int, "layer dimensions"))
+    if any(width < 1 for width in dimensions):
+        raise ValueError(f"{path}: layer dimensions must be positive")
+    activations = tuple(take(nlayer, int, "activation codes"))
+    squash, action_lower, action_upper = take(3, float, "action scaling")
+    observation_scale, action_scale_in_file = take(2, float, "network scaling")
+    if observation_scale == 0.0:
+        raise ValueError(f"{path}: observation scale must be non-zero")
+    permutation = np.asarray(take(dimensions[0], int, "observation permutation"),
+                             dtype=np.int64)
+    if sorted(permutation.tolist()) != list(range(1, dimensions[0] + 1)):
+        raise ValueError(f"{path}: observation permutation is not a valid permutation")
+
+    weights, biases = [], []
+    for layer in range(nlayer):
+        ninput, noutput = dimensions[layer], dimensions[layer + 1]
+        weights.append(np.asarray(
+            take(ninput * noutput, float, f"layer {layer + 1} weights"),
+            dtype=np.float32
+        ).reshape(noutput, ninput))
+        biases.append(np.asarray(
+            take(noutput, float, f"layer {layer + 1} biases"), dtype=np.float32
+        ))
+    if position != len(tokens):
+        raise ValueError(f"{path}: unexpected trailing data in .pol file")
+
+    return EmbeddedPolicy(
+        path=path, dimensions=dimensions, activations=activations,
+        squash=bool(int(squash)), action_lower=action_lower,
+        action_upper=action_upper, observation_scale=observation_scale,
+        action_scale_in_file=action_scale_in_file,
+        observation_permutation=permutation, weights=weights, biases=biases,
+    )
+
+
+def _read_policy_definitions(env_path: Path) -> tuple[int, list[dict[str, Any]]]:
+    """Read the precision and per-region actor table used by the solver."""
+    config_path = env_path / "drl_policy.in"
+    lines = _non_comment_lines(config_path)
+    if len(lines) < 3:
+        raise ValueError(f"{config_path}: incomplete policy configuration")
+    run_fields = lines[0].split()
+    if len(run_fields) != 4:
+        raise ValueError(f"{config_path}: expected four run-configuration values")
+    try:
+        precision = int(run_fields[3])
+        npolicy = int(lines[2])
+    except ValueError as exc:
+        raise ValueError(f"{config_path}: invalid precision or policy count") from exc
+    if precision not in {4, 8}:
+        raise ValueError(f"{config_path}: embedded precision must be 4 or 8")
+    if npolicy < 1 or len(lines) != 3 + npolicy:
+        raise ValueError(f"{config_path}: policy table is incomplete")
+
+    policies = []
+    for index, line in enumerate(lines[3:], start=1):
+        fields = shlex.split(line)
+        if len(fields) != 7:
+            raise ValueError(
+                f"{config_path}: policy {index} must have seven table fields"
+            )
+        try:
+            xmin, xmax = float(fields[0]), float(fields[1])
+            side, observation_scale = int(fields[2]), float(fields[3])
+            action_scale, cadence = float(fields[4]), int(fields[5])
+        except ValueError as exc:
+            raise ValueError(f"{config_path}: invalid values for policy {index}") from exc
+        actor_path = Path(fields[6])
+        if not actor_path.is_absolute():
+            actor_path = config_path.parent / actor_path
+        policies.append({
+            "index": index,
+            "x_min": xmin,
+            "x_max": xmax,
+            "side": side,
+            "observation_scale": observation_scale,
+            "action_scale": action_scale,
+            "cadence": cadence,
+            "actor_path": actor_path,
+        })
+    return precision, policies
+
+
+def process_policy_action_map(
+        env_path: Path, u_range: tuple[float, float] = (-6.0, 6.0),
+        v_range: tuple[float, float] = (-1.0, 1.0), resolution: int = 121
+        ) -> dict[str, Any]:
+    """Evaluate every deployed two-input actor on a regular ``u+``, ``v+`` mesh.
+
+    The result is a policy surface rather than a trajectory-bin average: every
+    mesh point is passed through the actual ``actor_*.pol`` network used by the
+    solver.  Its action is necessarily *before* ZNMF, because a ZNMF-corrected
+    value needs the simultaneous observations of the complete wall.
+    """
+    u_min, u_max = (float(value) for value in u_range)
+    v_min, v_max = (float(value) for value in v_range)
+    if not u_min < u_max or not v_min < v_max:
+        raise ValueError("policy-map ranges must have a lower bound below the upper bound")
+    if resolution < 2:
+        raise ValueError("policy-map resolution must be at least 2")
+
+    precision, definitions = _read_policy_definitions(env_path)
+    u_plus = np.linspace(u_min, u_max, resolution)
+    v_plus = np.linspace(v_min, v_max, resolution)
+    U_plus, V_plus = np.meshgrid(u_plus, v_plus, indexing="ij")
+    mesh_inputs = np.column_stack((U_plus.ravel(), V_plus.ravel()))
+    output: dict[str, Any] = {
+        "u_plus": u_plus,
+        "v_plus": v_plus,
+        "U_plus": U_plus,
+        "V_plus": V_plus,
+        "resolution": int(resolution),
+        "embedded_precision": int(precision),
+        "labels": np.asarray(("u+", "v+"), dtype=object),
+        "note": (
+            "Each surface evaluates the deployed actor on a regular plus-unit "
+            "input mesh.  Action is pre-ZNMF because the global correction "
+            "cannot be determined from one input pair."
+        ),
+    }
+    for definition in definitions:
+        policy = _read_embedded_policy(definition["actor_path"])
+        if policy.dimensions[0] != 2:
+            raise ValueError(
+                f"{policy.path}: a u+/v+ mesh requires a two-input actor; "
+                f"this actor accepts {policy.dimensions[0]} input(s)"
+            )
+        action = policy.evaluate_normalised(
+            mesh_inputs, action_scale=definition["action_scale"], precision=precision
+        ).reshape(U_plus.shape)
+        policy_index = definition["index"]
+        output[f"pol{policy_index}"] = {
+            "actuation": action,
+            "actor_file": str(policy.path),
+            "x_min": definition["x_min"],
+            "x_max": definition["x_max"],
+            "side": definition["side"],
+            "u_tau": definition["observation_scale"],
+            "action_scale": definition["action_scale"],
+            "cadence": definition["cadence"],
+            "input_permutation": policy.observation_permutation,
+            "file_u_tau": policy.observation_scale,
+            "file_action_scale": policy.action_scale_in_file,
+        }
+    return output
 
 
 def _selected_observation_components(rec: Any, result: ZeroMeanResult) -> np.ndarray:
@@ -475,6 +715,7 @@ def process_observation_products(rec: Any, result: ZeroMeanResult,
                                  sensitivity_bins: int = 25,
                                  sensitivity_band: float = 0.1,
                                  sensitivity_min_samples: int = 50,
+                                 policy_action_map: dict[str, Any] | None = None,
                                  ) -> ObservationProducts:
     """Build once the observation products that are both plotted and exported."""
     return ObservationProducts(
@@ -489,6 +730,7 @@ def process_observation_products(rec: Any, result: ZeroMeanResult,
             rec, result, bins=sensitivity_bins, band=sensitivity_band,
             min_samples=sensitivity_min_samples
         ),
+        policy_action_map=policy_action_map,
     )
 
 
@@ -561,24 +803,27 @@ def export_mat(case_name: str, env_id: int, env_path: Path, rec: Any,
             "a bitwise replay of the solver-applied ACTIONS field."
         ),
     }
+    payload = {
+        "time": rec.time,
+        "istep": rec.istep,
+        "icycle": rec.icycle,
+        "act_raw": result.act_raw,
+        "act_gll_zero_mean": result.act_zero_mean,
+        "removed_gll_mean": result.removed_mean,
+        "gll_mean_residual": result.residual_mean,
+        "gll_weight": result.weights,
+        "correction_mask": result.support.astype(np.uint8),
+        "action_map": products.action_map,
+        "component_distribution": products.component_distribution,
+        "sensitivity": products.sensitivity,
+        "agent": agent,
+        "metadata": metadata,
+    }
+    if products.policy_action_map is not None:
+        payload["policy_action_map"] = products.policy_action_map
     sio.savemat(
         path,
-        {
-            "time": rec.time,
-            "istep": rec.istep,
-            "icycle": rec.icycle,
-            "act_raw": result.act_raw,
-            "act_gll_zero_mean": result.act_zero_mean,
-            "removed_gll_mean": result.removed_mean,
-            "gll_mean_residual": result.residual_mean,
-            "gll_weight": result.weights,
-            "correction_mask": result.support.astype(np.uint8),
-            "action_map": products.action_map,
-            "component_distribution": products.component_distribution,
-            "sensitivity": products.sensitivity,
-            "agent": agent,
-            "metadata": metadata,
-        },
+        payload,
         do_compression=True,
         long_field_names=True,
     )
@@ -765,6 +1010,61 @@ def plot_observation_products(
     plt.close(fig)
 
 
+def plot_policy_action_maps(
+        cases: list[tuple[str, str, list[tuple[int, Any, ZeroMeanResult, ObservationProducts]], dict[str, int]]],
+        output: Path, show: bool) -> None:
+    """Visualise direct actor evaluations on the requested ``u+``, ``v+`` mesh."""
+    panels = []
+    for case_name, _, environments, _ in cases:
+        for env_id, _, _, products in environments:
+            policy_map = products.policy_action_map
+            if policy_map is None:
+                continue
+            names = sorted(
+                (name for name in policy_map if re.fullmatch(r"pol\d+", name)),
+                key=lambda name: int(name[3:]),
+            )
+            panels.extend((case_name, env_id, policy_map, name) for name in names)
+    if not panels:
+        return
+
+    values = [policy_map[name]["actuation"] for _, _, policy_map, name in panels]
+    limit = max(float(np.max(np.abs(value))) for value in values)
+    if limit == 0.0:
+        limit = 1.0
+    ncolumn = min(4, len(panels))
+    nrow = int(np.ceil(len(panels) / ncolumn))
+    fig, axes = plt.subplots(nrow, ncolumn, squeeze=False,
+                             figsize=(4.6 * ncolumn, 4.0 * nrow))
+    mesh = None
+    for index, (case_name, env_id, policy_map, name) in enumerate(panels):
+        ax = axes.flat[index]
+        definition = policy_map[name]
+        mesh = ax.pcolormesh(
+            policy_map["u_plus"], policy_map["v_plus"], definition["actuation"].T,
+            cmap="RdBu_r", vmin=-limit, vmax=limit, shading="nearest", rasterized=True,
+        )
+        ax.set(
+            title=(f"{case_name}, env {env_id:03d}, {name}\n"
+                   f"x=[{definition['x_min']:g}, {definition['x_max']:g}]"),
+            xlabel="u+", ylabel="v+",
+        )
+    for ax in axes.flat[len(panels):]:
+        ax.set_visible(False)
+    fig.subplots_adjust(left=0.07, right=0.89, bottom=0.12, top=0.88,
+                        wspace=0.30, hspace=0.35)
+    if mesh is not None:
+        colorbar_axis = fig.add_axes([0.91, 0.15, 0.015, 0.70])
+        colorbar = fig.colorbar(mesh, cax=colorbar_axis)
+        colorbar.set_label("policy actuation (pre-ZNMF)")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(output, dpi=200, bbox_inches="tight")
+    print(f"[ZNMF] policy map: {output}")
+    if show:
+        plt.show()
+    plt.close(fig)
+
+
 def plot_sensitivity_products(
         cases: list[tuple[str, str, list[tuple[int, Any, ZeroMeanResult, ObservationProducts]], dict[str, int]]],
         output: Path, show: bool) -> None:
@@ -842,6 +1142,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="action-map/PDF PNG name below --outdir (default: %(default)s)")
     parser.add_argument("--sensitivity-figure-name", default="gll_zero_mean_sensitivity.png",
                         help="one-input sensitivity PNG name below --outdir (default: %(default)s)")
+    parser.add_argument("--policy-map-figure-name", default="gll_zero_mean_policy_action_map.png",
+                        help="direct policy-surface PNG name below --outdir (default: %(default)s)")
     parser.add_argument("--bins", type=int, default=80,
                         help="number of bins in each action PDF (default: %(default)s)")
     parser.add_argument("--action-map-bins", type=int, default=50,
@@ -859,6 +1161,16 @@ def build_parser() -> argparse.ArgumentParser:
                         help="held-input half-band in standard deviations (default: %(default)s)")
     parser.add_argument("--sensitivity-min-samples", type=int, default=50,
                         help="minimum held-input samples before plotting a sweep (default: %(default)s)")
+    parser.add_argument("--policy-map-u-range", nargs=2, type=float,
+                        metavar=("MIN", "MAX"), default=(-6.0, 6.0),
+                        help="u+ range for the direct policy mesh (default: %(default)s)")
+    parser.add_argument("--policy-map-v-range", nargs=2, type=float,
+                        metavar=("MIN", "MAX"), default=(-1.0, 1.0),
+                        help="v+ range for the direct policy mesh (default: %(default)s)")
+    parser.add_argument("--policy-map-resolution", type=int, default=121,
+                        help="points per policy-mesh axis (default: %(default)s)")
+    parser.add_argument("--skip-policy-map", action="store_true",
+                        help="do not evaluate deployed actor_*.pol files on a mesh")
     parser.add_argument("--n-show", type=int, default=3,
                         help="zero-mean agent traces to show from one environment per case (default: %(default)s)")
     parser.add_argument("--trace-env", type=int,
@@ -885,6 +1197,12 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--sensitivity-band must be positive")
     if args.sensitivity_min_samples < 1:
         raise ValueError("--sensitivity-min-samples must be at least 1")
+    if args.policy_map_resolution < 2:
+        raise ValueError("--policy-map-resolution must be at least 2")
+    if not args.policy_map_u_range[0] < args.policy_map_u_range[1]:
+        raise ValueError("--policy-map-u-range must have MIN < MAX")
+    if not args.policy_map_v_range[0] < args.policy_map_v_range[1]:
+        raise ValueError("--policy-map-v-range must have MIN < MAX")
     observation_clip = tuple(args.observation_clip)
     if not 0.0 <= observation_clip[0] < observation_clip[1] <= 100.0:
         raise ValueError("--observation-clip must satisfy 0 <= LOW < HIGH <= 100")
@@ -907,6 +1225,16 @@ def main(argv: list[str] | None = None) -> int:
             env_path = Path(env_dir)
             rec = load_run(env_path)
             result = zero_mean_action(rec, support=support, gll_nodes=requested_nodes)
+            policy_action_map = None
+            if not args.skip_policy_map:
+                try:
+                    policy_action_map = process_policy_action_map(
+                        env_path, u_range=tuple(args.policy_map_u_range),
+                        v_range=tuple(args.policy_map_v_range),
+                        resolution=args.policy_map_resolution,
+                    )
+                except FileNotFoundError as exc:
+                    print(f"[ZNMF] env {env_id:03d}: policy map skipped ({exc})")
             products = process_observation_products(
                 rec, result, action_map_bins=args.action_map_bins,
                 component_bins=args.component_bins,
@@ -915,6 +1243,7 @@ def main(argv: list[str] | None = None) -> int:
                 sensitivity_bins=args.sensitivity_bins,
                 sensitivity_band=args.sensitivity_band,
                 sensitivity_min_samples=args.sensitivity_min_samples,
+                policy_action_map=policy_action_map,
             )
             output = export_mat(case_path.name, env_id, env_path, rec, result,
                                 products, support, args.export_dir)
@@ -937,6 +1266,8 @@ def main(argv: list[str] | None = None) -> int:
                args.show, args.trace_env)
     plot_observation_products(plot_data, args.outdir / args.products_figure_name,
                               args.show)
+    plot_policy_action_maps(plot_data, args.outdir / args.policy_map_figure_name,
+                            args.show)
     plot_sensitivity_products(plot_data, args.outdir / args.sensitivity_figure_name,
                               args.show)
     return 0
