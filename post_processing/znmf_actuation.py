@@ -306,6 +306,12 @@ def _non_comment_lines(path: Path) -> list[str]:
 
 def _read_embedded_policy(path: Path) -> EmbeddedPolicy:
     """Read an ``actor_*.pol`` file written for the Fortran embedded actor."""
+    with path.open() as stream:
+        header = "".join(line for _, line in zip(range(12), stream))
+    version_match = re.search(r"NEKPOL\s+v(\d+)", header, flags=re.IGNORECASE)
+    version = int(version_match.group(1)) if version_match else 1
+    if version not in {1, 2}:
+        raise ValueError(f"{path}: unsupported .pol version {version}")
     lines = _non_comment_lines(path)
     tokens = " ".join(lines).split()
     position = 0
@@ -323,10 +329,14 @@ def _read_embedded_policy(path: Path) -> EmbeddedPolicy:
         position += count
         return result
 
-    version = take(1, int, "version")[0]
-    if version != 2:
-        raise ValueError(f"{path}: unsupported .pol version {version}; expected 2")
-    nlayer = take(1, int, "layer count")[0]
+    if version == 1:
+        nlayer = take(1, int, "layer count")[0]
+    else:
+        data_version, nlayer = take(2, int, "version/layer count")
+        if data_version != version:
+            raise ValueError(
+                f"{path}: header says .pol v{version}, data says v{data_version}"
+            )
     if nlayer < 1:
         raise ValueError(f"{path}: layer count must be positive")
     dimensions = tuple(take(nlayer + 1, int, "layer dimensions"))
@@ -337,10 +347,14 @@ def _read_embedded_policy(path: Path) -> EmbeddedPolicy:
     observation_scale, action_scale_in_file = take(2, float, "network scaling")
     if observation_scale == 0.0:
         raise ValueError(f"{path}: observation scale must be non-zero")
-    permutation = np.asarray(take(dimensions[0], int, "observation permutation"),
-                             dtype=np.int64)
-    if sorted(permutation.tolist()) != list(range(1, dimensions[0] + 1)):
-        raise ValueError(f"{path}: observation permutation is not a valid permutation")
+    if version == 1:
+        permutation = np.arange(1, dimensions[0] + 1, dtype=np.int64)
+    else:
+        permutation = np.asarray(
+            take(dimensions[0], int, "observation permutation"), dtype=np.int64
+        )
+        if sorted(permutation.tolist()) != list(range(1, dimensions[0] + 1)):
+            raise ValueError(f"{path}: observation permutation is not a valid permutation")
 
     weights, biases = [], []
     for layer in range(nlayer):
@@ -412,16 +426,37 @@ def _read_policy_definitions(env_path: Path) -> tuple[int, list[dict[str, Any]]]
     return precision, policies
 
 
+def _one_input_component(case_name: str | None, requested: str) -> tuple[str, str]:
+    """Resolve the single mesh component, preferring an explicit CLI choice."""
+    if requested in {"u", "v"}:
+        return requested, "command line"
+
+    # Keep the naming convention deliberately small and explicit.  It covers
+    # `u_only`, `v_only`, their hyphenless spelling, and `oc` / `oc_u` cases
+    # without trying to infer a controller from unrelated words in a path.
+    compact_name = re.sub(r"[^a-z0-9]+", "", (case_name or "").lower())
+    if "uonly" in compact_name or compact_name.endswith("ocu"):
+        return "u", f"case name {case_name!r}"
+    if "vonly" in compact_name or compact_name == "oc" or compact_name.startswith("oc"):
+        return "v", f"case name {case_name!r}"
+    return "v", "auto fallback"
+
+
 def process_policy_action_map(
         env_path: Path, u_range: tuple[float, float] = (-6.0, 6.0),
-        v_range: tuple[float, float] = (-1.0, 1.0), resolution: int = 121
+        v_range: tuple[float, float] = (-1.0, 1.0), resolution: int = 121,
+        one_input: str = "auto", case_name: str | None = None,
         ) -> dict[str, Any]:
-    """Evaluate every deployed two-input actor on a regular ``u+``, ``v+`` mesh.
+    """Evaluate every deployed actor on a regular ``u+``, ``v+`` mesh.
 
     The result is a policy surface rather than a trajectory-bin average: every
     mesh point is passed through the actual ``actor_*.pol`` network used by the
     solver.  Its action is necessarily *before* ZNMF, because a ZNMF-corrected
-    value needs the simultaneous observations of the complete wall.
+    value needs the simultaneous observations of the complete wall.  A
+    two-input actor receives ``(u+, v+)``.  A one-input actor is evaluated on
+    its selected component and then replicated across the unused mesh axis;
+    ``one_input='auto'`` detects ``u_only``, ``v_only``, and ``oc`` case names,
+    otherwise using ``v+`` as the safe default.
     """
     u_min, u_max = (float(value) for value in u_range)
     v_min, v_max = (float(value) for value in v_range)
@@ -429,12 +464,13 @@ def process_policy_action_map(
         raise ValueError("policy-map ranges must have a lower bound below the upper bound")
     if resolution < 2:
         raise ValueError("policy-map resolution must be at least 2")
+    if one_input not in {"auto", "u", "v"}:
+        raise ValueError("one_input must be one of 'auto', 'u', or 'v'")
 
     precision, definitions = _read_policy_definitions(env_path)
     u_plus = np.linspace(u_min, u_max, resolution)
     v_plus = np.linspace(v_min, v_max, resolution)
     U_plus, V_plus = np.meshgrid(u_plus, v_plus, indexing="ij")
-    mesh_inputs = np.column_stack((U_plus.ravel(), V_plus.ravel()))
     output: dict[str, Any] = {
         "u_plus": u_plus,
         "v_plus": v_plus,
@@ -451,10 +487,19 @@ def process_policy_action_map(
     }
     for definition in definitions:
         policy = _read_embedded_policy(definition["actor_path"])
-        if policy.dimensions[0] != 2:
+        input_count = policy.dimensions[0]
+        if input_count == 2:
+            mesh_inputs = np.column_stack((U_plus.ravel(), V_plus.ravel()))
+            input_mode = "u+, v+"
+        elif input_count == 1:
+            component, component_source = _one_input_component(case_name, one_input)
+            mesh_inputs = (V_plus if component == "v" else U_plus).reshape(-1, 1)
+            input_mode = (f"{component}+ only (projected over the other mesh axis; "
+                          f"{component_source})")
+        else:
             raise ValueError(
-                f"{policy.path}: a u+/v+ mesh requires a two-input actor; "
-                f"this actor accepts {policy.dimensions[0]} input(s)"
+                f"{policy.path}: a policy mesh supports one- or two-input actors; "
+                f"this actor accepts {input_count} input(s)"
             )
         action = policy.evaluate_normalised(
             mesh_inputs, action_scale=definition["action_scale"], precision=precision
@@ -472,6 +517,7 @@ def process_policy_action_map(
             "input_permutation": policy.observation_permutation,
             "file_u_tau": policy.observation_scale,
             "file_action_scale": policy.action_scale_in_file,
+            "input_mode": input_mode,
         }
     return output
 
@@ -1046,7 +1092,8 @@ def plot_policy_action_maps(
         )
         ax.set(
             title=(f"{case_name}, env {env_id:03d}, {name}\n"
-                   f"x=[{definition['x_min']:g}, {definition['x_max']:g}]"),
+                   f"x=[{definition['x_min']:g}, {definition['x_max']:g}]\n"
+                   f"{definition['input_mode']}"),
             xlabel="u+", ylabel="v+",
         )
     for ax in axes.flat[len(panels):]:
@@ -1169,6 +1216,9 @@ def build_parser() -> argparse.ArgumentParser:
                         help="v+ range for the direct policy mesh (default: %(default)s)")
     parser.add_argument("--policy-map-resolution", type=int, default=121,
                         help="points per policy-mesh axis (default: %(default)s)")
+    parser.add_argument("--policy-map-one-input", choices=("auto", "u", "v"),
+                        default="auto",
+                        help="input for a one-input actor; auto detects u_only/v_only/oc names (default: %(default)s)")
     parser.add_argument("--skip-policy-map", action="store_true",
                         help="do not evaluate deployed actor_*.pol files on a mesh")
     parser.add_argument("--n-show", type=int, default=3,
@@ -1232,6 +1282,8 @@ def main(argv: list[str] | None = None) -> int:
                         env_path, u_range=tuple(args.policy_map_u_range),
                         v_range=tuple(args.policy_map_v_range),
                         resolution=args.policy_map_resolution,
+                        one_input=args.policy_map_one_input,
+                        case_name=case_path.name,
                     )
                 except FileNotFoundError as exc:
                     print(f"[ZNMF] env {env_id:03d}: policy map skipped ({exc})")
