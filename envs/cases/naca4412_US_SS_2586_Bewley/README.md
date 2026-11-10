@@ -5,9 +5,53 @@ control band (`x/c = 0.25..0.86`), sensing, local friction-velocity scaling,
 zero-net-mass-flux treatment of the DRL actions and policy/recorder plumbing follow
 the parent case. The matching configuration is
 `conf/naca4412_200k/NACA4412-US-SS-2586-Bewley.yml`.
-It retains the parent's four **DR-trained policies** and restart source,
-sets a distinct run name, and evaluates them with `reward_fn: net_gain`.
-It does not create or retrain policies.
+It evaluates the four **US02 NES-trained TD3 policies** from
+`data/policies_meta_wing_nes` with `reward_fn: net_gain`, retaining the
+original restart source. It does not create or retrain policies.
+
+## OC and NES-DRL configurations
+
+- `conf/naca4412_200k/NACA4412-US-SS-2586-Bewley.yml`: NES-DRL,
+  output under `runs/naca4412_US_SS_2586_Bewley_NES/env_001`.
+- `conf/naca4412_200k/NACA4412-US-SS-2586-Bewley-OC.yml`: analytic OC,
+  output under `runs/naca4412_US_SS_2586_Bewley_OC/env_001`.
+
+The NES configuration uses `archived_lc_omega{1,2,3,4}_SS_US02_nes` and
+checkpoint stems `eval_model_omega{1,2,3,4}_SS_US02_nes` (no `lc_` in the
+checkpoint stem). These are the existing NES-trained policies; changing the
+cost accounting does not retrain them against the new definition.
+
+OC uses an analytic linear actor with `action = -v'`, before the existing
+spanwise zero-flux correction and the -0.002 uniform suction. The solver
+normalizes observations and restores actions with local friction velocity;
+the config's unit observation/action scales avoid double scaling. OC needs
+no checkpoint, uses `embedded.analytic_policy: OC`, and updates every solver
+step (`ndrl=1`, all regional `drl_steps=1`). NES retains `ndrl=9` and regional
+update intervals `[4,5,6,9]`, i.e. `[36,45,54,81]` solver steps.
+
+Both definitions use the same controllers and spatial settings. All four
+configurations retain the previous effective budget of 90,000,000 solver
+steps: 10,000,000 NES cycles or 90,000,000 OC cycles. Embedded records have
+the same 9,000-step stride. Equal solver-step budgets need not imply equal
+physical duration because timesteps adapt to the CFL target; compare matched
+physical-time statistics windows. Automatic checkpoint resume is disabled;
+pass `--resume` to continue an existing run.
+
+For a shorter 900-step smoke run (still using the production 4096-rank mesh):
+
+```bash
+bash execs/nek-solo-run.sh --config conf/naca4412_200k/NACA4412-US-SS-2586-Bewley.yml --nb-interactions 100 --rec-freq 10
+bash execs/nek-solo-run.sh --config conf/naca4412_200k/NACA4412-US-SS-2586-Bewley-OC.yml --nb-interactions 900 --rec-freq 90
+```
+
+Both commands record every 90 solver steps. Use the same overrides for the
+other cost definition. The inherited restart directory
+`data/restarts/rs8_naca_wing200k_02US/init_1` must be present on the execution
+machine; it is absent from this local checkout. All four configs passed the meta schema/checkpoint checks, policy export
+and launcher dry runs. Exported OC weights implement the linear opposition
+law; controller files match across the two cost definitions apart from
+generation timestamps. These checks do not require flow restart files.
+No simulation was launched during preparation.
 
 ## Actuator power
 
@@ -18,7 +62,7 @@ At every solver step, before averaging, it computes
 ```
 phi      = ACTIONS + bw_suction             # total applied normal amplitude
 bw_suction = -0.002                         # existing uniform suction
-pbar     = integral_patch(p dS) / integral_patch(dS)
+pbar(s,t) = spanwise_mean(p(s,z,t))          # separate at every surface point
 pw_local = abs((p - pbar) * phi)
 v3_local = 0.5 * rho * abs(phi)**3
 ```
@@ -31,13 +75,16 @@ components. The shared `inc_src/BEWLEY` parameter fixes that offset in both
 active; actuator costs are zero elsewhere. Zero DRL action still incurs the
 uniform-suction cost. Multiplication by `body_sin` would give only the y component.
 
-The pressure reference is one instantaneous, surface-area-weighted mean
-over **all registered control faces on the suction-side patch**. This is
-the explicit adaptation of the paper's channel-wall mean to this wing.
-Nek's `surface_int` supplies surface Jacobian and GLL quadrature weights;
-each face is counted once, and all ranks participate in the global sum.
-There is no independent mean subtraction at each chord location. Adding
-a spatially uniform pressure offset leaves the costs unchanged.
+The pressure reference is an instantaneous **spanwise mean at each surface
+position**: `pbar(s,t) = <p(s,z,t)>_z`. There is no averaging between chordwise
+locations. This is the chosen adaptation to the wing's nonhomogeneous
+streamwise direction. `bewley_spanwise_pressure` uses the existing
+`z_averaging` / `z_avg_reshape` operators to reduce corresponding cross-section
+GLL points across MPI ranks, then replicates the mean along their spanwise
+lines. The GLL weighting assumes the existing uniform-span mesh. The input
+pressure is retained until the local product and absolute value are formed.
+Adding any spanwise-constant pressure offset at a given surface position
+leaves its cost unchanged, even when that offset varies along the chord.
 
 Both blowing and suction contribute to the absolute costs. Negative local
 pressure work is not clipped and cannot cancel positive work. The local
@@ -88,9 +135,13 @@ Its copied NACA4412 interpolation mesh is unchanged. Python/MAT exports retain
 both costs as scalars without rotation or further absolute values. Use wall
 values only and integrate over controlled-wall arc length for power per span.
 Old 66-field statistics cannot be mixed into this post-processing run.
+The field layout is unchanged by the spanwise-reference update. Earlier
+68-field output using the patch-wide reference has a different meaning and
+must also be kept in a separate averaging window; it cannot be converted
+without instantaneous pressure and actuation data.
 
-The pressure reference remains the chosen controlled-patch mean. Accounting
-now includes the imposed suction velocity; it does not model an external
+The pressure cost is relative to the local spanwise mean. Accounting includes
+the imposed suction velocity; it does not model an external
 suction-system reservoir pressure or pump efficiency.
 
 ## Build and run
@@ -119,15 +170,19 @@ declarations are shared from `../naca4412_ref_SS_2570`, as in the parent.
 python utils/test_bewley_reward.py
 ```
 
-This compiles the production reward routine against synthetic solver data
-and exercises it on 1, 2, and 3 MPI ranks. Checks cover surface quadrature,
-face deduplication, an empty control rank, pressure-offset invariance,
+This compiles the production reward, spanwise averaging/reshape and statistics
+routines against synthetic solver data on 1, 2, and 3 MPI ranks. Four elements
+cover two cross sections and two spanwise slabs, including a partition with
+an empty rank. Checks cover GLL weighting, unused element slots, separate
+pressure means at each chord location, chord-dependent pressure-offset invariance,
 both signs of actuation/work, absolute values before averaging, total normal
 amplitude, variable-timestep cycle means, cycle reset, density scaling,
 uniform-suction cost with zero DRL action, and zero cost off the actuated wall.
 The production statistics reshuffle and averaging operators are also checked,
 including time weights/reset and preservation of the original statistics.
-The fixture supplies the solver operators; it is not a full wing DNS test.
+The fixture supplies geometry/weights and basic solver primitives; it is not
+a full wing DNS test. The spanwise operators use actual local elements (`nelv`),
+excluding unused allocated slots (`lelt`) from averaging and reshaping.
 
 Both `nek5000_solo` (raw backend) and `nek5000` (coupled backend) have been
 built successfully with the production SIZE and GNU Fortran/Open MPI.

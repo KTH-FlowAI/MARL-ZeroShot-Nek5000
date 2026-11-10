@@ -2,10 +2,10 @@
 
 Run: python utils/test_bewley_reward.py
 Requires mpif77 and mpirun. No mesh, policies, or simulation is needed.
-The stubs supply solver fields/operators; the reward and wall-pressure
-reduction, statistics append routine, and reshuffle/averaging operators are
-compiled directly from the new case, including its real DRL/STATS declarations.
-Two wall faces are partitioned across 1, 2, and 3 ranks.
+The reward, spanwise pressure reference, statistics append routine, and
+span/reshape/statistics operators are compiled directly from the wing case.
+Four elements span two cross sections and two spanwise slabs, partitioned
+across 1, 2, and 3 ranks. Other solver fields/operators are synthetic stubs.
 """
 
 from pathlib import Path
@@ -64,11 +64,13 @@ DRIVER = """
       include 'BEWLEY'
       include 'STATS'
       include 'FIXTURE'
-      integer ierr,eg,ie,ix,iz,il,lnvar
-      real ref,expected,base_pw(2,2),base_v3(2)
+      include 'WZ'
+      include 'ZPER'
+      integer ierr,eg,ie,ix,iz,il,lnvar,ex,ez
+      real ref(lx1,ly1,lz1,lelt),expected,base_pw(2),base_v3(2)
       real cp(lx1,ly1,lz1,lelt),ck(lx1,ly1,lz1,lelt)
       real work(lx1,ly1,lz1,lelt)
-      data base_pw /7.0,6.0,1.0,10.0/
+      data base_pw /2.0,4.0/
       data base_v3 /0.5,4.0/
       call MPI_INIT(ierr)
       call MPI_COMM_RANK(MPI_COMM_WORLD,nid,ierr)
@@ -78,6 +80,10 @@ DRIVER = """
       numctrl=0
       nelv=0
       gllel=0
+      lglel=0
+      nelz=2
+      wzm1(1)=1.0
+      wzm1(2)=3.0
       pr=999.0
       vx=0.0
       actions=0.0
@@ -87,18 +93,22 @@ DRIVER = """
       param=0.0
       param(1)=1.0
       param(2)=0.1
-c Two faces: p=(1,3;5,7) and p+8, weights (1,1;3,3).
-c Their combined surface-weighted pressure reference is exactly 9.
-c In serial both faces are local; in MPI ranks 0/1 own one face each.
-c Rank 2 has no control faces but must participate in the reduction.
-      do eg=1,2
-         if (np.eq.1.or.nid.eq.eg-1) then
+c Two cross sections at two spanwise slabs; p = P(s)+[-3,-1,1,3].
+c Weights [1,3,1,3] give pbar(s)=P(s)+0.5 and mean |p'|=2.
+c Split the span between ranks 0/1; rank 2 owns no elements.
+c Unused local slots have lglel=0 and must never enter the averaging.
+      do eg=1,4
+         ex=mod(eg-1,2)+1
+         ez=(eg-1)/2+1
+         if (np.eq.1.or.nid.eq.ez-1) then
             nelv=nelv+1
             ie=nelv
             gllel(eg)=ie
+            lglel(ie)=eg
             do iz=1,2
             do ix=1,2
-               pr(ix,1,iz,ie)=1+4*(ix-1)+2*(iz-1)+8*(eg-1)
+               pr(ix,1,iz,ie)=40*(ex-1)+4*(ix-1)
+     $                            +4*(ez-1)+2*(iz-1)-3
                actions(ix,1,iz,ie)=ix*(-1.0)**(ix+iz)-bw_suction
                msk_act(ix,1,iz,ie)=1
                numctrl=numctrl+1
@@ -111,10 +121,21 @@ c Rank 2 has no control faces but must participate in the reduction.
             enddo
          endif
       enddo
-      surface_calls=0
-      call bewley_wall_pressure(pr,ref)
-      call assert_close(ref,9.0,'area-weighted global reference')
-      if (surface_calls.ne.nelv) call exitt0
+      call bewley_spanwise_pressure(pr,ref)
+      do ie=1,nelv
+         ex=mod(lglel(ie)-1,2)+1
+         ez=(lglel(ie)-1)/2+1
+         do iz=1,2
+         do ix=1,2
+            expected=40*(ex-1)+4*(ix-1)+0.5
+            call assert_close(ref(ix,1,iz,ie),expected,
+     $                        'separate pressure reference at each s')
+            expected=40*(ex-1)+4*(ix-1)+4*(ez-1)+2*(iz-1)-3
+            call assert_close(pr(ix,1,iz,ie),expected,
+     $                        'spanwise reference preserves input')
+         enddo
+         enddo
+      enddo
 
 c Exercise real statistics reshuffle + span/time accumulation, with the
 c span dimension moved from the third index to the first index.
@@ -127,7 +148,8 @@ c span dimension moved from the third index to the first index.
       do ie=1,nelv
          stat_lmap(ie)=ie
       enddo
-      stat_bm1d=0.5
+      stat_bm1d(1,:,:,:)=0.25
+      stat_bm1d(2,:,:,:)=0.75
       stat_ruavg=123.0
       lnvar=66
       call bewley_stat_compute(cp,ck,work,lnvar,0.0,1.0)
@@ -146,6 +168,21 @@ c span dimension moved from the third index to the first index.
       shear=2.0
       call compute_netGain_Bewley(1)
       call check_rewards(1.0,1.0,0.2)
+c A chord-dependent, spanwise-constant pressure shift must also cancel.
+c A single patch-wide pbar would fail this check.
+      do ie=1,nelv
+         ex=mod(lglel(ie)-1,2)+1
+         do iz=1,2
+         do ix=1,2
+            pr(ix,1,iz,ie)=pr(ix,1,iz,ie)+11*ex*ix
+         enddo
+         enddo
+      enddo
+      call compute_netGain_Bewley(1)
+      call check_rewards(1.0,1.0,0.2)
+      lnvar=66
+      call bewley_stat_compute(cp,ck,work,lnvar,0.0,1.0)
+      call check_stats(1.0,1.0)
 c A pressure gauge shift must change neither actuator cost.
       pr=pr+100.0
       call compute_netGain_Bewley(1)
@@ -175,15 +212,37 @@ c Zero DRL action still costs power: the uniform suction remains active.
       actions=0.0
       call bewley_cost_fields(cp,ck)
       do ie=1,nelv
+      ez=(lglel(ie)-1)/2+1
       do iz=1,2
       do ix=1,2
          call assert_close(ck(ix,1,iz,ie),abs(bw_suction)**3,
      $                     'uniform suction with zero DRL action')
          call assert_close(cp(ix,1,iz,ie),
-     $          abs((pr(ix,1,iz,ie)-109.0)*bw_suction),
+     $          abs((4*(ez-1)+2*(iz-1)-3.5)*bw_suction),
      $          'uniform suction pressure cost')
          call assert_close(cp(ix,2,iz,ie),0.0,'unactuated pressure')
          call assert_close(ck(ix,2,iz,ie),0.0,'unactuated kinetic')
+      enddo
+      enddo
+      enddo
+c A pressure field with ONLY chordwise variation has zero fluctuation
+c cost, even with nonzero uniform suction; kinetic cost stays nonzero.
+      do ie=1,nelv
+         ex=mod(lglel(ie)-1,2)+1
+         do iz=1,2
+         do ix=1,2
+            pr(ix,1,iz,ie)=100.0*ex+10.0*ix
+         enddo
+         enddo
+      enddo
+      call bewley_cost_fields(cp,ck)
+      do ie=1,nelv
+      do iz=1,2
+      do ix=1,2
+         call assert_close(cp(ix,1,iz,ie),0.0,
+     $                     'chordwise mean excluded from pressure cost')
+         call assert_close(ck(ix,1,iz,ie),abs(bw_suction)**3,
+     $                     'kinetic cost independent of pressure mean')
       enddo
       enddo
       enddo
@@ -200,7 +259,7 @@ c Zero DRL action still costs power: the uniform suction remains active.
          e=info_agt(1,a)
          local_e=gllel(e)
          call assert_close(stat_ruavg(x,1,local_e,67),
-     $        base_pw(x,e)*pfactor,'statistics pressure cost')
+     $        base_pw(x)*pfactor,'statistics pressure cost')
          call assert_close(stat_ruavg(x,1,local_e,68),
      $        base_v3(x)*kfactor,'statistics kinetic cost')
          call assert_close(stat_ruavg(x,2,local_e,67),0.0,
@@ -216,7 +275,7 @@ c Zero DRL action still costs power: the uniform suction remains active.
       do a=1,numctrl
          x=info_agt(3,a)
          e=info_agt(1,a)
-         call assert_close(rwd_pw(a),base_pw(x,e)*pfactor,
+         call assert_close(rwd_pw(a),base_pw(x)*pfactor,
      $                     'pointwise pressure-work magnitude')
          call assert_close(rwd_v3(a),base_v3(x)*kfactor,
      $                     'blowing and suction kinetic cost')
@@ -344,35 +403,79 @@ c Zero DRL action still costs power: the uniform suction remains active.
 """
 
 
-def main():
+def run_wing_checks(case, driver_source, formulation):
+    """Compile a wing cost implementation against the shared MPI fixture."""
     for name in ("mpif77", "mpirun"):
         if shutil.which(name) is None:
             raise SystemExit(f"Required tool not found: {name}")
     # /tmp can be mounted noexec on the workstations used for this repo.
-    with tempfile.TemporaryDirectory(prefix=".bewley-test-",
+    with tempfile.TemporaryDirectory(prefix=f".{formulation}-test-",
                                      dir=ROOT / "utils") as tmp:
         path = Path(tmp)
-        for name, source in INCLUDES.items():
+        # Keep INCLUDES and the generic stubs compatible with channel tests.
+        wing_includes = dict(INCLUDES)
+        wing_includes["SIZE"] = INCLUDES["SIZE"].replace(
+            "lelt=2", "lelt=4").replace("totctrl=8", "totctrl=16").replace(
+            "znel=1", "znel=2")
+        wing_includes["PARALLEL"] = INCLUDES["PARALLEL"].replace(
+            "gllel(2)", "gllel(4)") + """
+      integer lglel(lelt)
+      common /test_lglel/ lglel
+"""
+        wing_includes["GEOM"] = "\n"
+        wing_includes["WZ"] = """
+      real wzm1(lz1)
+      common /test_weights/ wzm1
+"""
+        wing_includes["ZPER"] = """
+      integer nelz
+      common /test_zper/ nelz
+"""
+        for name, source in wing_includes.items():
             (path / name).write_text(source)
-        shutil.copyfile(CASE / "inc_src/DRL", path / "DRL")
-        shutil.copyfile(CASE / "inc_src/BEWLEY", path / "BEWLEY")
-        shutil.copyfile(CASE / "inc_src/STATS", path / "STATS")
+        shutil.copyfile(case / "inc_src/DRL", path / "DRL")
+        constants = formulation.upper()
+        shutil.copyfile(case / "inc_src" / constants, path / constants)
+        shutil.copyfile(case / "inc_src/STATS", path / "STATS")
         # Compile the actual production operators without linking the DNS.
-        stat_source = (CASE / "stats/statistics_2D.f").read_text()
+        stat_source = (case / "stats/statistics_2D.f").read_text()
         operators = []
         for name in ("stat_reshufflev", "stat_compute_1Dav1"):
             start = stat_source.index("      subroutine " + name + "(")
             stop = stat_source.index("\nc---", start)
             operators.append(stat_source[start:stop])
+        span_source = (case / "drl/drl_state.f").read_text()
+        for name in ("z_averaging", "z_avg_reshape", "get_exyz_usr"):
+            start = span_source.index("        subroutine " + name + "(")
+            stop = span_source.index("        end subroutine " + name, start)
+            operators.append(span_source[start:stop] + "        end\n")
         (path / "operators.f").write_text("\n".join(operators))
-        (path / "driver.f").write_text(DRIVER)
-        executable = path / "check_bewley"
+        driver = driver_source
+        for name in ("z_averaging", "z_avg_reshape"):
+            start = driver.index("      subroutine " + name + "(")
+            stop = driver.index("\n      subroutine ", start + 1)
+            driver = driver[:start] + driver[stop:]
+        driver += """
+      subroutine invcol2(a,b,n)
+      integer n
+      real a(n),b(n)
+      a=a/b
+      end
+
+      integer function mod1(i,n)
+      integer i,n
+      if(i.le.0.or.n.le.0) call exitt0
+      mod1=mod(i-1,n)+1
+      end
+"""
+        (path / "driver.f").write_text(driver)
+        executable = path / f"check_{formulation}"
         subprocess.run(
             ["mpif77", "-O0", "-g", "-std=legacy", "-fcheck=all",
              "-ffpe-trap=invalid,zero,overflow", "-fdefault-real-8",
              "-fdefault-double-8", f"-I{path}",
-             str(CASE / "drl/drl_bewley.f"),
-             str(CASE / "stats/statistics_bewley.f"),
+             str(case / f"drl/drl_{formulation}.f"),
+             str(case / f"stats/statistics_{formulation}.f"),
              str(path / "operators.f"), str(path / "driver.f"),
              "-o", str(executable)], check=True, timeout=60,
         )
@@ -381,6 +484,10 @@ def main():
                 ["mpirun", "--oversubscribe", "-np", str(nranks),
                  str(executable)], check=True, timeout=30,
             )
+
+
+def main():
+    run_wing_checks(CASE, DRIVER, "bewley")
 
 
 if __name__ == "__main__":

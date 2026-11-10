@@ -1,0 +1,95 @@
+c     Include file to dimension static arrays
+c     and to set some hardwired run-time parameters
+c
+      integer ldim,lx1,lxd,lx2,lx1m,lelg,lp,lelt,ldimt
+      integer ax1,ax2,lpx1,lpx2,lpelt,lbx1,lbx2,lbelt
+      integer lelcmt,toteq
+      integer lcvx1,lcvelt
+      integer lelx,lely,lelz,mxprev,lgmres,lorder,lhis
+      integer maxobj,maxmbr,lpert,nsessmax,nmaxl,nfldmax,nmaxcom
+      integer num_agent,num_obs,totctrl,xnel,ynel,znel
+
+      ! GENERAL
+      parameter (ldim=3)        ! domain dimension
+
+c------------------------------------------------------------------
+cc    Order of Polynomial 
+c------------------------------------------------------------------
+cc 1st Stage: 5th for 4 time units 
+      ! parameter (lx1=6)         ! polynomial order; in 2D set lz1=1
+      ! parameter (lxd=9)        ! polynomial order for over-integration 
+
+cc 2nd stage: 7th for 2 time units 
+      ! parameter (lx1=8,lxd=12)         ! polynomial order; in 2D set lz1=1
+      parameter (lx1=12,lxd=18)         ! polynomial order; in 2D set lz1=1
+
+cc 3rd Stage: 11th till statistics converged
+cc      parameter (lx1=12)         ! polynomial order; in 2D set lz1=1
+cc      parameter (lxd=18)        ! polynomial order for over-integration
+
+cc General
+      parameter (lx2=lx1-2)     ! polynomial order for pressure
+      parameter (lx1m=1)        ! polynomial order mesh solver; =1 no mesh motion
+c-------------------------------------------------------------------
+
+
+c-------------------------------------------------------------------
+cc    RANK and Elements 
+c-------------------------------------------------------------------
+c     number of elements 220752    
+      parameter (lelg=126684)     ! max total number of elements
+
+cc    On a even higher requirements to speedup       
+      ! parameter (lp=8192)
+      ! parameter (lelt=16)
+
+cc    On the full-res case
+      ! parameter (lp=1920)       ! max number of MPI ranks
+      ! parameter (lelt=66)      ! max number of elements per MPI rank 
+cc    Test on less core=2048, use for 5th and 7th 
+      ! parameter (lp=2048)
+      ! parameter (lelt=65)
+cc For N=11
+      parameter(lp=4096,lelt=33)
+cc    Even Less just for quick test 
+      ! parameter (lp=1024)
+      ! parameter (lelt=130)
+      parameter (ldimt=1)       ! max number of auxiliary fields (temperature + scalars)
+c----------------------------------------------------------------------
+
+
+      ! OPTIONAL
+      parameter (lelx=1,lely=1,lelz=1)          ! global tensor mesh dimensions
+      parameter (ax1=lx1,ax2=lx2)                   ! averages
+      parameter (lbx1=1,lbx2=1,lbelt=1)         ! mhd
+      parameter (lpx1=1,lpx2=1,lpelt=1,lpert=1) ! linear stability
+      parameter (lelcmt=1,toteq=1)              ! cmt
+      parameter (lcvx1=1,lcvelt=1)              ! cvode
+
+      parameter (mxprev=40,lgmres=40)           ! projection + Krylov space dimension
+      parameter (lorder=3)                      ! upper limit for order in time
+
+      parameter (maxobj=4,maxmbr=lelt*6)        ! max number number of objects
+      parameter (nsessmax=1,nmaxl=1,nfldmax=1,nmaxcom=1) ! multimesh parameters
+
+
+c---------------------------------
+c     Time-series data
+c---------------------------------
+cc      parameter (lhis=3500)                      ! max intp points per MPI rank
+cc When RANK = 1024
+cc      parameter (lhis=3500)                      ! max intp points per MPI rank
+cc When RANK = 2048
+      ! parameter (lhis=3500)
+cc When RANK = 4096 
+      parameter (lhis=780)                      ! max intp points per MPI rank
+      parameter(totctrl=5000)
+      ! For Z-Average of Small Wing
+      parameter (xnel =4692,ynel=1,znel=27)              ! Number of 2D elements to used for computing z-dir Mean
+
+c----------------------------------
+
+
+
+      ! INTERNALS
+      include 'SIZE.inc'

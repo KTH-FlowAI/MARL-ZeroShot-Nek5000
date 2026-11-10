@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+# Python-free deployment of a channel-trained, v'-only policy on NACA4412.
+#
+# The checked-in mc_nes_v_nek checkpoint is a one-input TD3 actor trained in
+# envs/cases/mini_channel_v.  Replace agent_run_name/policy with the final
+# v-only lc_n7_onlyV training checkpoint when it is available; retain
+# npl_state: 1 and source_solvers: ["nek"].
+
+embedded:
+    enabled: true
+    net_precision: 8
+    rec_freq: 1000
+    rec_bufsize: 1000
+    resume: false
+    coupled_recorder: true
+
+runner:
+    # Must stay consistent with NFLDC=1 in the wing case.
+    npl_state: 1
+    nb_interactions: 10_000_000
+    random_init: -2
+    rank: 1
+    case_name: "naca4412_ref_vonly_nek_solo_2540"
+    evaluation: true
+    learnt_policy: true
+
+    # NACA4412 suction-side control interval.
+    agent_ctrl_area: [[0.23, 0.41]]
+    agent_ctrl_side: ["SS"]
+    agent_run_name: ["mc_nes_v_nek"]
+    policy: ["best_model"]
+    RL_algorithm: ["TD3"]
+    source_solvers: ["nek"]
+
+    # The wing's UTAU path has already divided v' by the local u_tau before
+    # actor evaluation, so no second observation scaling is applied here.
+    u_tau: [1.0]
+    dUdy: [920.54]
+    # Match the channel policy's physical action scale.
+    action_bounds: [[-0.064, 0.064]]
+    drl_steps: [5]
+
+    vars_record: true
+    vars_record_freq: 1
+    vars_io_freq: 100
+    size_history: 10
+    netgain_io_freq: 100
+    reward_fn: "net_gain"
+    reward_alpha: 1.0
+    reward_beta: 1.0
+    reward_gamma: 1.0
+
+simulation:
+    CASENAME: "naca_wing"
+    solver_version: "v17"
+    exeName: "nek5000_solo"
+    compile_path: "envs/cases/naca4412_ref_SS_2540_vonly"
+    shared_data_path: "data/simulations/naca4412_200k"
+    shared_data_link: true
+    restart_folder: "data/restarts/rs8_naca4412_200k_ref"
+    TOTCTRL: 5000
+    nproc: 4096
+    ndrl: 9
+    znmf_avg: 1
+    target_cfl: 2.0
+    numSteps: 5_000_000  # preparation derives this from nb_interactions
+    dt: -1.5e-05
+    writeInterval: 5000
+    writeLA2: 5000
+    p_residualTol: 1.0e-6
+    v_residualTol: 1.0e-8
+    density: 1.0
+    viscosity: -2.0e5
+    READCHKPT: 1
+    CHKPFNUMBER: 6
+    CHKPINTERVAL: 2500
+    AVSTEP: 10
+    IOSTEP: 2500
+
+logging:
+    # Resolves to runs/mc_nes_v_nek/logs/best_model.zip.
+    policy_dir: "runs"

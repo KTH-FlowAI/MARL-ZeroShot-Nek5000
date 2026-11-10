@@ -34,6 +34,7 @@ c Pressure is mechanical pressure; param(2) is dynamic viscosity in Nek.
       endif
       call gradm1(dx,dy,dz,vx)
       call bewley_cost_fields(cp,ck)
+      
       if (rwd_zavg) then
          call planar_avg(work,dy,igs_z)
          call copy(dy,work,ntot)

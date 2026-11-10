@@ -4,7 +4,7 @@ c Bewley, Moin & Temam (2001), JFM 447, p.218:
 c local actuator cost = |(p-pbar)*phi| + 0.5*rho*|phi|**3.
 c Nek pressure is mechanical pressure; phi includes uniform suction
 c and ACTIONS, before projection onto Cartesian components in userbc.
-c pbar is ONE area-weighted mean over the registered control faces.
+c pbar is the instantaneous spanwise mean at each cross-section GLL point.
 c Absolute values precede spatial averaging; cycle means are dt-weighted.
 c The parent's wall-shear proxy and reward/recorder layout are retained.
 c-----------------------------------------------------------------------
@@ -119,12 +119,13 @@ c All ranks must call this routine, including ranks with no control face.
       include 'DRL'
       include 'BEWLEY'
       real costp(lx1,ly1,lz1,lelt),costk(lx1,ly1,lz1,lelt)
-      real pwall(lx1,ly1,lz1,lelt),pbar,phi
+      real pwall(lx1,ly1,lz1,lelt),phi
       integer ie,ix,iy,iz
       save pwall
 c mappr's last two arguments are scratch, fully overwritten below.
       call mappr(pwall,pr,costp,costk)
-      call bewley_wall_pressure(pwall,pbar)
+c Reuse costp for the native-order mean, then overwrite point by point.
+      call bewley_spanwise_pressure(pwall,costp)
       do ie=1,nelv
       do iz=1,lz1
       do iy=1,ly1
@@ -133,7 +134,8 @@ c mappr's last two arguments are scratch, fully overwritten below.
          if (msk_act(ix,iy,iz,ie).ne.0) then
             phi=actions(ix,iy,iz,ie)+bw_suction
          endif
-         costp(ix,iy,iz,ie)=abs((pwall(ix,iy,iz,ie)-pbar)*phi)
+         costp(ix,iy,iz,ie)=
+     $        abs((pwall(ix,iy,iz,ie)-costp(ix,iy,iz,ie))*phi)
          costk(ix,iy,iz,ie)=0.5*param(1)*abs(phi)**3
       enddo
       enddo
@@ -143,40 +145,18 @@ c mappr's last two arguments are scratch, fully overwritten below.
       end
 
 c-----------------------------------------------------------------------
-      subroutine bewley_wall_pressure(pwall,pbar)
-c One gauge-invariant reference for the entire controlled SS patch.
-c Each registered element face is integrated once with Nek's surface
-c Jacobian/GLL weights, even though it contains many registered agents.
-c All ranks join the reduction, including ranks without control points.
+      subroutine bewley_spanwise_pressure(pwall,pmean)
+c Separate instantaneous reference at every cross-section GLL location.
+c Only the homogeneous span is averaged; chord locations stay separate.
+c The existing z operators use GLL weights on the uniform-span wing mesh
+c and reduce matching cross-section points across all MPI ranks.
 c-----------------------------------------------------------------------
       implicit none
       include 'SIZE'
-      include 'PARALLEL'
-      include 'DRL'
-      real pwall(lx1,ly1,lz1,lelt),pbar
-      real sums(2),work(2),pint,awall
-      logical seen(2*ldim,lelt)
-      integer il,ie,iface
-
-      seen=.false.
-      sums(1)=0.0
-      sums(2)=0.0
-      do il=1,numctrl
-         ie=gllel(info_agt(1,il))
-         iface=info_agt(2,il)
-         if (.not.seen(iface,ie)) then
-            call surface_int(pint,awall,pwall,ie,iface)
-            sums(1)=sums(1)+pint
-            sums(2)=sums(2)+awall
-            seen(iface,ie)=.true.
-         endif
-      enddo
-      call gop(sums,work,'+  ',2)
-      if (sums(2).le.0.0) then
-         if (nid.eq.0) write(6,*) '[BEWLEY] no control-wall area'
-         call exitt0
-         return
-      endif
-      pbar=sums(1)/sums(2)
+      real pwall(lx1,ly1,lz1,lelt),pmean(lx1,ly1,lz1,lelt)
+      real pavgz(lx1,ly1,xnel,ynel)
+      save pavgz
+      call z_averaging(pwall,pavgz)
+      call z_avg_reshape(pmean,pavgz)
       return
       end

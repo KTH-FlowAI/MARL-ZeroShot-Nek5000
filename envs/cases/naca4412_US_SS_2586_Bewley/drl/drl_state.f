@@ -476,7 +476,7 @@ c=============================================
 ! #endif
 c Computing the weighted average along z-dir
 c--------------------------------------
-        do e=1,lelt
+        do e=1,nelv
         eg = lglel(e)
         call get_exyz_usr(ex,ey,ez,eg,xnel,ynel,nelz)
         do j=1,ly1
@@ -502,7 +502,7 @@ c-------------------------------------
 !#[MOD] bit-for-bit the same while avoiding one global reduction per call.
         if (.not.zavg_ifw1) then
            call rzero(w1,mxy)
-           do e=1,lelt
+           do e=1,nelv
            eg = lglel(e)
            call get_exyz_usr(ex,ey,ez,eg,xnel,ynel,nelz)
            do j=1,ly1
@@ -520,9 +520,7 @@ c-------------------------------------
 c-------------------------------------
 c Normalisation by the weight array
 c-------------------------------------
-        do i=1,mxy
-        avgVZ(i,1,1,1)=avgVZ(i,1,1,1)/(w1(i,1,1,1))   ! Normalize
-        enddo 
+        call invcol2(avgVZ,w1,mxy)
 c-------------------------------------
 
 c-------------------------------------
@@ -554,7 +552,7 @@ c=============================================
 
 cc: For Loop for transpose element
 c-----------------------------------
-        do e=1,lelt
+        do e=1,nelv
 
         eg = lglel(e)
         call get_exyz_usr(ex,ey,ez,eg,xnel,ynel,nelz)

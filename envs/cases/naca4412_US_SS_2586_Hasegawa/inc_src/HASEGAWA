@@ -1,0 +1,3 @@
+c     Shared by userbc and actuator-power accounting (normal velocity).
+      real hg_suction
+      parameter (hg_suction=-0.002)

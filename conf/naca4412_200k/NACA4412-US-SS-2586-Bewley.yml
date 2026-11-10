@@ -1,0 +1,90 @@
+# NES evaluation on naca4412_US_SS_2586 using Bewley actuator costs.
+# Evaluate the four existing US02 NES-trained TD3 policies (no retraining).
+# Same 90,000,000 solver-step budget and 9,000-step record stride in all
+# four OC/NES x Bewley/Hasegawa configurations. Control cadence differs.
+# Run: bash execs/nek-solo-run.sh --config conf/naca4412_200k/NACA4412-US-SS-2586-Bewley.yml
+
+embedded:
+    enabled: true
+    net_precision: 8
+    rec_freq: 1000       # cycles; equal to 9000 solver steps
+    rec_bufsize: 1000
+    resume: false        # use --resume when continuing this run
+    coupled_recorder: true
+
+runner:
+    nb_interactions: 10000000
+    random_init: -2       # preserve this run's restart once staged
+    rank: 1
+    case_name: "naca4412_US_SS_2586_Bewley_NES"
+    evaluation: true
+    learnt_policy: true
+
+    agent_ctrl_area: [[0.23, 0.40], [0.40, 0.50], [0.50, 0.70], [0.70, 0.87]]
+    agent_ctrl_side: ["SS", "SS", "SS", "SS"]
+    agent_run_name:
+        - "archived_lc_omega1_SS_US02_nes"
+        - "archived_lc_omega2_SS_US02_nes"
+        - "archived_lc_omega3_SS_US02_nes"
+        - "archived_lc_omega4_SS_US02_nes"
+    # Full checkpoint stems; OC entries are analytic labels only.
+    policy:
+        - "eval_model_omega1_SS_US02_nes"
+        - "eval_model_omega2_SS_US02_nes"
+        - "eval_model_omega3_SS_US02_nes"
+        - "eval_model_omega4_SS_US02_nes"
+    RL_algorithm: ["TD3", "TD3", "TD3", "TD3"]
+    source_solvers: ["nek", "nek", "nek", "nek"]
+
+    # The solver already scales observations/actions by local u_tau.
+    # Unit scales here avoid applying that normalization a second time.
+    u_tau: [1.0, 1.0, 1.0, 1.0]
+    dUdy: [1135.83, 940.90, 759.46, 485.32]
+    npl_state: 2
+    normalize_input: "None"
+    rescale_actions: false
+    ctrl_min_amp: -1.0
+    ctrl_max_amp: 1.0
+    action_bounds: [[-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0], [-1.0, 1.0]]
+    # Region updates in control cycles (multiply by simulation.ndrl).
+    drl_steps: [4, 5, 6, 9]
+
+    vars_record: true
+    vars_record_freq: 1
+    vars_io_freq: 100
+    size_history: 10
+    netgain_io_freq: 100
+    reward_fn: net_gain
+    reward_alpha: 1.0
+    reward_beta: 1.0
+    reward_gamma: 1.0
+
+simulation:
+    CASENAME: naca_wing
+    exeName: nek5000_solo
+    compile_path: "envs/cases/naca4412_US_SS_2586_Bewley"
+    restart_folder: "data/restarts/rs8_naca_wing200k_02US"
+    shared_data_path: "data/simulations/naca4412_200k"
+    solver_version: v17
+    TOTCTRL: 5000
+    nproc: 4096
+    ndrl: 9              # solver steps per control cycle
+    znmf_avg: 1           # retain the wing's zero-flux action correction
+    target_cfl: 2.0
+
+    numSteps: 90000000    # nb_interactions * ndrl; launcher derives this too
+    dt: -1.5e-05
+    writeInterval: 20000
+    writeLA2: 20000
+    p_residualTol: 1.0e-5
+    v_residualTol: 1.0e-8
+    density: 1.0
+    viscosity: -2.0e5
+    READCHKPT: 1
+    CHKPFNUMBER: 6
+    CHKPINTERVAL: 5000
+    AVSTEP: 10
+    IOSTEP: 5000
+
+logging:
+    policy_dir: "./data/policies_meta_wing_nes/"
