@@ -1,0 +1,3 @@
+c     Shared by userbc and actuator-power accounting (normal velocity).
+      real bw_suction
+      parameter (bw_suction=-0.002)

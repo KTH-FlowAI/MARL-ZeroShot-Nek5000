@@ -1,0 +1,10 @@
+obj/
+makefile
+.state
+nek5000
+nek5000_solo
+*.log
+*.out
+tcf.f
+phill.f
+SESSION.NAME
