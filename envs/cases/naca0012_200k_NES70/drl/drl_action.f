@@ -243,7 +243,9 @@ c=============================================
 #ifdef UTAU
       do il = 1, NUMCTRL
         xi = pos_agt(1,il) 
-        call X2Utau(xi,uti) 
+      !   call X2Utau(xi,uti) 
+      !   call X2Utau(xi,uti) 
+        uti  = 0.0624334733 ! Use the constant utau for scale the actuation
         iel = info_agt(1,il) 
         iel = gllel(iel)
         ix = info_agt(3,il) 
