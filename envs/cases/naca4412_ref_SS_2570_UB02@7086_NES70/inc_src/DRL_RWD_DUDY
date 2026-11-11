@@ -1,0 +1,11 @@
+c------------------------------------------------------------------
+c Static work storage for compute_dudy.
+c
+c The wing's LELT makes these arrays several megabytes.  A named common
+c block keeps them out of the per-call stack frame.
+c------------------------------------------------------------------
+      real duidxj(LX1,LY1,LZ1,LELT,3)
+      real devU1(LX1,LY1,LZ1,LELT)
+      real dUdx(LX1,LY1,LZ1,LELT),dUdy(LX1,LY1,LZ1,LELT)
+      real avgV(LX1,LY1,LZ1,LELT)
+      common /drl_rwd_dudy/ duidxj,devU1,dUdx,dUdy,avgV

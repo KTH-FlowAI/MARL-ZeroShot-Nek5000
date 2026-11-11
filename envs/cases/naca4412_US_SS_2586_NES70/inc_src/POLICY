@@ -1,0 +1,4 @@
+c Canonical embedded-policy declarations shared by the NACA wing cases.
+c The policy sources are compiled from the reference implementation; keeping
+c this wrapper local lets all normal case files continue to use include 'POLICY'.
+      include '../naca4412_ref_SS_2570/inc_src/POLICY'

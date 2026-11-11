@@ -1,0 +1,7 @@
+c Shared constants for boundary actuation and dual NES accounting.
+c Recorder: 1 = Bewley, 2 = Hasegawa. STS always contains both.
+      integer nes_reward_model
+      parameter (nes_reward_model=1)
+      real nes_suction,nes_blow,nes_blow_xmin,nes_blow_xmax
+      parameter (nes_suction=0.0,nes_blow=0.0)
+      parameter (nes_blow_xmin=0.69,nes_blow_xmax=0.86)

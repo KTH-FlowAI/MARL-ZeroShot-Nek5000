@@ -1,0 +1,12 @@
+c------------------------------------------------------------------
+c Static work storage for compute_netGain_posOnly.
+c------------------------------------------------------------------
+      real duidxj(LX1,LY1,LZ1,LELT,3)
+      real devU1(LX1,LY1,LZ1,LELT)
+      real dUdx(LX1,LY1,LZ1,LELT),dUdy(LX1,LY1,LZ1,LELT)
+      real velV(LX1,LY1,LZ1,LELT),avgV(LX1,LY1,LZ1,LELT)
+      real vnorm(LX1,LY1,LZ1,LELT),tauw(LX1,LY1,LZ1,LELT)
+      real pwvw(LX1,LY1,LZ1,LELT),v3(LX1,LY1,LZ1,LELT)
+      real buffer(LX1,LY1,LZ1,LELT),wrk_buff(LX1,LY1,LZ1,LELT)
+      common /drl_rwd_netgain/ duidxj,devU1,dUdx,dUdy,velV,avgV,
+     $                         vnorm,tauw,pwvw,v3,buffer,wrk_buff
