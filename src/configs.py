@@ -102,10 +102,12 @@ class Runner:
     # Scaling 
     u_tau:float         = 0.047
     dUdy:float          = 12.875
-    reward_fn:str       = 'dudy'  # 'dudy' or 'net_gain' (selected at runtime via UPARAM(9); no recompile) #[MOD]
+    reward_fn:str       = 'dudy'  # [WALL_PRESSURE] dudy/net_gain/wall_pressure -> UPARAM(9)=0/1/2; case must support it
     reward_alpha:float  = 1.0    # weight on R_wallshear = 1 - tau_w/tau_w_ref
-    reward_beta:float   = 1.0    # weight on R_pw        = -|p'v|/tau_w_ref
-    reward_gamma:float  = 1.0    # weight on R_v3        = -0.5|v^3|/tau_w_ref
+    reward_beta:float   = 1.0    # net_gain: pressure work; wall_pressure: 1 - p_rms/pressure_rms_ref
+    reward_gamma:float  = 1.0    # net_gain kinetic cost only; ignored by wall_pressure
+    # [WALL_PRESSURE] Hard-code the uncontrolled wall RMS in solver pressure units.
+    pressure_rms_ref:float = 0.0 # Must be set > 0 for wall_pressure; no assumed baseline
 
 
 @dataclass 

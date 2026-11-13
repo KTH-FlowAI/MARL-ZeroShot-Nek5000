@@ -333,7 +333,8 @@ def write_run_config(path, nb_interactions, rec_freq, rec_bufsize, iprec,
         f.write(f"{int(nb_interactions)} {int(rec_freq)} "
                 f"{int(rec_bufsize)} {int(iprec)}\n")
         f.write("#\n")
-        f.write("# reward_mode(0=dudy,1=net_gain)  dudy_ref  alpha beta gamma\n")
+        # [WALL_PRESSURE] Mode 2 records tau_w, pressure RMS, zero.
+        f.write("# reward_mode(0=dudy,1=net_gain,2=wall_pressure)  dudy_ref  alpha beta gamma\n")
         f.write(f"{int(reward_mode)} {float(dudy_ref)!r} "
                 f"{float(alpha)!r} {float(beta)!r} {float(gamma)!r}\n")
         f.write("#\n")

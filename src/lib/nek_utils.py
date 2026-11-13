@@ -8,6 +8,7 @@ from configs import Simulation as nek
 from configs import Runner as drl
 from pathlib import Path
 from lib.writer_int_pos import write_channel
+from lib.reward_utils import reward_mode as get_reward_mode
 """
 A checklist of dependencies: 
 
@@ -58,6 +59,16 @@ class NEK_INIT():
         self.log = log
         self.rank_folder = rank_folder
         self.is_done = []
+        # [WALL_PRESSURE] Reject incompatible sources before starting MPI:
+        # legacy cases send one buffer for mode 2, but Python expects three.
+        mode = get_reward_mode(drl)
+        pressure_case = (Path(nek.compile_path) / 'drl' /
+                         'drl_wall_pressure.f').is_file()
+        if mode == 2 and (self._is_v17() or not pressure_case):
+            raise ValueError('wall_pressure requires the v19 '
+                             'envs/cases/lc_n7_WallPressure case')
+        if mode == 1 and pressure_case:
+            raise ValueError('lc_n7_WallPressure supports dudy or wall_pressure')
 
     # -----------------------------------------
     def _embedded_on(self) -> bool:
@@ -440,14 +451,9 @@ class NEK_INIT():
             # [MOD] Reward mode selector (UPARAM(9) in Fortran).
             # Derived from Runner.reward_fn so the Fortran reward path and the
             # Python MPI-Recv path share ONE source of truth (avoids deadlock).
-            # 0 = dudy (drag reduction), 1 = net_gain (net energy saving).
-            reward_fn = getattr(self.drl, 'reward_fn', 'dudy')
-            if reward_fn not in ('dudy', 'net_gain'):
-                raise ValueError(
-                    f"[IO] Unknown reward_fn '{reward_fn}'; "
-                    "expected 'dudy' or 'net_gain'")
-            reward_mode = 1 if reward_fn == 'net_gain' else 0
-            fpar.write('userParam%02d = %s \n' % (userp, reward_mode)) # Reward mode: 0=dudy, 1=net_gain
+            # [WALL_PRESSURE] Mode 2 uses tau_w, pressure RMS and a zero slot.
+            reward_mode = get_reward_mode(self.drl)
+            fpar.write('userParam%02d = %s \n' % (userp, reward_mode))
             userp += 1
             #[MOD] Control mode (UPARAM(10) in Fortran).
             # 0 = coupled  : Python drives the solver over MPI (training and
@@ -772,8 +778,7 @@ class NEK_INIT():
         # missing, which keeps hand-staged runs working.
         os.makedirs(os.path.join(self.rank_folder, 'drlrec'), exist_ok=True)
 
-        reward_fn = getattr(drl, 'reward_fn', 'dudy')
-        reward_mode = 1 if reward_fn == 'net_gain' else 0
+        reward_mode = get_reward_mode(drl)  # [WALL_PRESSURE] shared mode mapping
 
         cfg = os.path.join(self.rank_folder, 'drl_policy.in')
         write_run_config(cfg,
@@ -813,11 +818,7 @@ class NEK_INIT():
                 '[POLREC] coupled recorder requires positive rec_freq and '
                 'rec_bufsize')
 
-        reward_fn = getattr(self.drl, 'reward_fn', 'dudy')
-        if reward_fn not in ('dudy', 'net_gain'):
-            raise ValueError(
-                f"[POLREC] unknown reward_fn '{reward_fn}' for coupled recorder")
-        reward_mode = 1 if reward_fn == 'net_gain' else 0
+        reward_mode = get_reward_mode(self.drl)  # [WALL_PRESSURE] recorder mode 2
 
         os.makedirs(os.path.join(self.rank_folder, 'drlrec'), exist_ok=True)
         path = os.path.join(self.rank_folder, 'drl_record.in')

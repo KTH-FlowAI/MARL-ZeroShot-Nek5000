@@ -21,6 +21,7 @@ from mpi4py import MPI
 from lib.lglnodes import lglnodes
 from lib.nek_utils import (remove_sch)
 from lib.reward_logger import RewardLogger, SimpleRewardLogger
+from lib.reward_utils import reward_mode
 def env():
     """
     The env function often wraps the environment in wrappers by default.
@@ -135,11 +136,22 @@ class parallel_env(ParallelEnv):
 
         # -----------REWARD--------------
         self.reward_fn = self.conf.runner.reward_fn
+        reward_mode(self.conf.runner)  # [WALL_PRESSURE] validate RMS reference
         # Baseline Reward
         self.baseline_dudy=self.conf.runner.dUdy # For N=5 @ x/c = 0.4
-        # tau_wall = nu * dUdy; nu = 1/|viscosity| when viscosity < 0 (NEK convention)
-        nu = 1.0 / abs(self.conf.simulation.viscosity)
-        self.baseline_tau_wall = nu * self.baseline_dudy
+        if self.reward_fn == 'wall_pressure':
+            # [WALL_PRESSURE] Match Nek's dynamic-viscosity convention for
+            # both positive mu and negative reciprocal-Re input values.
+            viscosity = self.conf.simulation.viscosity
+            mu = -1.0 / viscosity if viscosity < 0 else viscosity
+            self.baseline_tau_wall = mu * self.baseline_dudy
+            if (not np.isfinite(self.baseline_tau_wall)
+                    or self.baseline_tau_wall <= 0):
+                raise ValueError('wall_pressure requires a positive shear reference')
+        else:
+            # Preserve the existing normalization for legacy reward modes.
+            nu = 1.0 / abs(self.conf.simulation.viscosity)
+            self.baseline_tau_wall = nu * self.baseline_dudy
         # Reward history logging variables
         self.restart_index = 0
         self.act_index = 0
@@ -552,7 +564,8 @@ class parallel_env(ParallelEnv):
             #--------------------------------
             if i_evolv == self.conf.simulation.ndrl:
                 TOTCTRL = self.conf.simulation.TOTCTRL
-                if self.reward_fn == 'net_gain':
+                # [WALL_PRESSURE] Reuse three MPI slots: tau_w, p_rms, zero.
+                if self.reward_fn in ('net_gain', 'wall_pressure'):
                     tau_buf = np.ndarray(shape=(self.nNID, TOTCTRL), dtype=np.float64)
                     pw_buf  = np.ndarray(shape=(self.nNID, TOTCTRL), dtype=np.float64)
                     v3_buf  = np.ndarray(shape=(self.nNID, TOTCTRL), dtype=np.float64)
@@ -592,7 +605,7 @@ class parallel_env(ParallelEnv):
                                             iy=self.agent_info['iy'][indx][jl],
                                             iz=self.agent_info['iz'][indx][jl],
                                             )
-                if self.reward_fn == 'net_gain':
+                if self.reward_fn in ('net_gain', 'wall_pressure'):
                     i_reward = self._normalize_reward(
                         tau_w=tau_dist[agent_name],
                         pw=pw_dist[agent_name],
@@ -616,6 +629,17 @@ class parallel_env(ParallelEnv):
                 'R_tau': float(1.0 - np.mean([np.mean(tau_dist[a]) for a in rewards]) / ref),
                 'R_pw':  float(-np.mean([np.mean(pw_dist[a])  for a in rewards]) / ref),
                 'R_v3':  float(-np.mean([np.mean(v3_dist[a])  for a in rewards]) / ref),
+            }
+        elif self.reward_fn == 'wall_pressure':
+            # [WALL_PRESSURE] Log relative reductions; the third term is zero.
+            components = {
+                'R_tau': float(np.mean([
+                    1.0 - np.mean(tau_dist[a]) / self.baseline_tau_wall
+                    for a in rewards])),
+                'R_pw': float(np.mean([
+                    1.0 - np.mean(pw_dist[a]) / self.conf.runner.pressure_rms_ref
+                    for a in rewards])),
+                'R_v3': 0.0,
             }
         else:
             components = None
@@ -759,6 +783,7 @@ class parallel_env(ParallelEnv):
         'dudy' mode  : R = 1 - dUdy / dUdy_ref
         'net_gain'   : R = alpha*(1 - tau_w/ref) + beta*(-pw/ref) + gamma*(-v3/ref)
                          = alpha*R_wallshear + beta*R_pw + gamma*R_v3
+        'wall_pressure': alpha*(1 - tau_w/ref) + beta*(1 - p_rms/p_rms_ref)
         """
         ref = self.baseline_tau_wall
         if self.reward_fn == 'net_gain':
@@ -769,6 +794,12 @@ class parallel_env(ParallelEnv):
             R_pw        = -np.mean(pw)  / ref
             R_v3        = -np.mean(v3)  / ref
             return alpha * R_wallshear + beta * R_pw + gamma * R_v3
+        elif self.reward_fn == 'wall_pressure':
+            # [WALL_PRESSURE] Fortran has already formed the space/time RMS.
+            # The two terms have separate baselines; gamma is unused.
+            return (self.conf.runner.reward_alpha * (1.0 - np.mean(tau_w) / ref)
+                    + self.conf.runner.reward_beta
+                    * (1.0 - np.mean(pw) / self.conf.runner.pressure_rms_ref))
         else:
             return 1.0 - (np.mean(dudy) / self.baseline_dudy)
 
