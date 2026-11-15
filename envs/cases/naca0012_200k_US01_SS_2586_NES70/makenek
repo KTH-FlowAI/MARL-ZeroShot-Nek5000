@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Compatibility entry point: use the complete NES70 build configuration.
+set -e
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
+if [[ $# -eq 0 ]]; then
+    set -- --all
+elif [[ "$1" == naca_wing ]]; then
+    shift
+    set -- --all "$@"
+elif [[ "$1" == clean ]]; then
+    shift
+    set -- --clean "$@"
+fi
+exec bash ./compile_script "$@"
