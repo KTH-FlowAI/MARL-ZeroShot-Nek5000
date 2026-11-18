@@ -5,9 +5,9 @@
  *** Global parameters 'wallpar(i)'***
 0.0                time independent amplitude (subroutine tripf)
 10.0               time dependent amplitude (subroutine tripf)
-0.004                tdt (subroutine tripf)
-60                  num_nodes (subroutine tripf -> rand_gen)
-0.001     dstar (subroutine userf)
+0.008                tdt (subroutine tripf)
+30                  num_nodes (subroutine tripf -> rand_gen)
+0.002     dstar (subroutine userf)
  *** Wall definitions: direction // x y z // p1x p1y p1z // p2x p2y p2z // ... ***
  *** Parameters per wall : 'pwallpar(coord,i,wall)' ***
 z                direction

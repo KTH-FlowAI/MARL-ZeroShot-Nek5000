@@ -1,0 +1,2 @@
+c Canonical net-gain reward work storage for the shared wing reward.
+      include '../naca4412_ref_SS_2570/inc_src/DRL_RWD_NETGAIN'
