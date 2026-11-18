@@ -41,3 +41,5 @@ __pycache__/
 !/data/policies_meta_wing_dr/**/logs/**
 !/data/policies_meta_wing_nes/**/logs/
 !/data/policies_meta_wing_nes/**/logs/**
+!/data/policies_naca_wing_0012_dr/
+!/data/policies_naca_wing_0012_dr/**
