@@ -93,19 +93,40 @@ def _collect(sd, prefix):
     return out
 
 
-def extract_actor(sd, algo):
+def hidden_activation(data):
+    """Activation code of the hidden layers of an SB3 actor.
+
+    SB3 builds the hidden layers with policy_kwargs['activation_fn']
+    (ReLU by default for TD3/DDPG/SAC). The checkpoint's `data` JSON keeps
+    a readable repr of it next to the pickled kwargs, e.g.
+    "<class 'torch.nn.modules.activation.Tanh'>", so it can be read
+    without unpickling.
+    """
+    pk = (data or {}).get("policy_kwargs") or {}
+    rep = str(pk.get("activation_fn", "")) if isinstance(pk, dict) else ""
+    if rep == "" or rep.endswith(".ReLU'>"):
+        return ACT_RELU
+    if rep.endswith(".Tanh'>"):
+        return ACT_TANH
+    raise ValueError(f"unsupported activation_fn in policy_kwargs: {rep}")
+
+
+def extract_actor(sd, algo, data=None):
     """Return (layers, acts, squash): layers is [(W, b), ...] and acts is
-    the activation code applied *after* each layer."""
+    the activation code applied *after* each layer. `data` is the
+    checkpoint's data JSON (load_state_dict); it sets the hidden-layer
+    activation (default ReLU)."""
+    hid = hidden_activation(data)
     if algo in ("TD3", "DDPG"):
-        # actor.mu = Sequential(Linear, ReLU, ..., Linear, Tanh)
+        # actor.mu = Sequential(Linear, act, ..., Linear, Tanh)
         layers = _collect(sd, "actor.mu.")
-        acts = [ACT_RELU] * (len(layers) - 1) + [ACT_TANH]
+        acts = [hid] * (len(layers) - 1) + [ACT_TANH]
         squash = True
     elif algo == "SAC":
         # deterministic action = tanh(mu(latent_pi(obs)))
         layers = _collect(sd, "actor.latent_pi.")
         mu_w, mu_b = sd["actor.mu.weight"].numpy(), sd["actor.mu.bias"].numpy()
-        acts = [ACT_RELU] * len(layers) + [ACT_TANH]
+        acts = [hid] * len(layers) + [ACT_TANH]
         layers = layers + [(mu_w, mu_b)]
         squash = True
     elif algo == "PPO":
@@ -200,9 +221,9 @@ def export_checkpoint(ckpt, out_path, scl_obs, scl_act,
     reverses the observation component order, matching what
     MetaPolicy/evaluate.py do for a transferred policy.
     """
-    sd, _ = load_state_dict(ckpt)
+    sd, data = load_state_dict(ckpt)
     algo = detect_algo(sd, algo)
-    layers, acts, squash = extract_actor(sd, algo)
+    layers, acts, squash = extract_actor(sd, algo, data)
     nin = layers[0][0].shape[1]
     dims = write_pol(out_path, algo, layers, acts, squash, alow, ahigh,
                      scl_obs, scl_act, os.path.abspath(ckpt),
