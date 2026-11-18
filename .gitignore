@@ -13,6 +13,8 @@
 !/data/policies_meta_wing_dr/**
 !/data/policies_meta_wing_nes/
 !/data/policies_meta_wing_nes/**
+!/data/policies_naca_wing_0012_dr/
+!/data/policies_naca_wing_0012_dr/**
 *mask*
 !runs/readme.md
 !data/readme.md
