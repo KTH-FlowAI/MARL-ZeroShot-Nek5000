@@ -148,12 +148,12 @@ c=============================================
         ! Compute the Projection
         ntot = LX1*LY1*LZ1*LELT
         
-        ! 1st variable: the Wall-Tangential velocity U_t
+        ! Wall-tangential velocity: tangent = (body_sin,-body_cos)
         call rzero(rotV,ntot)
-        rotV=vx*body_sin + vy*body_cos
+        rotV=vx*body_sin - vy*body_cos
         call copy(ctrlVx(1,1,1,1),rotV(1,1,1,1),ntot)
 
-        ! 2nd Variable: the Wall-normal velocity V_n
+        ! Wall-normal velocity: normal = (body_cos,body_sin)
         call rzero(rotV,ntot)
         rotV=vx*body_cos + vy*body_sin
         call copy(ctrlVy(1,1,1,1),rotV(1,1,1,1),ntot)
